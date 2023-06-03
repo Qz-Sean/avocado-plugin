@@ -1,0 +1,29 @@
+{
+  "name": "avocado-plugin",
+  "author": "Sean Murphy",
+  "version": "1.0.0",
+  "homepage": "https://github.com/Qz-Sean/avocado-plugin#readme",
+  "description": "a plugin used for Yunzai-Bot, 鳄梨酱! ! !",
+  "main": "index.js",
+  "type": "module",
+  "module": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Qz-Sean/avocado-plugin.git"
+  },
+  "dependencies":{
+    "markdown-it": "^13.0.1",
+    "md5": "^2.3.0"
+  },
+  "keywords": [
+    "云崽",
+    "Yunzai-Bot"
+  ],
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/Qz-Sean/avocado-plugin/issues"
+  }
+}

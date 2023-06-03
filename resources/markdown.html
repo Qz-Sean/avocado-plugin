@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+    }
+    body {
+      background-color: #f8c1c1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    #container {
+      padding: 20px;
+      font-size: 24px;
+      background-color: white;
+      border-radius: 10px;
+    }
+    .markdown-rule {
+      margin-top: 20px;
+    }
+    .markdown-rule:before {
+      content: "";
+      display:inline-block;
+      width:5px;
+      height:5px;
+      margin-right:.5em;
+      background-color:#333;
+      border-radius:50%;
+    }
+  </style>
+  <script>
+    window.onload = function() {
+      var rules = document.querySelectorAll('.markdown-rule');
+      for (var i = 0; i < rules.length; i++) {
+        rules[i].innerHTML = rules[i].innerHTML.replace(/:/g, '<span class="colon">:</span>');
+      }
+    };
+  </script>
+</head>
+<body>
+<div id="container">{{@markdownHtml}}</div>
+</body>
+</html>
