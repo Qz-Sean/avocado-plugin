@@ -6,17 +6,14 @@ import path from 'path'
 import { Config } from '../utils/config.js'
 import { translate, translateLangSupports } from '../utils/translate.js'
 import {
-  __dirname,
-  _puppeteer,
-  getImageOcrText, getImg,
+  getImageOcrText, getImg, getMovieList,
   getSourceMsg,
-  initPuppeteer,
-  makeForwardMsg,
-  md,
-  urlRegex
+  makeForwardMsg, sleep
 } from '../utils/common.js'
 import { getAreaInfo, weather } from '../utils/weather.js'
-import { cities } from '../utils/cities.js'
+import fetch from 'node-fetch'
+import { __dirname, cities, md, movieKeyMap, urlRegex } from '../utils/const.js'
+import puppeteerManager  from '../utils/puppeteer.js'
 
 export class avocado extends plugin {
   constructor () {
@@ -28,7 +25,7 @@ export class avocado extends plugin {
       /** https://icqqjs.github.io/icqq/interfaces/EventMap.html */
       event: 'message',
       /** 优先级，数字越小等级越高 */
-      priority: 1,
+      priority: 200,
       rule: [
         {
           /** 命令正则匹配 */
@@ -38,7 +35,7 @@ export class avocado extends plugin {
         },
         {
           /** 命令正则匹配 */
-          reg: '^#?鳄梨酱[!！]{3}$',
+          reg: '^#?(.*)鳄梨酱[!！]{3}$',
           /** 执行方法 */
           fnc: 'avocadoHelp'
         },
@@ -50,7 +47,7 @@ export class avocado extends plugin {
         },
         {
           /** 命令正则匹配 */
-          reg: '^#?鳄梨酱[！!]',
+          reg: '^#?(.*)鳄梨酱[！!]',
           /** 执行方法 */
           fnc: 'avocado'
         },
@@ -65,6 +62,12 @@ export class avocado extends plugin {
           reg: '^#?(.*)鳄梨酱[.。]([.。]*)',
           /** 执行方法 */
           fnc: 'avocadoWeather'
+        },
+        {
+          /** 命令正则匹配 */
+          reg: '^#?鳄梨酱0.0',
+          /** 执行方法 */
+          fnc: 'avocadoMovie'
         }
       ]
     })
@@ -198,14 +201,15 @@ export class avocado extends plugin {
       tplFile,
       quality: 100
     }
-    await initPuppeteer()
     try {
-      const page = await _puppeteer.browser.newPage()
+      await puppeteerManager.init()
+      const page = await puppeteerManager.newPage()
       await this.reply(await puppeteer.screenshot('markdown', data))
-      await page.close().catch((err) => logger.error(err))
+      await puppeteerManager.closePage(page)
+      await puppeteerManager.close()
     } catch (error) {
       logger.error(`${e.msg}图片生成失败:${error}`)
-      await _puppeteer.browser.close().catch((err) => console.error(err))
+      await puppeteerManager.close()
       await this.reply(`图片生成失败:${error}`)
     }
   }
@@ -253,8 +257,8 @@ export class avocado extends plugin {
     }
     // 递归终止
     if (Array.isArray(url)) return true
-    await initPuppeteer()
-    const page = await _puppeteer.browser.newPage()
+    await puppeteerManager.init()
+    const page = await puppeteerManager.newPage()
     try {
       await page.goto(url, { timeout: 120000 })
       await page.setViewport({
@@ -264,19 +268,21 @@ export class avocado extends plugin {
       await page.waitForTimeout(1000 * 10)
       // await page.waitForNavigation({ timeout: 10000 })
       await this.reply(segment.image(await page.screenshot({ fullPage: true })))
-      await page.close().catch((err) => logger.error(err))
+      await puppeteerManager.closePage(page)
+      await puppeteerManager.close()
     } catch (error) {
       logger.error(`${e.msg}图片生成失败:${error}`)
-      await _puppeteer.browser.close().catch((err) => console.error(err))
+      await puppeteerManager.close()
       await this.reply(`图片生成失败:${error}`)
     }
   }
 
   async avocadoHelp (e) {
-    await initPuppeteer()
-    const page = await _puppeteer.browser.newPage()
+    await puppeteerManager.init()
+    const page = await puppeteerManager.newPage()
     try {
-      await page.goto('file:///D:\\Miao-Yunzai\\plugins\\avocado-plugin\\resources\\README.html', { timeout: 120000 })
+      const filePath = path.join(__dirname, '..', 'resources', 'README.html')
+      await page.goto(`file://${filePath}`, { timeout: 120000 })
       await page.waitForTimeout(1000 * 3)
       // 获取需要截取的元素
       const elementHandle = await page.$('#write')
@@ -291,7 +297,6 @@ export class avocado extends plugin {
         width: boundingBox.width,
         height: boundingBox.height
       }
-      logger.warn(Config.version)
       await page.evaluate(() => {
         const p = document.createElement('p')
         p.style.textAlign = 'center'
@@ -303,10 +308,12 @@ export class avocado extends plugin {
       })
       // await page.waitForNavigation({ timeout: 10000 })
       await this.reply(segment.image(await page.screenshot({ clip, type: 'jpeg', quality: 100 })))
-      await page.close().catch((err) => logger.error(err))
+      await puppeteerManager.closePage(page)
+      await puppeteerManager.close()
     } catch (error) {
       logger.error(`${e.msg}图片生成失败:${error}`)
-      await _puppeteer.browser.close().catch((err) => console.error(err))
+      await puppeteerManager.close()
+      await this.reply(`图片生成失败:${error}`)
     }
     return true
   }
@@ -408,7 +415,6 @@ export class avocado extends plugin {
     let url = 'https://xiaobapi.top/api/xb/api/onset.php?name=鳄梨酱'
     try {
       let response = await fetch(url)
-      logger.warn(response)
       if (response.status === 200) {
         let json = await response.json()
         if (json.code === 1 && json.data) {
@@ -423,5 +429,82 @@ export class avocado extends plugin {
       await e.reply('发电失败(ノへ￣、)：' + err)
       return false
     }
+  }
+
+  async avocadoMovie (e) {
+    let mainInfoList, otherInfoList
+    if (await redis.get('AVOCADO:MOVIE_EXPIRE')) {
+      mainInfoList = JSON.parse(await redis.get('AVOCADO:MOVIE_DETAILS'))
+      otherInfoList = JSON.parse(await redis.get('AVOCADO:MOVIE_OTHER_DETAILS'))
+    } else {
+      try {
+        [mainInfoList, otherInfoList] = await getMovieList() || [[], []]
+        // movieInfoList = JSON.stringify(hotMovie.movieDetails)
+        await redis.set('AVOCADO:MOVIE_DETAILS', JSON.stringify(mainInfoList))
+        // otherInfoList = JSON.stringify(hotMovie.otherMovieDetails)
+        await redis.set('AVOCADO:MOVIE_OTHER_DETAILS', JSON.stringify(otherInfoList))
+        await redis.set('AVOCADO:MOVIE_EXPIRE', 1, { EX: 60 * 60 * 24 })
+      } catch (error) {
+        logger.error('Fetch error:', error)
+        return false
+      }
+    }
+    let transformedMoviesDetails = []
+    let transformedMoviesOtherDetails = []
+    for (const movie of mainInfoList) {
+      const eachMovie = []
+      Object.keys(movieKeyMap).map(async key => {
+        // 空值不要
+        if (!movie[key]) return false
+        let img
+        if (key === 'img') {
+          img = segment.image(movie[key])
+          eachMovie.push(img)
+          eachMovie.push('\n')
+          return true
+        }
+        if (key === 'nm') {
+          eachMovie.push(`${movieKeyMap[key]}: ${movie[key]}\n`)
+          return true
+        }
+        eachMovie.push(`${movieKeyMap[key]}: ${movie[key]}\n`)
+        return true
+      })
+      transformedMoviesDetails.push(eachMovie)
+    }
+    for (const movie of otherInfoList) {
+      const eachMovie = []
+      Object.keys(movieKeyMap).map(async key => {
+        // 空值不要
+        if (!movie[key]) return false
+        if (key === 'videoName') {
+          eachMovie.push(`${movieKeyMap[key]}: ${movie[key]}\n`)
+          return true
+        }
+        if (key === 'videourl') {
+          eachMovie.push(`${movie[key]}`)
+          eachMovie.push('\n')
+          return true
+        }
+        if (key === 'photos') {
+          let photo
+          eachMovie.push(`${movieKeyMap[key]}: \n`)
+          for (const i of movie[key]) {
+            photo = segment.image(i)
+            eachMovie.push(photo)
+          }
+          return true
+        }
+        eachMovie.push(`${movieKeyMap[key]}: ${movie[key]}\n`)
+        return true
+      })
+      transformedMoviesOtherDetails.push(eachMovie)
+    }
+    let reply = await makeForwardMsg(e, transformedMoviesDetails, '鳄门...🙏')
+    let replyreply = await makeForwardMsg(e, transformedMoviesOtherDetails, '鳄门...🙏')
+    await this.reply(reply)
+    await sleep(3000)
+    await this.reply(replyreply)
+    return true
   }
 }

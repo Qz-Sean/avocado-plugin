@@ -1,80 +1,5 @@
-import { fileURLToPath } from 'url'
-import { dirname } from 'path'
-import MarkdownIt from 'markdown-it'
-import fs from 'fs'
-import yaml from 'yaml'
-import puppeteer from 'puppeteer'
-
-// const regex = /(?:(?:https?|ftp):\/\/)?(?:\S+(?::\S*)?@)?(?:(?!(?:10|127)(?:\.\d{1,3}){3})(?!(?:169\.254|192\.168)(?:\.\d{1,3}){2})(?!172\.(?:1[6-9]|2\d|3[0-1])(?:\.\d{1,3}){2})(?:[1-9]\d?|1\d\d|2[01]\d|22[0-3])(?:\.(?:1?\d{1,2}|2[0-4]\d|25[0-5])){2}(?:\.(?:[1-9]\d?|1\d\d|2[0-4]\d|25[0-4]))|(?:[\w\x80-\xff]+(?:\.[\w\x80-\xff]+)+)(?:[\w\x80-\xff]*)?(?::\d{2,5})?(?:\/[\w\x80-\xff]*)*(?:\??(?:[\w\x80-\xff]+=[\w\x80-\xff]*&)*[\w\x80-\xff]+=[\w\x80-\xff]*)?(?:#[\w\x80-\xff]*)?)/
-
-export let urlRegex = /(?:(?:https?|ftp):\/\/)(?:\S+(?::\S*)?@)?(?:((?:(?:[a-z0-9\u00a1-\uffff][a-z0-9\u00a1-\uffff_-]{0,62})?[a-z0-9\u00a1-\uffff]\.)+(?:[a-z\u00a1-\uffff]{2,}\.?))(?::\d{2,5})?)(?:\/[\w\u00a1-\uffff$-_.+!*'(),%]+)*(?:\?(?:[\w\u00a1-\uffff$-_.+!*(),%:@&=]|(?:[\[\]])|(?:[\u00a1-\uffff]))*)?(?:#(?:[\w\u00a1-\uffff$-_.+!*'(),;:@&=]|(?:[\[\]]))*)?/i
-export let _puppeteer
-
-export const __filename = fileURLToPath(import.meta.url)
-export const __dirname = dirname(__filename)
-export const md = new MarkdownIt({
-  html: true,
-  breaks: true
-})
-export async function makeForwardMsg (e, msg = [], dec = '') {
-  let nickname = Bot.nickname
-  if (e.isGroup) {
-    let info = await Bot.getGroupMemberInfo(e.group_id, Bot.uin)
-    nickname = info.card || info.nickname
-  }
-  let userInfo = {
-    user_id: Bot.uin,
-    nickname
-  }
-
-  let forwardMsg = []
-  msg.forEach(v => {
-    forwardMsg.push({
-      ...userInfo,
-      message: v
-    })
-  })
-
-  /** 制作转发内容 */
-  if (e.isGroup) {
-    forwardMsg = await e.group.makeForwardMsg(forwardMsg)
-  } else if (e.friend) {
-    forwardMsg = await e.friend.makeForwardMsg(forwardMsg)
-  } else {
-    return false
-  }
-
-  if (dec) {
-    /** 处理描述 */
-    forwardMsg.data = forwardMsg.data
-      .replace(/\n/g, '')
-      .replace(/<title color="#777777" size="26">(.+?)<\/title>/g, '___')
-      .replace(/___+/, `<title color="#777777" size="26">${dec}</title>`)
-  }
-
-  return forwardMsg
-}
-
-export async function initPuppeteer () {
-  try {
-    const Puppeteer = (await import('../../../renderers/puppeteer/lib/puppeteer.js')).default
-    let puppeteerCfg = {}
-    let configFile = './renderers/puppeteer/config.yaml'
-    logger.warn(fs.existsSync(configFile))
-    if (fs.existsSync(configFile)) {
-      try {
-        puppeteerCfg = yaml.parse(fs.readFileSync(configFile, 'utf8'))
-      } catch (e) {
-        puppeteerCfg = {}
-      }
-    }
-    _puppeteer = new Puppeteer(puppeteerCfg)
-  } catch (e) {
-    console.error('未能加载puppeteer，尝试降级到Yunzai的puppeteer尝试', e)
-    _puppeteer = puppeteer
-  }
-  await _puppeteer.browserInit()
-}
+import { urlRegex } from './const.js'
+import axios from 'axios'
 
 export async function getSource (e) {
   if (!e.source) return false
@@ -221,4 +146,184 @@ async function replyPrivate (userId, msg) {
       logger.mark(err)
     })
   }
+}
+// function generateRandomHeader () {
+//   const headers = {
+//     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36',
+//     'Accept-Language': 'en-US,en;q=0.9',
+//     'Accept-Encoding': 'gzip, deflate, br'
+//     // 其他请求头信息
+//   }
+//   const keys = Object.keys(headers)
+//   const randomKey = keys[Math.floor(Math.random() * keys.length)]
+//   const randomValue = headers[randomKey]
+//   return { [randomKey]: randomValue }
+// }
+function generateRandomHeader () {
+  const userAgents = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; AS; rv:11.0) like Gecko'
+    // 更多User-Agent选项
+  ]
+  const acceptLanguages = [
+    'en-US,en;q=0.9',
+    'zh-CN,zh;q=0.9',
+    'ja-JP,ja;q=0.8'
+    // 更多Accept-Language选项
+  ]
+  const referers = [
+    'https://www.google.com/',
+    'https://www.baidu.com/',
+    'https://www.yahoo.com/'
+    // 更多Referer选项
+  ]
+  const connections = [
+    'keep-alive',
+    'close'
+  ]
+  const cacheControls = [
+    'no-cache',
+    'max-age=0'
+  ]
+
+  const headers = {
+    'User-Agent': userAgents[Math.floor(Math.random() * userAgents.length)],
+    'Accept-Language': acceptLanguages[Math.floor(Math.random() * acceptLanguages.length)],
+    Referer: referers[Math.floor(Math.random() * referers.length)],
+    Connection: connections[Math.floor(Math.random() * connections.length)],
+    'Cache-Control': cacheControls[Math.floor(Math.random() * cacheControls.length)]
+    // 其他请求头信息
+  }
+
+  const keys = Object.keys(headers).sort(() => Math.random() - 0.5)
+  const result = {}
+  for (let key of keys) {
+    result[key] = headers[key]
+  }
+
+  return result
+}
+function addRandomHeader (config) {
+  // 随机生成请求头
+  const randomHeader = generateRandomHeader()
+  config.headers = { ...config.headers, ...randomHeader }
+  return config
+}
+
+// 获取单部影片的详细信息
+export async function getMovieDetail (movieId) {
+  try {
+    // 添加请求拦截器
+    axios.interceptors.request.use(addRandomHeader)
+    const response = await axios.get(`https://m.maoyan.com/ajax/detailmovie?movieId=${movieId}`)
+    if (response.status !== 200) {
+      logger.error('Request failed with status code', response.status)
+      return false
+    }
+    const detailResponse = response.data
+    const movieDetailJson = detailResponse.detailMovie
+    logger.warn('detailResponse', detailResponse)
+
+    const movieDetail = {
+      id: movieId,
+      nm: movieDetailJson.nm,
+      enm: movieDetailJson.enm,
+      filmAlias: movieDetailJson.filmAlias,
+      sc: movieDetailJson.sc,
+      cat: movieDetailJson.cat,
+      star: movieDetailJson.star,
+      dra: movieDetailJson.dra.replace(/\s/g, ''),
+      ver: movieDetailJson.ver,
+      src: movieDetailJson.src,
+      dur: movieDetailJson.dur + '分钟',
+      oriLang: movieDetailJson.oriLang,
+      pubDesc: movieDetailJson.pubDesc
+    }
+    const otherDetail = {
+      id: movieId,
+      videoName: movieDetailJson.videoName,
+      videourl: movieDetailJson.videourl,
+      photos: movieDetailJson.photos.slice(0, 5)
+    }
+    return movieDetailJson ? [movieDetail, otherDetail] : false
+  } catch (error) {
+    logger.error(error)
+    return false
+  }
+}
+export async function getMovieList () {
+  let response, json, movieList
+  try {
+    response = await axios.get('https://m.maoyan.com/ajax/movieOnInfoList')
+    if (response.status !== 200) {
+      logger.error('Request failed with status code', response.status)
+      return false
+    }
+    json = response.data
+    movieList = json.movieList
+    logger.warn('json:', json)
+    logger.warn('movieList:', movieList)
+  } catch (error) {
+    logger.error(error)
+    return false
+  }
+  const movieInfoList = []
+  const otherInfoList = []
+  for (const movie of movieList) {
+    const id = movie.id
+    logger.warn(id)
+    const eachMovie = {
+      // 封面
+      img: movie?.img || ''
+    }
+    let movieDetail, otherDetail
+    [movieDetail, otherDetail] = await getMovieDetail(id) || [[], []]
+    Object.assign(eachMovie, movieDetail)
+    movieInfoList.push(eachMovie)
+    otherInfoList.push(otherDetail)
+    await sleep(3000)
+  }
+  return [movieInfoList, otherInfoList]
+}
+export async function makeForwardMsg (e, msg = [], dec = '') {
+  let nickname = Bot.nickname
+  if (e.isGroup) {
+    let info = await Bot.getGroupMemberInfo(e.group_id, Bot.uin)
+    nickname = info.card || info.nickname
+  }
+  let userInfo = {
+    user_id: Bot.uin,
+    nickname
+  }
+
+  let forwardMsg = []
+  msg.forEach(v => {
+    forwardMsg.push({
+      ...userInfo,
+      message: v
+    })
+  })
+
+  /** 制作转发内容 */
+  if (e.isGroup) {
+    forwardMsg = await e.group.makeForwardMsg(forwardMsg)
+  } else if (e.friend) {
+    forwardMsg = await e.friend.makeForwardMsg(forwardMsg)
+  } else {
+    return false
+  }
+
+  if (dec) {
+    /** 处理描述 */
+    forwardMsg.data = forwardMsg.data
+      .replace(/\n/g, '')
+      .replace(/<title color="#777777" size="26">(.+?)<\/title>/g, '___')
+      .replace(/___+/, `<title color="#777777" size="26">${dec}</title>`)
+  }
+
+  return forwardMsg
+}
+export function sleep (ms = 1000) {
+  return new Promise(resolve => setTimeout(resolve, ms))
 }

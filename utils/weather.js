@@ -1,5 +1,5 @@
 import fetch from 'node-fetch'
-import { _puppeteer, initPuppeteer } from './common.js'
+import puppeteerManager from './puppeteer.js'
 
 export async function weather (e, targetArea) {
   let [, province, city, district, areaID] = await getAreaInfo(this, targetArea) || ['', '', '', -1]
@@ -50,6 +50,7 @@ export async function weather (e, targetArea) {
         let shareWeatherInfoRes = null
         try {
           shareWeatherInfoRes = await response.json()
+          logger.warn('shareWeatherInfoRes: ', shareWeatherInfoRes)
         } catch (err) {
           logger.error(err)
         }
@@ -79,8 +80,8 @@ export async function weather (e, targetArea) {
   // 截图结果
   let buff = null
   try {
-    await initPuppeteer()
-    const page = await _puppeteer.browser.newPage()
+    await puppeteerManager.init()
+    const page = await puppeteerManager.newPage()
     await page.setViewport({
       width: 1280,
       height: 1320
@@ -129,10 +130,12 @@ export async function weather (e, targetArea) {
       omitBackground: false,
       quality: 100
     })
-    await page.close().catch((err) => logger.error(err))
-  } catch (err) {
-    logger.error(`${e.msg}图片生成失败:${err}`)
-    await _puppeteer.browser.close().catch((err) => console.error(err))
+    await puppeteerManager.closePage(page)
+    await puppeteerManager.close()
+  } catch (error) {
+    logger.error(`${e.msg}图片生成失败:${error}`)
+    await puppeteerManager.close()
+    await this.reply(`图片生成失败:${error}`)
   }
 
   return !buff ? false : buff
@@ -201,7 +204,6 @@ export async function getAreaInfo (e, targetArea) {
   if (regex[2]) { province = regex[2]; targetArea = targetArea.replace(province + '省', ' ') }
   if (regex[4]) { city = regex[4]; targetArea = targetArea.replace('市', ' ') }
   if (regex[6]) { district = regex[6]; targetArea = targetArea.replace('区', ' ') }
-  logger.warn('execRegex: ', regex)
   let targetAreaList = targetArea.trim().split(' ').reverse()
   targetAreaList.push(targetArea.trim())
   logger.warn('targetAreaList: ', targetAreaList)

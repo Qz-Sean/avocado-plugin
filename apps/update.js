@@ -6,7 +6,6 @@ import { Restart } from '../../other/restart.js'
 const require = createRequire(import.meta.url)
 const { exec, execSync } = require('child_process')
 
-
 // 是否在更新中
 let uping = false
 
