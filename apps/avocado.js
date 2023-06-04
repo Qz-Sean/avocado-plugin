@@ -335,8 +335,7 @@ export class avocado extends plugin {
     } else {
       targetArea = areaConfig[0] || cities[Math.floor(Math.random() * cities.length)]
     }
-    logger.warn('match: ', match)
-    logger.warn('targetArea:', targetArea)
+    logger.warn('查询天气: ', targetArea)
     let result = await weather(e, targetArea)
     await this.reply(result ? segment.image(result) : '没有找到这个鳄梨酱😞', e.isGroup)
     return true
