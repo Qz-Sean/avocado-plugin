@@ -435,16 +435,16 @@ export class AvocadoRuleALL extends plugin {
             n = '是新片哦~'
           }
         } else {
-          n = '预售'
+          n = '还在预售哦~'
         }
         return `${item.nm} -> ${n}`
       })
-    await e.reply(`最近的热映影片有\n${scList.join('\n')},\n你想了解关于哪一部影片的详细信息呢~`)
+    await e.reply(`最近的热映影片有\n${scList.join('\n')}\n你想了解关于哪一部影片的详细信息呢~`)
     this.setContext('pickMe', false, 180)
   }
 
   async pickMe (e) {
-    const msg = this.e.msg.trim()
+    const msg = this.e.msg
     if (msg === '超!是鳄梨酱啊!') {
       await this.reply('鳄梨酱!!!')
       this.finish('pickMe')
