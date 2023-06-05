@@ -1,4 +1,4 @@
-import fs from 'fs'
+import fs from 'node:fs'
 import { Config } from './utils/config.js'
 import chalk from 'chalk'
 
@@ -6,11 +6,6 @@ if (!global.segment) {
   global.segment = (await import('oicq')).segment
 }
 
-if (!global.core) {
-  try {
-    global.core = (await import('oicq')).core
-  } catch (err) {}
-}
 const files = fs.readdirSync('./plugins/avocado-plugin/apps').filter(file => file.endsWith('.js'))
 
 let ret = []

@@ -2,6 +2,7 @@ import Puppeteer from '../../../renderers/puppeteer/lib/puppeteer.js'
 import fs from 'fs'
 import yaml from 'yaml'
 import puppeteer from 'puppeteer'
+import Renderer from '../../../lib/renderer/Renderer.js'
 
 class PuppeteerManager {
   constructor () {
@@ -11,9 +12,8 @@ class PuppeteerManager {
   async init () {
     try {
       let puppeteerCfg = {}
-      // 有问题把Yunzai/renderers/puppeteer/config.yaml的chromiumPath换成自己浏览器
+      // 有问题把Yunzai/renderers/puppeteer/config.yaml的chromiumPath换成自己的浏览器，linux系统可另外下载一个chromium浏览器
       let configFile = './renderers/puppeteer/config.yaml'
-      logger.warn(fs.existsSync(configFile))
       if (fs.existsSync(configFile)) {
         try {
           puppeteerCfg = yaml.parse(fs.readFileSync(configFile, 'utf8'))
@@ -56,6 +56,25 @@ class PuppeteerManager {
     } finally {
       this.puppeteer = null
     }
+  }
+
+  // 截图
+  async screenshot (name, data = {}) {
+    let renderer = Renderer.getRenderer()
+    let img = await renderer.render(name, data)
+    return img ? segment.image(img) : img
+  }
+
+  // 分片截图
+  async screenshots (name, data = {}) {
+    let renderer = Renderer.getRenderer()
+    data.multiPage = true
+    let imgs = await renderer.render(name, data) || []
+    let ret = []
+    for (let img of imgs) {
+      ret.push(img ? segment.image(img) : img)
+    }
+    return ret.length > 0 ? ret : false
   }
 }
 

@@ -1,31 +1,25 @@
 import plugin from '../../../lib/plugins/plugin.js'
 import { segment } from 'icqq'
-import puppeteer from '../../../lib/puppeteer/puppeteer.js'
-import fs from 'fs'
 import path from 'path'
 import { Config } from '../utils/config.js'
 import { translate, translateLangSupports } from '../utils/translate.js'
 import {
   getImageOcrText, getImg, getMovieList,
   getSourceMsg,
-  makeForwardMsg, sleep
+  makeForwardMsg
 } from '../utils/common.js'
 import { getAreaInfo, weather } from '../utils/weather.js'
 import fetch from 'node-fetch'
 import { __dirname, cities, md, movieKeyMap, urlRegex } from '../utils/const.js'
-import puppeteerManager  from '../utils/puppeteer.js'
+import puppeteerManager from '../utils/puppeteer.js'
 
-export class avocado extends plugin {
-  constructor () {
+export class AvocadoRuleALL extends plugin {
+  constructor (e) {
     super({
-      /** 功能名称 */
-      name: '鳄梨酱！！！',
-      /** 功能描述 */
-      dsc: '🥑🥑🥑🥑🥑',
-      /** https://icqqjs.github.io/icqq/interfaces/EventMap.html */
+      name: '鳄梨酱',
+      dsc: '收纳了一些日常使用的一些小工具~',
       event: 'message',
-      /** 优先级，数字越小等级越高 */
-      priority: 200,
+      priority: 300,
       rule: [
         {
           /** 命令正则匹配 */
@@ -34,46 +28,34 @@ export class avocado extends plugin {
           fnc: 'avocadoPreview'
         },
         {
-          /** 命令正则匹配 */
           reg: '^#?(.*)鳄梨酱[!！]{3}$',
-          /** 执行方法 */
           fnc: 'avocadoHelp'
         },
         {
-          /** 命令正则匹配 */
           reg: '^#?鳄梨酱[!！]{2}$',
-          /** 执行方法 */
           fnc: 'avocadoPsycho'
         },
         {
-          /** 命令正则匹配 */
           reg: '^#?(.*)鳄梨酱[！!]',
-          /** 执行方法 */
-          fnc: 'avocado'
+          fnc: 'avocadoImg'
         },
         {
-          /** 命令正则匹配 */
           reg: '^#?(.*)鳄梨酱[?？]([?？]*)',
-          /** 执行方法 */
           fnc: 'avocadoTranslate'
         },
         {
-          /** 命令正则匹配 */
           reg: '^#?(.*)鳄梨酱[.。]([.。]*)',
-          /** 执行方法 */
           fnc: 'avocadoWeather'
         },
         {
-          /** 命令正则匹配 */
           reg: '^#?鳄梨酱0.0',
-          /** 执行方法 */
           fnc: 'avocadoMovie'
         }
       ]
     })
   }
 
-  async avocado (e) {
+  async avocadoImg (e) {
     if (e.source) {
       let msgType, msgInfo
       const isImg = await getImg(e)
@@ -204,7 +186,7 @@ export class avocado extends plugin {
     try {
       await puppeteerManager.init()
       const page = await puppeteerManager.newPage()
-      await this.reply(await puppeteer.screenshot('markdown', data))
+      await this.reply(await page.screenshot('markdown', data))
       await puppeteerManager.closePage(page)
       await puppeteerManager.close()
     } catch (error) {
@@ -284,30 +266,18 @@ export class avocado extends plugin {
       const filePath = path.join(__dirname, '..', 'resources', 'README.html')
       await page.goto(`file://${filePath}`, { timeout: 120000 })
       await page.waitForTimeout(1000 * 3)
-      // 获取需要截取的元素
-      const elementHandle = await page.$('#write')
-
-      // 获取元素在页面中的位置和尺寸
-      const boundingBox = await elementHandle.boundingBox()
-
-      // 计算需要截取的区域
-      const clip = {
-        x: boundingBox.x,
-        y: boundingBox.y,
-        width: boundingBox.width,
-        height: boundingBox.height
-      }
       await page.evaluate(() => {
         const p = document.createElement('p')
         p.style.textAlign = 'center'
         p.style.fontSize = '20px'
-        p.style.marginTop = '-25px'
+        p.style.marginTop = '-5px'
         p.style.fontWeight = 'bold'
         p.textContent = 'Created By Yunzai-Bot & Avocado-Plugin'
         document.querySelector('#write').appendChild(p)
       })
+
       // await page.waitForNavigation({ timeout: 10000 })
-      await this.reply(segment.image(await page.screenshot({ clip, type: 'jpeg', quality: 100 })))
+      await this.reply(segment.image(await page.screenshot({ fullPage: true, type: 'jpeg', quality: 100 })))
       await puppeteerManager.closePage(page)
       await puppeteerManager.close()
     } catch (error) {
@@ -431,79 +401,99 @@ export class avocado extends plugin {
   }
 
   async avocadoMovie (e) {
-    let mainInfoList, otherInfoList
+    let mainInfoList
     if (await redis.get('AVOCADO:MOVIE_EXPIRE')) {
       mainInfoList = JSON.parse(await redis.get('AVOCADO:MOVIE_DETAILS'))
-      otherInfoList = JSON.parse(await redis.get('AVOCADO:MOVIE_OTHER_DETAILS'))
     } else {
+      await this.reply('更新数据中...请稍等...')
       try {
-        [mainInfoList, otherInfoList] = await getMovieList() || [[], []]
-        // movieInfoList = JSON.stringify(hotMovie.movieDetails)
+        mainInfoList = await getMovieList(this)
         await redis.set('AVOCADO:MOVIE_DETAILS', JSON.stringify(mainInfoList))
-        // otherInfoList = JSON.stringify(hotMovie.otherMovieDetails)
-        await redis.set('AVOCADO:MOVIE_OTHER_DETAILS', JSON.stringify(otherInfoList))
         await redis.set('AVOCADO:MOVIE_EXPIRE', 1, { EX: 60 * 60 * 24 })
       } catch (error) {
-        logger.error('Fetch error:', error)
+        this.reply(`啊哦!${error}`)
         return false
       }
     }
-    let transformedMoviesDetails = []
-    let transformedMoviesOtherDetails = []
-    for (const movie of mainInfoList) {
-      const eachMovie = []
-      Object.keys(movieKeyMap).map(async key => {
-        // 空值不要
-        if (!movie[key]) return false
-        let img
-        if (key === 'img') {
-          img = segment.image(movie[key])
-          eachMovie.push(img)
-          eachMovie.push('\n')
-          return true
-        }
-        if (key === 'nm') {
-          eachMovie.push(`${movieKeyMap[key]}: ${movie[key]}\n`)
-          return true
-        }
-        eachMovie.push(`${movieKeyMap[key]}: ${movie[key]}\n`)
-        return true
-      })
-      transformedMoviesDetails.push(eachMovie)
-    }
-    for (const movie of otherInfoList) {
-      const eachMovie = []
-      Object.keys(movieKeyMap).map(async key => {
-        // 空值不要
-        if (!movie[key]) return false
-        if (key === 'videoName') {
-          eachMovie.push(`${movieKeyMap[key]}: ${movie[key]}\n`)
-          return true
-        }
-        if (key === 'videourl') {
-          eachMovie.push(`${movie[key]}`)
-          eachMovie.push('\n')
-          return true
-        }
-        if (key === 'photos') {
-          let photo
-          eachMovie.push(`${movieKeyMap[key]}: \n`)
-          for (const i of movie[key]) {
-            photo = segment.image(i)
-            eachMovie.push(photo)
+    let scList = mainInfoList
+      .filter(item => item.id)
+      .map(item => {
+        let sc = item.sc
+        let n
+        if (sc !== 0) {
+          return `${item.nm} -> 评分: ${sc}`
+        } else if (item.viewable === 1) {
+          const releaseDate = new Date(item.rt)
+          const now = new Date()
+          const diffTime = Math.abs(now.getTime() - releaseDate.getTime())
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+          if (diffDays > 15) {
+            n = '大概率烂片~'
           }
-          return true
+        } else {
+          n = '预售'
         }
-        eachMovie.push(`${movieKeyMap[key]}: ${movie[key]}\n`)
-        return true
+        return `${item.nm} -> ${n}`
       })
-      transformedMoviesOtherDetails.push(eachMovie)
+    await e.reply(`最近的热映影片有\n${scList.join('\n')},\n你想了解关于哪一部影片的详细信息呢~`)
+    this.setContext('pickMe', false, 180)
+  }
+
+  async pickMe (e) {
+    const msg = this.e.msg.trim()
+    if (msg === '超!是鳄梨酱啊!') {
+      await this.reply('鳄梨酱!!!')
+      this.finish('pickMe')
+      return true
     }
-    let reply = await makeForwardMsg(e, transformedMoviesDetails, '鳄门...🙏')
-    let replyreply = await makeForwardMsg(e, transformedMoviesOtherDetails, '鳄门...🙏')
-    await this.reply(reply)
-    await sleep(3000)
-    await this.reply(replyreply)
-    return true
+    let mainInfoList = JSON.parse(await redis.get('AVOCADO:MOVIE_DETAILS'))
+    if (!mainInfoList.map(item => item.nm).includes(msg)) {
+      await this.reply('...')
+      return
+    }
+    let selectedMovie = mainInfoList.filter(item => item.nm === msg)[0]
+    logger.warn(selectedMovie)
+    let transformedMoviesDetails = []
+    Object.keys(movieKeyMap).map(async key => {
+      // 空值不要
+      if (!selectedMovie[key]) return false
+      let img
+      if (key === 'img') {
+        img = segment.image(selectedMovie[key])
+        transformedMoviesDetails.push(img)
+        transformedMoviesDetails.push('\n')
+        return true
+      }
+      if (key === 'nm') {
+        transformedMoviesDetails.push(`${movieKeyMap[key]}: ${selectedMovie[key]}\n`)
+        return true
+      }
+      if (key === 'sc' && selectedMovie.sc !== 0) {
+        transformedMoviesDetails.push(`${movieKeyMap[key]}: ${selectedMovie[key]}\n`)
+        return true
+      }
+      if (key === 'videoName') {
+        transformedMoviesDetails.push(`${movieKeyMap[key]}: ${selectedMovie[key]}\n`)
+        return true
+      }
+      if (key === 'videourl') {
+        transformedMoviesDetails.push(`${selectedMovie[key]}`)
+        transformedMoviesDetails.push('\n')
+        return true
+      }
+      if (key === 'photos') {
+        let photo
+        transformedMoviesDetails.push(`${movieKeyMap[key]}: \n`)
+        for (const i of selectedMovie[key]) {
+          photo = segment.image(i)
+          transformedMoviesDetails.push(photo)
+        }
+        return true
+      }
+      transformedMoviesDetails.push(`${movieKeyMap[key]}: ${selectedMovie[key]}\n`)
+      return true
+    })
+    await this.reply(await makeForwardMsg(e, [transformedMoviesDetails], '鳄门...🙏'))
+    await this.reply('可继续选择影片~~输入 超!是鳄梨酱啊! 结束此次操作¡¡¡( •̀ ᴗ •́ )و!!!')
   }
 }

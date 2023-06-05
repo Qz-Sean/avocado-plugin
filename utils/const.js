@@ -14,6 +14,7 @@ export const movieKeyMap = {
   nm: '电影名称',
   enm: '外文名',
   filmAlias: '又称',
+  pubDesc: '上映日期',
   sc: '猫眼评分',
   cat: '影片类型',
   star: '主要演员',
@@ -22,7 +23,6 @@ export const movieKeyMap = {
   src: '片源地',
   dur: '时长',
   oriLang: '语言',
-  pubDesc: '上映时间',
   videoName: '预告',
   videourl: '',
   photos: '剧照'

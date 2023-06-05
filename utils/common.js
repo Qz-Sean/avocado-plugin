@@ -147,18 +147,6 @@ async function replyPrivate (userId, msg) {
     })
   }
 }
-// function generateRandomHeader () {
-//   const headers = {
-//     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36',
-//     'Accept-Language': 'en-US,en;q=0.9',
-//     'Accept-Encoding': 'gzip, deflate, br'
-//     // 其他请求头信息
-//   }
-//   const keys = Object.keys(headers)
-//   const randomKey = keys[Math.floor(Math.random() * keys.length)]
-//   const randomValue = headers[randomKey]
-//   return { [randomKey]: randomValue }
-// }
 function generateRandomHeader () {
   const userAgents = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36',
@@ -238,21 +226,18 @@ export async function getMovieDetail (movieId) {
       src: movieDetailJson.src,
       dur: movieDetailJson.dur + '分钟',
       oriLang: movieDetailJson.oriLang,
-      pubDesc: movieDetailJson.pubDesc
-    }
-    const otherDetail = {
-      id: movieId,
+      pubDesc: movieDetailJson.pubDesc,
       videoName: movieDetailJson.videoName,
       videourl: movieDetailJson.videourl,
       photos: movieDetailJson.photos.slice(0, 5)
     }
-    return movieDetailJson ? [movieDetail, otherDetail] : false
+    return movieDetail
   } catch (error) {
     logger.error(error)
     return false
   }
 }
-export async function getMovieList () {
+export async function getMovieList (e) {
   let response, json, movieList
   try {
     response = await axios.get('https://m.maoyan.com/ajax/movieOnInfoList')
@@ -273,18 +258,27 @@ export async function getMovieList () {
   for (const movie of movieList) {
     const id = movie.id
     logger.warn(id)
-    const eachMovie = {
+    let eachMovie = {
       // 封面
-      img: movie?.img || ''
+      img: movie?.img || 0,
+      // 最近上映时间
+      rt: movie.rt
+    }
+    let viewable = movie?.showStateButton
+    if (viewable) {
+      if (viewable.content === '购票') {
+        eachMovie.viewable = 1
+      } else {
+        eachMovie.viewable = 0
+      }
     }
     let movieDetail, otherDetail
-    [movieDetail, otherDetail] = await getMovieDetail(id) || [[], []]
+    movieDetail = await getMovieDetail(id)
     Object.assign(eachMovie, movieDetail)
     movieInfoList.push(eachMovie)
-    otherInfoList.push(otherDetail)
     await sleep(3000)
   }
-  return [movieInfoList, otherInfoList]
+  return movieInfoList
 }
 export async function makeForwardMsg (e, msg = [], dec = '') {
   let nickname = Bot.nickname
