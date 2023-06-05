@@ -32,10 +32,6 @@ export class AvocadoRuleALL extends plugin {
           fnc: 'avocadoHelp'
         },
         {
-          reg: '^#?鳄梨酱[!！]{2}$',
-          fnc: 'avocadoPsycho'
-        },
-        {
           reg: '^#?(.*)鳄梨酱[！!]',
           fnc: 'avocadoImg'
         },
@@ -48,8 +44,16 @@ export class AvocadoRuleALL extends plugin {
           fnc: 'avocadoWeather'
         },
         {
-          reg: '^#?鳄梨酱0.0',
+          reg: '^#?(看懂)?鳄梨酱0.0',
           fnc: 'avocadoMovie'
+        },
+        {
+          reg: '^#?(听懂鳄梨酱|来[一两三四五]点好听的)',
+          fnc: 'avocadoMusic'
+        },
+        {
+          reg: '鳄梨酱',
+          fnc: 'avocadoPsycho'
         }
       ]
     })
@@ -265,7 +269,7 @@ export class AvocadoRuleALL extends plugin {
     try {
       const filePath = path.join(__dirname, '..', 'resources', 'README.html')
       await page.goto(`file://${filePath}`, { timeout: 120000 })
-      await page.waitForTimeout(1000 * 3)
+      await page.waitForTimeout(1000)
       await page.evaluate(() => {
         const p = document.createElement('p')
         p.style.textAlign = 'center'
@@ -381,22 +385,27 @@ export class AvocadoRuleALL extends plugin {
   }
 
   async avocadoPsycho (e) {
-    let url = 'https://xiaobapi.top/api/xb/api/onset.php?name=鳄梨酱'
-    try {
-      let response = await fetch(url)
-      if (response.status === 200) {
-        let json = await response.json()
-        if (json.code === 1 && json.data) {
-          await this.reply(json.data)
-        } else {
-          await e.reply('发电失败(ノへ￣、)：' + json.toString())
-          return true
+    if ((Math.round(Math.random() * 10) / 10) > 0.5) {
+      await this.reply(e.msg + '！！！')
+      return true
+    } else {
+      let url = 'https://xiaobapi.top/api/xb/api/onset.php?name=鳄梨酱'
+      try {
+        let response = await fetch(url)
+        if (response.status === 200) {
+          let json = await response.json()
+          if (json.code === 1 && json.data) {
+            await this.reply(json.data)
+          } else {
+            await e.reply('发电失败(ノへ￣、)：' + json.toString())
+            return true
+          }
         }
+      } catch (err) {
+        logger.error('发电失败(ノへ￣、)：', err)
+        await e.reply('发电失败(ノへ￣、)：' + err)
+        return false
       }
-    } catch (err) {
-      logger.error('发电失败(ノへ￣、)：', err)
-      await e.reply('发电失败(ノへ￣、)：' + err)
-      return false
     }
   }
 
@@ -415,21 +424,18 @@ export class AvocadoRuleALL extends plugin {
         return false
       }
     }
+    const mlistLength = mainInfoList.length
     let scList = mainInfoList
       .filter(item => item.id)
-      .map(item => {
+      .map((item, index) => {
         let sc = item.sc
         let n
         if (sc !== 0) {
-          return `${item.nm} -> 评分: ${sc}`
+          return `${index + 1}.${item.nm} -> 评分: ${sc}`
         } else if (item.viewable === 1) {
-          const releaseDate = new Date(item.rt)
-          const now = new Date()
-          const diffTime = Math.abs(now.getTime() - releaseDate.getTime())
-          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-          if (diffDays > 15) {
+          if (item.diffDays > 15) {
             n = '大概率烂片~'
-          } else if (diffDays > 7) {
+          } else if (item.diffDays > 7) {
             n = '成分复杂...'
           } else {
             n = '是新片哦~'
@@ -437,25 +443,35 @@ export class AvocadoRuleALL extends plugin {
         } else {
           n = '还在预售哦~'
         }
-        return `${item.nm} -> ${n}`
+        return `${index + 1}.${item.nm} -> ${n}`
       })
-    await e.reply(`最近的热映影片有\n${scList.join('\n')}\n你想了解关于哪一部影片的详细信息呢~`)
+    await e.reply(`最近上映的影片共有${mlistLength}部\n${scList.join('\n')}\n你想了解关于哪一部影片的详细信息呢~`)
     this.setContext('pickMe', false, 180)
   }
 
   async pickMe (e) {
     const msg = this.e.msg
-    if (msg === '超!是鳄梨酱啊!') {
+    if (msg === '超!是鳄梨酱啊!' || parseInt(msg) === 0) {
       await this.reply('鳄梨酱!!!')
       this.finish('pickMe')
       return true
     }
     let mainInfoList = JSON.parse(await redis.get('AVOCADO:MOVIE_DETAILS'))
-    if (!mainInfoList.map(item => item.nm).includes(msg)) {
-      await this.reply('...')
-      return
+    logger.warn(parseInt(msg), mainInfoList.some(item => item.nm === msg))
+    if (!/^\d+$/.test(msg)) {
+      if (!mainInfoList.some(item => item.nm === msg)) {
+        await this.reply('...')
+        return
+      }
+    } else {
+      if (!(msg < mainInfoList.length && msg > 0)) {
+        await this.reply('...')
+        return
+      }
     }
-    let selectedMovie = mainInfoList.filter(item => item.nm === msg)[0]
+    let selectedMovie = !/^\d+$/.test(msg)
+      ? mainInfoList.filter(item => item.nm === msg)[0]
+      : mainInfoList[parseInt(msg)]
     logger.warn(selectedMovie)
     let transformedMoviesDetails = []
     Object.keys(movieKeyMap).map(async key => {

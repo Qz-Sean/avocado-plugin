@@ -19,6 +19,8 @@ export const movieKeyMap = {
   cat: '影片类型',
   star: '主要演员',
   dra: '影片介绍',
+  watched: '已看人数',
+  wish: '想看人数',
   ver: '支持播放规格',
   src: '片源地',
   dur: '时长',

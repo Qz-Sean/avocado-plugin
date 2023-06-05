@@ -1,4 +1,4 @@
-import { urlRegex } from './const.js'
+import {urlRegex} from './const.js'
 import axios from 'axios'
 
 export async function getSource (e) {
@@ -212,16 +212,31 @@ export async function getMovieDetail (movieId) {
     const detailResponse = response.data
     const movieDetailJson = detailResponse.detailMovie
     logger.warn('detailResponse', detailResponse)
-
-    const movieDetail = {
+    let viewable
+    const releaseDate = new Date(detailResponse.rt)
+    const now = new Date()
+    const diffTime = Math.abs(now.getTime() - releaseDate.getTime())
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    if (diffTime > 0) {
+      viewable = 1
+    } else {
+      viewable = 0
+    }
+    return {
+      img: movieDetailJson?.img || 0,
       id: movieId,
       nm: movieDetailJson.nm,
       enm: movieDetailJson.enm,
       filmAlias: movieDetailJson.filmAlias,
+      rt: movieDetailJson.rt,
+      viewable,
+      diffDays,
       sc: movieDetailJson.sc,
       cat: movieDetailJson.cat,
       star: movieDetailJson.star,
       dra: movieDetailJson.dra.replace(/\s/g, ''),
+      watched: movieDetailJson.watched,
+      wish: movieDetailJson.wish,
       ver: movieDetailJson.ver,
       src: movieDetailJson.src,
       dur: movieDetailJson.dur + '分钟',
@@ -231,14 +246,13 @@ export async function getMovieDetail (movieId) {
       videourl: movieDetailJson.videourl,
       photos: movieDetailJson.photos.slice(0, 5)
     }
-    return movieDetail
   } catch (error) {
     logger.error(error)
     return false
   }
 }
 export async function getMovieList (e) {
-  let response, json, movieList
+  let response, json, movieList, movieIds
   try {
     response = await axios.get('https://m.maoyan.com/ajax/movieOnInfoList')
     if (response.status !== 200) {
@@ -247,6 +261,7 @@ export async function getMovieList (e) {
     }
     json = response.data
     movieList = json.movieList
+    movieIds = json.movieIds
     logger.warn('json:', json)
     logger.warn('movieList:', movieList)
   } catch (error) {
@@ -255,27 +270,27 @@ export async function getMovieList (e) {
   }
   const movieInfoList = []
   const otherInfoList = []
-  for (const movie of movieList) {
-    const id = movie.id
-    logger.warn(id)
-    let eachMovie = {
-      // 封面
-      img: movie?.img || 0,
-      // 最近上映时间
-      rt: movie.rt
-    }
-    let viewable = movie?.showStateButton
-    if (viewable) {
-      if (viewable.content === '购票') {
-        eachMovie.viewable = 1
-      } else {
-        eachMovie.viewable = 0
-      }
-    }
+  for (const id of movieIds) {
+    // const id = movie.id
+    // logger.warn(id)
+    // let eachMovie = {
+    //   // 封面
+    //   img: movie?.img || 0,
+    //   // 最近上映时间
+    //   rt: movie.rt
+    // }
+    // let viewable = movie?.showStateButton
+    // if (viewable) {
+    //   if (viewable.content === '购票') {
+    //     eachMovie.viewable = 1
+    //   } else {
+    //     eachMovie.viewable = 0
+    //   }
+    // }
     let movieDetail, otherDetail
     movieDetail = await getMovieDetail(id)
-    Object.assign(eachMovie, movieDetail)
-    movieInfoList.push(eachMovie)
+    // Object.assign(eachMovie, movieDetail)
+    movieInfoList.push(movieDetail)
     await sleep(3000)
   }
   return movieInfoList
