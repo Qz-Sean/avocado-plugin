@@ -213,11 +213,11 @@ export async function getMovieDetail (movieId) {
     const movieDetailJson = detailResponse.detailMovie
     logger.warn('detailResponse', detailResponse)
     let viewable
-    const releaseDate = new Date(detailResponse.rt)
+    const releaseDate = new Date(movieDetailJson.rt)
     const now = new Date()
-    const diffTime = Math.abs(now.getTime() - releaseDate.getTime())
+    const diffTime = now.getTime() - releaseDate.getTime()
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    if (diffTime > 0) {
+    if (diffDays > 0) {
       viewable = 1
     } else {
       viewable = 0

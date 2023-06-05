@@ -60,6 +60,7 @@ export class AvocadoRuleALL extends plugin {
   }
 
   async avocadoImg (e) {
+    if (e.isGroup && !e.atme) return false
     if (e.source) {
       let msgType, msgInfo
       const isImg = await getImg(e)
@@ -264,6 +265,7 @@ export class AvocadoRuleALL extends plugin {
   }
 
   async avocadoHelp (e) {
+    if (e.isGroup && !e.atme) return false
     await puppeteerManager.init()
     const page = await puppeteerManager.newPage()
     try {
@@ -293,6 +295,7 @@ export class AvocadoRuleALL extends plugin {
   }
 
   async avocadoWeather (e) {
+    if (e.isGroup && !e.atme) return false
     let targetArea
     const areaConfig = Config.targetArea || []
     let match = e.msg.trim().match(/^#?(.*)鳄梨酱[.。]([.。]*)/)
@@ -316,6 +319,7 @@ export class AvocadoRuleALL extends plugin {
   }
 
   async avocadoTranslate (e, languageCode = '', param = '') {
+    if (e.isGroup && !e.atme) return false
     let pendingText, langCode
     const codeConfig = Config.translateLang
     logger.warn(codeConfig)
@@ -410,6 +414,7 @@ export class AvocadoRuleALL extends plugin {
   }
 
   async avocadoMovie (e) {
+    if (e.isGroup && !e.atme) return false
     let mainInfoList
     if (await redis.get('AVOCADO:MOVIE_EXPIRE')) {
       mainInfoList = JSON.parse(await redis.get('AVOCADO:MOVIE_DETAILS'))
@@ -471,7 +476,7 @@ export class AvocadoRuleALL extends plugin {
     }
     let selectedMovie = !/^\d+$/.test(msg)
       ? mainInfoList.filter(item => item.nm === msg)[0]
-      : mainInfoList[parseInt(msg)]
+      : mainInfoList[parseInt(msg) - 1]
     logger.warn(selectedMovie)
     let transformedMoviesDetails = []
     Object.keys(movieKeyMap).map(async key => {
