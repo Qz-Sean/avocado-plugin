@@ -429,6 +429,10 @@ export class AvocadoRuleALL extends plugin {
           const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
           if (diffDays > 15) {
             n = '大概率烂片~'
+          } else if (diffDays > 7) {
+            n = '成分复杂...'
+          } else {
+            n = '是新片哦~'
           }
         } else {
           n = '预售'
