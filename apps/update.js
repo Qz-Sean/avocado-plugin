@@ -2,6 +2,7 @@ import plugin from '../../../lib/plugins/plugin.js'
 import { createRequire } from 'module'
 import _ from 'lodash'
 import { Restart } from '../../other/restart.js'
+import { translate } from '../utils/translate.js'
 
 const require = createRequire(import.meta.url)
 const { exec, execSync } = require('child_process')
@@ -20,7 +21,7 @@ export class Update extends plugin {
       priority: 1000,
       rule: [
         {
-          reg: '^#?鳄梨酱(插件)?(强制)?(更新|~~~)$',
+          reg: `^#?(${global.God}|鳄梨酱)(插件)?(强制)?(更新|~~~)$`,
           fnc: 'update'
         }
       ]
@@ -72,6 +73,8 @@ export class Update extends plugin {
     } else {
       this.e.reply('\\ \\ \\٩(๑˃̵ᴗ˂̵)و/ / /up up up updating~')
     }
+    let match = this.e.msg.match(new RegExp(`^#?(${global.God}|鳄梨酱)(插件)?(强制)?(更新|~~~)$`))
+    const isAvocado = match[1] === '鳄梨酱'
     /** 获取上次提交的commitId，用于获取日志时判断新增的更新日志 */
     this.oldCommitId = await this.getcommitId('avocado-plugin')
     uping = true
@@ -88,9 +91,9 @@ export class Update extends plugin {
     let time = await this.getTime('avocado-plugin')
 
     if (/(Already up[ -]to[ -]date|已经是最新的)/.test(ret.stdout)) {
-      await this.reply(`已经是最新的🥑鳄梨酱🥑了！\n上次发电🤩时间：${time}`)
+      await this.reply(`已经是最新的🥑${isAvocado ? '鳄梨酱' : match[1]}🥑了！\n上次发电🤩时间：${time}`)
     } else {
-      await this.reply(`🥑Brand new avocado🥑!\n上次发电🤩时间：${time}`)
+      await this.reply(`🥑Brand new ${isAvocado ? 'avocado' : await translate(match[1])}🥑!\n上次发电🤩时间：${time}`)
       this.isUp = true
       /** 获取鳄梨酱组件的更新日志 */
       let log = await this.getLog('avocado-plugin')
