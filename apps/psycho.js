@@ -9,7 +9,7 @@ export class AvocadoManagement extends plugin {
       name: '鳄梨酱！！！ => 发癫',
       dsc: '鳄梨酱！！！',
       event: 'message',
-      priority: 9999,
+      priority: 99999,
       rule: [
         {
           reg: global.God,
