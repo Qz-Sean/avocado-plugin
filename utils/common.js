@@ -59,21 +59,23 @@ export async function getImg (e) {
     e.img = [`https://q1.qlogo.cn/g?b=qq&s=0&nk=${e.at}`]
   }
   let sourceList = await getSource(e)
-  // xml信息
-  if (sourceList === 'xml') {
-    return 'xml'
-  }
-  if (!sourceList.filter(item => item.type === 'image').length) {
-    return false
-  }
   if (sourceList) {
-    let i = []
-    for (let val of sourceList) {
-      if (val.type === 'image') {
-        i.push(val.url)
-      }
+  // xml信息
+    if (sourceList === 'xml') {
+      return 'xml'
     }
-    e.img = i
+    if (!sourceList.filter(item => item.type === 'image').length) {
+      return false
+    }
+    if (sourceList) {
+      let i = []
+      for (let val of sourceList) {
+        if (val.type === 'image') {
+          i.push(val.url)
+        }
+      }
+      e.img = i
+    }
   }
   return e.img
 }

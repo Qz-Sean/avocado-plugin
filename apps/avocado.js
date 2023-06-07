@@ -117,9 +117,9 @@ export class AvocadoRuleALL extends plugin {
     } else {
       let msg
       // msg = e.msg.trim().replace(/#?鳄梨酱([！!]+)\s?/, '')
-      const regex = new RegExp(`#?${global.God}([!！]+)\\s?(.*)`, 'g')
+      const regex = new RegExp(`#?${global.God}([!！]+)\\s?(.*)`)
       msg = e.msg.trim().match(regex)
-      logger.warn(msg)
+      if (!msg) { return false }
       // 当为鳄梨酱！！！！时获取其ocr结果
       if (msg[1].length === 4) {
         let [, ocrRes] = await getImageOcrText(e) || ''

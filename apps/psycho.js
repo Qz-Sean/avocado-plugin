@@ -27,13 +27,13 @@ export class AvocadoManagement extends plugin {
     ]
   }
 
-  async avocadoPsycho () {
+  async avocadoPsycho (e) {
     let result
-    result = await getBonkersBabble(global.God, 'api')
+    result = await getBonkersBabble(e, global.God, 'api')
     if (!result) {
       await this.e.reply('发电失败(ノへ￣、)该提醒作者更换API啦...将使用本地发电¡¡¡( •̀ ᴗ •́ )و!!!')
       await sleep(1500)
-      result = await getBonkersBabble(global.God, 'native')
+      result = await getBonkersBabble(e, global.God, 'native')
       if (!result) {
         await this.e.reply('Σ( ° △ °|||)︴ 震惊！本地发电失败！')
         return true
@@ -67,10 +67,11 @@ export class AvocadoManagement extends plugin {
 
 /**
  * 获取发电数据
+ * @param e
  * @param {string} GodName 关键词
  * @param {string} dataSource 数据源
  */
-export async function getBonkersBabble (GodName = '', dataSource = '') {
+export async function getBonkersBabble (e = {}, GodName = '', dataSource = '') {
   let replyMsg = ''
   let isExist
   isExist = await redis.EXISTS('AVOCADO:PSYCHOSEND')
@@ -78,7 +79,7 @@ export async function getBonkersBabble (GodName = '', dataSource = '') {
   const psychoData = await redis.lRange('AVOCADO:PSYCHODATA', 0, -1)
   if (dataSource === 'api' || dataSource === '') {
     if ((Math.round(Math.random() * 10) / 10) > 0.5) {
-      replyMsg = this.e.msg + '！！！'
+      replyMsg = e.msg + '！！！'
     }
     // let url = `https://xiaobapi.top/api/xb/api/onset.php?name=${GOD}`
     let url = `http://api.caonm.net/api/fab/f.php?msg=${GodName}`
