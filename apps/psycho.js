@@ -76,7 +76,7 @@ export async function getBonkersBabble (GodName = '', dataSource = '') {
   isExist = await redis.EXISTS('AVOCADO:PSYCHOSEND')
   // 不存在则返回[], psychoData 存在 则 isExit === true
   const psychoData = await redis.lRange('AVOCADO:PSYCHODATA', 0, -1)
-  if (dataSource === 'url' || dataSource === '') {
+  if (dataSource === 'api' || dataSource === '') {
     if ((Math.round(Math.random() * 10) / 10) > 0.5) {
       replyMsg = this.e.msg + '！！！'
     }

@@ -21,8 +21,8 @@ if (fs.existsSync(`${_path}/plugins/avocado-plugin/config/config.json`)) {
     try {
       config = JSON.parse(data)
     } catch (e) {
-      logger.error('chatgpt插件读取配置文件出错，请检查config/config.json格式，将忽略用户配置转为使用默认配置', e)
-      logger.warn('chatgpt插件即将使用默认配置')
+      logger.error('avocado插件读取配置文件出错，请检查config/config.json格式，将忽略用户配置转为使用默认配置', e)
+      logger.warn('avocado插件即将使用默认配置')
     }
   }
 } else if (fs.existsSync(`${_path}/plugins/avocado-plugin/config/config.js`)) {
@@ -56,8 +56,6 @@ if (fs.existsSync(`${_path}/plugins/avocado-plugin/config/config.json`)) {
 }
 config = Object.assign({}, defaultConfig, config)
 config.version = defaultConfig.version
-// const latestTag = execSync(`cd ${_path}/plugins/chatgpt-plugin && git describe --tags --abbrev=0`).toString().trim()
-// config.version = latestTag
 
 export const Config = new Proxy(config, {
   set (target, property, value) {

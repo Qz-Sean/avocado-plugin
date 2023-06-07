@@ -1,6 +1,12 @@
 import plugin from '../../../lib/plugins/plugin.js'
 import { Config } from '../utils/config.js'
-import { phantomTransformation, translateLangSupports } from '../utils/const.js'
+import {
+  confusedSpells,
+  incantationResult,
+  inspiringWords,
+  phantomTransformation,
+  translateLangSupports
+} from '../utils/const.js'
 
 export class AvocadoManagement extends plugin {
   constructor (e) {
@@ -11,7 +17,7 @@ export class AvocadoManagement extends plugin {
       priority: 200,
       rule: [
         {
-          reg: `^#?(${Object.keys(phantomTransformation).join('|')})?变身！([\u4e00-\u9fa5]+)`,
+          reg: `^#?(${Object.keys(phantomTransformation).join('|')})?变身！([\u4e00-\u9fa5]*)`,
           fnc: 'setGod',
           permission: 'master'
         },
@@ -24,9 +30,19 @@ export class AvocadoManagement extends plugin {
           reg: '^#?设置地[区域址]顺序(.*)',
           fnc: 'setTargetArea',
           permission: 'master'
+        },
+        {
+          reg: '^#?(我要变身！|查看咒语)$',
+          fnc: 'checkSpells',
+          permission: 'master'
         }
       ]
     })
+  }
+
+  async checkSpells (e) {
+    await e.reply(inspiringWords[Math.floor(Math.random() * inspiringWords.length)] + '\n' + Object.keys(phantomTransformation).join('变身！\n'))
+    return true
   }
 
   async setTargetArea (e) {
@@ -75,18 +91,21 @@ export class AvocadoManagement extends plugin {
 
   async setGod (e) {
     const abracadabra = Object.keys(phantomTransformation).join('|')
-    const match = this.e.msg.trim().match(new RegExp(`^#?(${abracadabra})?变身！([\u4e00-\u9fa5]+)`), '')
+    const match = this.e.msg.trim().match(new RegExp(`^#?(${abracadabra})?变身！([\u4e00-\u9fa5]*)`), '')
     const GodName = match[2]
     if (!GodName) {
-      await this.reply('...', e.isGroup)
+      await this.reply(confusedSpells[Math.floor(Math.random() * confusedSpells.length)], e.isGroup)
+      this.setContext('setGod')
+      return true
     }
-    let replyMsg = ''
+    let replySpell = ''
+    // 用户正确说出咒语
     if (match[1]) {
-      replyMsg = phantomTransformation[match[1]]
+      replySpell = phantomTransformation[match[1]] + '\n'
     }
     Config.OHMYGOD = GodName
     global.God = GodName
-    await this.reply(`${replyMsg}＼＼＼＼٩(๑•̀ㅂ•́)و／／／／`)
-    return true
+    await this.reply(replySpell + incantationResult[Math.floor(Math.random() * incantationResult.length)])
+    this.finish('setGod')
   }
 }
