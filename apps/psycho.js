@@ -90,7 +90,7 @@ export async function getBonkersBabble (GodName = '', dataSource = '') {
           let filteredData = json.data.replace(new RegExp(GodName, 'g'), '<name>')
           // 判断是否存在重复元素
           if (psychoData && psychoData.includes(filteredData)) {
-            logger.warn('存在重复元素，不进行插入操作')
+            logger.warn('存在重复数据，不进行插入操作')
           } else {
             let status = await redis.lPush('AVOCADO:PSYCHODATA', filteredData)
             if (status) {
@@ -113,7 +113,7 @@ export async function getBonkersBabble (GodName = '', dataSource = '') {
       return false
     }
     let r = Math.floor(Math.random() * psychoData.length)
-    logger.warn(global.randomArray)
+    // logger.warn(global.randomArray)
     while (global.randomArray.includes(r)) {
       r = Math.floor(Math.random() * psychoData.length)
     }
