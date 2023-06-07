@@ -258,7 +258,11 @@ export class AvocadoRuleALL extends plugin {
       })
       await page.waitForTimeout(1000 * 10)
       // await page.waitForNavigation({ timeout: 10000 })
-      await this.reply(segment.image(await page.screenshot({ fullPage: true ,type: 'jpeg',quality: 100})))
+      await this.reply(segment.image(await page.screenshot({
+        fullPage: true,
+        type: 'jpeg',
+        quality: 100
+      })))
       await puppeteerManager.closePage(page)
       await puppeteerManager.close()
     } catch (error) {
