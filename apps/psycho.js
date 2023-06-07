@@ -54,7 +54,7 @@ export class AvocadoManagement extends plugin {
       let groupId = parseInt(element)
       if (Bot.getGroupList().get(groupId)) {
         logger.warn(Bot.getGroupList().get(groupId))
-        let replyMsg = await getBonkersBabble(global.God, 'native')
+        let replyMsg = await getBonkersBabble({}, global.God, 'native')
         if (replyMsg) {
           await Bot.sendGroupMsg(groupId, replyMsg)
         }
