@@ -1,39 +1,74 @@
-import Puppeteer from '../../../renderers/puppeteer/lib/puppeteer.js'
-import fs from 'fs'
-import yaml from 'yaml'
 import puppeteer from 'puppeteer'
-import Renderer from '../../../lib/renderer/Renderer.js'
+import { Config } from './config.js'
 
 class PuppeteerManager {
   constructor () {
     this.puppeteer = null
+    this.flag = 1
+    this.browser = null
   }
 
   async init () {
+    this.puppeteer = puppeteer
     try {
-      let puppeteerCfg = {}
-      // 有问题把Yunzai/renderers/puppeteer/config.yaml的chromiumPath换成自己的浏览器，linux系统可另外下载一个chromium浏览器
-      let configFile = './renderers/puppeteer/config.yaml'
-      if (fs.existsSync(configFile)) {
-        try {
-          puppeteerCfg = yaml.parse(fs.readFileSync(configFile, 'utf8'))
-        } catch (e) {
-          puppeteerCfg = {}
-        }
+      const Puppeteer = (await import('../../../renderers/puppeteer/lib/puppeteer.js')).default
+      let puppeteerCfg = {
+        chromiumPath: Config.executablePath,
+        // puppeteer websocket 地址。连接单独存在的 chromium。
+        // puppeteerWS: 'ws://browserless:3000'
+        puppeteerWS: '',
+        headless: 'new',
+        args: [
+          '--disable-gpu',
+          '--disable-setuid-sandbox',
+          '--no-sandbox',
+          '--no-zygote'
+        ]
       }
       this.puppeteer = new Puppeteer(puppeteerCfg)
+      await this.puppeteer.browserInit()
     } catch (e) {
+      this.flag = 0
       logger.error('未能加载puppeteer，尝试降级到Yunzai的puppeteer尝试', e)
-      this.puppeteer = puppeteer
+      logger.error('喵崽好用，建议换喵崽！')
+      let args = [
+        '--exclude-switches',
+        '--no-sandbox',
+        '--remote-debugging-port=51777',
+        '--disable-setuid-sandbox',
+        '--disable-infobars',
+        '--disable-dev-shm-usage',
+        '--disable-blink-features=AutomationControlled',
+        '--ignore-certificate-errors',
+        '--no-first-run',
+        '--no-service-autorun',
+        '--password-store=basic',
+        '--system-developer-mode',
+        '--mute-audio',
+        '--disable-default-apps',
+        '--no-zygote',
+        '--disable-accelerated-2d-canvas',
+        '--disable-web-security'
+      ]
+      const executablePath = Config.executablePath
+      this.browser = await puppeteer.launch({
+        defaultViewport: { width: 1200, height: 300 },
+        headless: true,
+        executablePath,
+        args
+      })
     }
-    await this.puppeteer.browserInit()
   }
 
   async newPage () {
     if (!this.puppeteer) {
       await this.init()
     }
-    return await this.puppeteer.browser.newPage()
+    if (this.flag) {
+      return await this.puppeteer.browser.newPage()
+    } else {
+      return await this.browser.newPage()
+    }
   }
 
   async closePage (page) {
@@ -49,32 +84,18 @@ class PuppeteerManager {
   async close () {
     try {
       if (this.puppeteer) {
-        await this.puppeteer.browser.close()
+        if (this.flag) {
+          await this.puppeteer.browser.close()
+        } else {
+          this.browser.close()
+        }
       }
     } catch (e) {
       logger.error('关闭浏览器时出错', e)
     } finally {
       this.puppeteer = null
+      this.browser = null
     }
-  }
-
-  // 截图
-  async screenshot (name, data = {}) {
-    let renderer = Renderer.getRenderer()
-    let img = await renderer.render(name, data)
-    return img ? segment.image(img) : img
-  }
-
-  // 分片截图
-  async screenshots (name, data = {}) {
-    let renderer = Renderer.getRenderer()
-    data.multiPage = true
-    let imgs = await renderer.render(name, data) || []
-    let ret = []
-    for (let img of imgs) {
-      ret.push(img ? segment.image(img) : img)
-    }
-    return ret.length > 0 ? ret : false
   }
 }
 

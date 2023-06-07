@@ -1,5 +1,6 @@
 import { Config } from './utils/config.js'
-import { translateLangSupports } from './utils/translate.js'
+import { pluginRoot, translateLangSupports } from './utils/const.js'
+import path from 'path'
 // 支持锅巴
 export function supportGuoba () {
   return {
@@ -15,16 +16,20 @@ export function supportGuoba () {
       isV3: true,
       isV2: false,
       description: '鳄梨酱！！！',
-      // 显示图标，此为个性化配置
-      // 图标可在 https://icon-sets.iconify.design 这里进行搜索
-      icon: 'simple-icons:openai',
-      // 图标颜色，例：#FF0000 或 rgb(255, 0, 0)
-      iconColor: '#00c3ff'
+      icon: 'emojione:avocado',
+      iconColor: '#d5e145',
+      iconPath: path.join(pluginRoot, 'resources', 'icon.png')
     },
     // 配置项信息
     configInfo: {
       // 配置项 schemas
       schemas: [
+        {
+          field: 'OHMYGOD',
+          label: '指令触发词',
+          bottomHelpMessage: '填写后将全局替换命令触发词',
+          component: 'Input'
+        },
         {
           field: 'translateLang',
           label: '翻译顺序',
@@ -45,7 +50,7 @@ export function supportGuoba () {
       // 设置配置的方法（前端点确定后调用的方法）
       setConfigData (data, { Result }) {
         for (let [keyPath, value] of Object.entries(data)) {
-          if (keyPath === 'translateLang' || keyPath === 'targetArea') { value = value.toString().split(/[,，;；\|]/) }
+          if (keyPath === 'translateLang' || keyPath === 'targetArea') { value = value.toString().split(/[,，;；|]/) }
           if (Config[keyPath] !== value) { Config[keyPath] = value }
         }
         return Result.ok({}, '保存成功~')

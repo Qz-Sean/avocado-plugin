@@ -77,7 +77,8 @@ export async function weather (e, targetArea) {
     isDefault: true
   }])
   logger.warn('attentionCity:', attentionCity)
-  // 截图结果
+
+  // 通过访问腾讯接口得到最后的结果
   let buff = null
   try {
     await puppeteerManager.init()
@@ -206,15 +207,15 @@ export async function getAreaInfo (e, targetArea) {
   if (regex[6]) { district = regex[6]; targetArea = targetArea.replace('区', ' ') }
   let targetAreaList = targetArea.trim().split(' ').reverse()
   targetAreaList.push(targetArea.trim())
-  logger.warn('targetAreaList: ', targetAreaList)
+  // logger.warn('targetAreaList: ', targetAreaList)
   for (let index in targetAreaList) {
     let value = targetAreaList[index]
-    // 获取areaID接口
+    // 获取输入地址的相关信息
     let url = `https://wis.qq.com/city/matching?source=xw&city=${encodeURI(value)}`
-    let response = await fetch(url) // 获取areaID列表
+    let response = await fetch(url)
     try {
       areaInfoRes = await response.json()
-      logger.warn('areaInfoRes: ', areaInfoRes)
+      // logger.warn('areaInfoRes: ', areaInfoRes)
     } catch (err) {
       logger.error(err)
     }
@@ -241,7 +242,7 @@ export async function getAreaInfo (e, targetArea) {
   // 查不到城市信息则终止
   if (areaInfoRes === null || areaInfoRes.status !== 200 || !areaInfoRes.data?.internal || areaInfoRes.data?.internal.length < 1) {
     if (e.msg.includes('#')) e.reply('没有查询到该地区的天气！', true)
-    await this.reply(`没有找到${targetArea}鳄梨酱，换个鳄梨酱吧~`, e.isGroup)
+    await this.reply(`没有找到${targetArea}${global.God}，换个${global.God}吧~`, e.isGroup)
     return true
   }
 
@@ -276,6 +277,6 @@ export async function getAreaInfo (e, targetArea) {
     return false
   }
 
-  logger.warn('getAreaInfo: ', areaInfoRes, province, city, district, areaID)
+  // logger.warn('getAreaInfo: ', areaInfoRes, province, city, district, areaID)
   return [areaInfoRes, province, city, district, areaID]
 }

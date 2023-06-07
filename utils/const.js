@@ -1,14 +1,25 @@
 import MarkdownIt from 'markdown-it'
-import { fileURLToPath } from 'url'
-import { dirname } from 'path'
+import path from 'path'
+import { Config } from './config.js'
 
-export const __filename = fileURLToPath(import.meta.url)
-export const __dirname = dirname(__filename)
+global.randomArray = []
+
+global.God = Config.OHMYGOD === '' ? '鳄梨酱' : Config.OHMYGOD
+// from 3399280843@qq.com@SmallK111407
+export const _path = process.cwd().replace(/\\/g, '/')
+export const pluginName = path.basename(path.join(import.meta.url, '../../'))
+export const pluginRoot = path.join(_path, 'plugins', pluginName)
 export const urlRegex = /(?:(?:https?|ftp):\/\/)(?:\S+(?::\S*)?@)?(?:((?:(?:[a-z0-9\u00a1-\uffff][a-z0-9\u00a1-\uffff_-]{0,62})?[a-z0-9\u00a1-\uffff]\.)+(?:[a-z\u00a1-\uffff]{2,}\.?))(?::\d{2,5})?)(?:\/[\w\u00a1-\uffff$-_.+!*'(),%]+)*(?:\?(?:[\w\u00a1-\uffff$-_.+!*(),%:@&=]|(?:[\[\]])|(?:[\u00a1-\uffff]))*)?(?:#(?:[\w\u00a1-\uffff$-_.+!*'(),;:@&=]|(?:[\[\]]))*)?/i
 export const md = new MarkdownIt({
   html: true,
   breaks: true
 })
+export const phantomTransformation = {
+  '黑夜之力，赐予我力量！': '黑暗的力量已经注入你的身体，从此你将成为黑夜的主宰！\n黑夜啊，听从我的召唤，降临于这片大地吧！',
+  '万象之力，汇聚我身！': '宇宙的能量已经融入你的血液，从此你将掌控万物之力！\n星辰啊，为我而闪耀，照亮前方的道路吧！',
+  '火焰之力，燃烧我的灵魂！': '炽热的火焰已经点燃你内心的激情，从此你将化身为无尽的火焰之王！\n火焰啊，燃尽一切不属于我的东西吧！',
+  '风暴之力，撕裂天际！': '狂暴的风暴已经让你成为自然界的主宰，从此你将统御风云际会！\n风啊，为我而呼啸，在这片大地上肆意纵横吧！'
+}
 export const movieKeyMap = {
   img: '封面',
   nm: '电影名称',
@@ -57,3 +68,21 @@ export const cities = [
   '酒泉市', '庆阳市', '定西市', '陇南市', '西宁市', '海东市', '银川市', '石嘴山市', '吴忠市', '固原市', '中卫市', '乌鲁木齐市',
   '克拉玛依市', '吐鲁番市', '哈密市'
 ]
+export const translateLangSupports = [
+  { code: 'ar', label: '阿拉伯语', abbr: '阿', alphabet: 'A' },
+  { code: 'de', label: '德语', abbr: '德', alphabet: 'D' },
+  { code: 'ru', label: '俄语', abbr: '俄', alphabet: 'E' },
+  { code: 'fr', label: '法语', abbr: '法', alphabet: 'F' },
+  { code: 'ko', label: '韩语', abbr: '韩', alphabet: 'H' },
+  { code: 'nl', label: '荷兰语', abbr: '荷', alphabet: 'H' },
+  { code: 'pt', label: '葡萄牙语', abbr: '葡', alphabet: 'P' },
+  { code: 'ja', label: '日语', abbr: '日', alphabet: 'R' },
+  { code: 'th', label: '泰语', abbr: '泰', alphabet: 'T' },
+  { code: 'es', label: '西班牙语', abbr: '西', alphabet: 'X' },
+  { code: 'en', label: '英语', abbr: '英', alphabet: 'Y' },
+  { code: 'it', label: '意大利语', abbr: '意', alphabet: 'Y' },
+  { code: 'vi', label: '越南语', abbr: '越', alphabet: 'Y' },
+  { code: 'id', label: '印度尼西亚语', abbr: '印', alphabet: 'Y' },
+  { code: 'zh-CHS', label: '中文', abbr: '中', alphabet: 'Z' }
+]
+const API_ERROR = '出了点小问题，待会再试试吧'

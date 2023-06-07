@@ -1,4 +1,16 @@
 {
-  "translateLang": ["日语", "韩语", "阿拉伯语", "法语"],
-  "version": "1.0.0"
+  "translateLang": [
+    "日语",
+    "韩语",
+    "阿拉伯语",
+    "法语",
+    "法语"
+  ],
+  "targetArea": [
+    "南昌",
+    "永修",
+    "长沙"
+  ],
+  "OHMYGOD": "鳄梨酱",
+  "chromium_path": ""
 }

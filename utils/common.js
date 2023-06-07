@@ -1,5 +1,4 @@
-import {urlRegex} from './const.js'
-import axios from 'axios'
+import { urlRegex } from './const.js'
 
 export async function getSource (e) {
   if (!e.source) return false
@@ -36,7 +35,7 @@ export async function getSourceMsg (e) {
         temp = val.text.split(/[\r\n]/)
         temp.forEach(item => {
           let match = item.match(urlRegex)
-          logger.warn('match: ', match)
+          // logger.warn('match: ', match)
           if (match) {
             urlList = urlList.concat(match[0])
           }
@@ -48,8 +47,8 @@ export async function getSourceMsg (e) {
         }
       }
     }
-    logger.warn('urlList:', urlList)
-    logger.warn('result:', result)
+    // logger.warn('urlList:', urlList)
+    // logger.warn('result:', result)
   }
   return urlList.length ? ['url', result] : ['text', result]
 }
@@ -104,7 +103,7 @@ export async function getImageOcrText (e) {
         eachImgRes = ''
       }
       if (!textList) return false
-      logger.warn('textList', textList)
+      // logger.warn('textList', textList)
       return ['ocr', textList]
     } catch (err) {
       logger.error('error: ', err)
@@ -152,19 +151,16 @@ function generateRandomHeader () {
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36',
     'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36',
     'Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; AS; rv:11.0) like Gecko'
-    // 更多User-Agent选项
   ]
   const acceptLanguages = [
     'en-US,en;q=0.9',
     'zh-CN,zh;q=0.9',
     'ja-JP,ja;q=0.8'
-    // 更多Accept-Language选项
   ]
   const referers = [
     'https://www.google.com/',
     'https://www.baidu.com/',
     'https://www.yahoo.com/'
-    // 更多Referer选项
   ]
   const connections = [
     'keep-alive',
@@ -181,7 +177,6 @@ function generateRandomHeader () {
     Referer: referers[Math.floor(Math.random() * referers.length)],
     Connection: connections[Math.floor(Math.random() * connections.length)],
     'Cache-Control': cacheControls[Math.floor(Math.random() * cacheControls.length)]
-    // 其他请求头信息
   }
 
   const keys = Object.keys(headers).sort(() => Math.random() - 0.5)
@@ -192,24 +187,22 @@ function generateRandomHeader () {
 
   return result
 }
-function addRandomHeader (config) {
-  // 随机生成请求头
-  const randomHeader = generateRandomHeader()
-  config.headers = { ...config.headers, ...randomHeader }
-  return config
-}
 
 // 获取单部影片的详细信息
 export async function getMovieDetail (movieId) {
   try {
-    // 添加请求拦截器
-    axios.interceptors.request.use(addRandomHeader)
-    const response = await axios.get(`https://m.maoyan.com/ajax/detailmovie?movieId=${movieId}`)
-    if (response.status !== 200) {
+    const url = `https://m.maoyan.com/ajax/detailmovie?movieId=${movieId}`
+    const headers = generateRandomHeader()
+    const options = {
+      method: 'GET',
+      headers
+    }
+    const response = await fetch(url, options)
+    if (!response.ok) {
       logger.error('Request failed with status code', response.status)
       return false
     }
-    const detailResponse = response.data
+    const detailResponse = await response.json()
     const movieDetailJson = detailResponse.detailMovie
     logger.warn('detailResponse', detailResponse)
     let viewable
@@ -252,44 +245,32 @@ export async function getMovieDetail (movieId) {
   }
 }
 export async function getMovieList (e) {
-  let response, json, movieList, movieIds
+  let movieList, movieIds
   try {
-    response = await axios.get('https://m.maoyan.com/ajax/movieOnInfoList')
-    if (response.status !== 200) {
+    const url = 'https://m.maoyan.com/ajax/movieOnInfoList'
+    const headers = generateRandomHeader()
+    const options = {
+      method: 'GET',
+      headers
+    }
+    const response = await fetch(url, options)
+    if (!response.ok) {
       logger.error('Request failed with status code', response.status)
       return false
     }
-    json = response.data
-    movieList = json.movieList
-    movieIds = json.movieIds
-    logger.warn('json:', json)
+    const resJson = await response.json()
+    movieList = resJson.movieList
+    movieIds = resJson.movieIds
+    logger.warn('resJson:', resJson)
     logger.warn('movieList:', movieList)
   } catch (error) {
     logger.error(error)
     return false
   }
   const movieInfoList = []
-  const otherInfoList = []
   for (const id of movieIds) {
-    // const id = movie.id
-    // logger.warn(id)
-    // let eachMovie = {
-    //   // 封面
-    //   img: movie?.img || 0,
-    //   // 最近上映时间
-    //   rt: movie.rt
-    // }
-    // let viewable = movie?.showStateButton
-    // if (viewable) {
-    //   if (viewable.content === '购票') {
-    //     eachMovie.viewable = 1
-    //   } else {
-    //     eachMovie.viewable = 0
-    //   }
-    // }
-    let movieDetail, otherDetail
+    let movieDetail
     movieDetail = await getMovieDetail(id)
-    // Object.assign(eachMovie, movieDetail)
     movieInfoList.push(movieDetail)
     await sleep(3000)
   }

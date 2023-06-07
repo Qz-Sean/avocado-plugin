@@ -1,25 +1,7 @@
 import md5 from 'md5'
 import _ from 'lodash'
-
+import { translateLangSupports } from './const.js'
 // 代码参考：https://github.com/yeyang52/yenai-plugin/blob/b50b11338adfa5a4ef93912eefd2f1f704e8b990/model/api/funApi.js#L25
-export const translateLangSupports = [
-  { code: 'ar', label: '阿拉伯语', abbr: '阿', alphabet: 'A' },
-  { code: 'de', label: '德语', abbr: '德', alphabet: 'D' },
-  { code: 'ru', label: '俄语', abbr: '俄', alphabet: 'E' },
-  { code: 'fr', label: '法语', abbr: '法', alphabet: 'F' },
-  { code: 'ko', label: '韩语', abbr: '韩', alphabet: 'H' },
-  { code: 'nl', label: '荷兰语', abbr: '荷', alphabet: 'H' },
-  { code: 'pt', label: '葡萄牙语', abbr: '葡', alphabet: 'P' },
-  { code: 'ja', label: '日语', abbr: '日', alphabet: 'R' },
-  { code: 'th', label: '泰语', abbr: '泰', alphabet: 'T' },
-  { code: 'es', label: '西班牙语', abbr: '西', alphabet: 'X' },
-  { code: 'en', label: '英语', abbr: '英', alphabet: 'Y' },
-  { code: 'it', label: '意大利语', abbr: '意', alphabet: 'Y' },
-  { code: 'vi', label: '越南语', abbr: '越', alphabet: 'Y' },
-  { code: 'id', label: '印度尼西亚语', abbr: '印', alphabet: 'Y' },
-  { code: 'zh-CHS', label: '中文', abbr: '中', alphabet: 'Z' }
-]
-const API_ERROR = '出了点小问题，待会再试试吧'
 export async function translate (msg, to = 'auto') {
   let from = 'auto'
   if (to !== 'auto') to = translateLangSupports.find(item => item.abbr === to)?.code
