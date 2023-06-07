@@ -80,7 +80,7 @@ export class AvocadoManagement extends plugin {
     if (!GodName) {
       await this.reply('...', e.isGroup)
     }
-    let replyMsg
+    let replyMsg = ''
     if (match[1]) {
       replyMsg = phantomTransformation[match[1]]
     }
