@@ -66,6 +66,7 @@ export class Update extends plugin {
    * @returns
    */
   async runUpdate (isForce) {
+    logger.warn(typeof this.e)
     let command = 'git -C ./plugins/avocado-plugin/ pull --no-rebase'
     if (isForce) {
       command = `git -C ./plugins/avocado-plugin/ checkout . && ${command}`
@@ -75,6 +76,7 @@ export class Update extends plugin {
     }
     let match = this.e.msg.match(new RegExp(`^#?(${global.God}|鳄梨酱)(插件)?(强制)?(更新|~~~)$`))
     const isAvocado = match[1] === '鳄梨酱'
+    const GodName = isAvocado ? '鳄梨酱' : match[1]
     /** 获取上次提交的commitId，用于获取日志时判断新增的更新日志 */
     this.oldCommitId = await this.getcommitId('avocado-plugin')
     uping = true
@@ -89,14 +91,13 @@ export class Update extends plugin {
 
     /** 获取插件提交的最新时间 */
     let time = await this.getTime('avocado-plugin')
-
     if (/(Already up[ -]to[ -]date|已经是最新的)/.test(ret.stdout)) {
-      await this.reply(`已经是最新的🥑${isAvocado ? '鳄梨酱' : match[1]}🥑了！\n上次发电🤩时间：${time}`)
+      await this.reply(`已经是最新的🥑${GodName}🥑了！\n上次发电🤩时间：${time}`)
     } else {
       await this.reply(`🥑Brand new ${isAvocado ? 'avocado' : await translate(match[1])}🥑!\n上次发电🤩时间：${time}`)
       this.isUp = true
       /** 获取鳄梨酱组件的更新日志 */
-      let log = await this.getLog('avocado-plugin')
+      let log = await this.getLog(`${isAvocado ? '鳄梨酱' : match[1]}`, 'avocado-plugin')
       await this.reply(log)
     }
 
@@ -107,10 +108,11 @@ export class Update extends plugin {
 
   /**
    * 获取鳄梨酱插件的更新日志
+   * @param {string} GodName 关键词名称
    * @param {string} plugin 插件名称
    * @returns
    */
-  async getLog (plugin = '') {
+  async getLog (GodName, plugin = '') {
     let cm = `cd ./plugins/${plugin}/ && git log  -20 --oneline --pretty=format:"%h||[%cd]  %s" --date=format:"%m-%d %H:%M"`
 
     let logAll
@@ -140,7 +142,7 @@ export class Update extends plugin {
     let end = ''
     end =
         '更多详细信息，请前往github查看\nhttps://github.com/Qz-Sean/avocado-plugin'
-    log = await this.makeForwardMsg(`🥑鳄梨酱发电日志🥑\n共${line}条`, log, end)
+    log = await this.makeForwardMsg(`🥑${GodName}发电日志🥑\n共${line}条`, log, end)
 
     return log
   }
