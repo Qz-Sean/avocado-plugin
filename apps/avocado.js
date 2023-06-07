@@ -41,7 +41,7 @@ export class AvocadoRuleALL extends plugin {
           fnc: 'avocadoImg'
         },
         {
-          reg: `^#?(.*)${global.God}?？]([?？]*)`,
+          reg: `^#?(.*)${global.God}[?？]([?？]*)`,
           fnc: 'avocadoTranslate'
         },
         {
@@ -321,13 +321,13 @@ export class AvocadoRuleALL extends plugin {
   }
 
   async avocadoTranslate (e, languageCode = '', param = '') {
-    if (e.isGroup && !e.atme) return false
     let pendingText, langCode
     const codeConfig = Config.translateLang
     logger.warn(codeConfig)
     // [?？]([?？]+) => 使match结果和配置数组的索引保持一致
-    const translateRegex = new RegExp(`^#?(.*)${global.God}[?？]([?？])`)
+    const translateRegex = new RegExp(`^#?(.*)${global.God}[?？]([?？]*)`)
     const match = this.e.msg.trim().match(translateRegex)
+    logger.warn(match)
     if (match[1]) {
       langCode = translateLangSupports.find(item => item.label === match[1])?.code || 'auto'
       if (langCode === 'auto') {
