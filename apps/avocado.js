@@ -304,12 +304,12 @@ export class AvocadoRuleALL extends plugin {
   async avocadoWeather (e) {
     let targetArea
     const areaConfig = Config.targetArea || []
-    let match = e.msg.trim().match(new RegExp(`^#?(.*)${global.God}[.。]([.。]*)`, 'g'))
+    let match = e.msg.trim().match(new RegExp(`^#?(.*)${global.God}[.。]([.。]*)`))
     if (match[1]) {
       targetArea = match[1]
       if (!(await getAreaInfo(this, targetArea))) {
-        await this.reply(`还不支持${match[1]}${global.God}ヾ(≧O≦)〃嗷~`, e.isGroup)
-        return false
+        await this.reply(`找不到${match[1]}${global.God}呢╮(╯▽╰)╭`, e.isGroup)
+        return true
       }
     } else if (match[2]) {
       targetArea = areaConfig.length > (match[2].length)
@@ -336,6 +336,7 @@ export class AvocadoRuleALL extends plugin {
       langCode = translateLangSupports.find(item => item.label === match[1])?.code || 'auto'
       if (langCode === 'auto') {
         await this.reply(`还不支持${match[1]}${global.God}ヾ(≧O≦)〃嗷~`, e.isGroup)
+        return true
       }
     } else if (match[2]) {
       langCode = codeConfig.length > (match[2].length - 1)

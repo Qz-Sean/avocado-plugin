@@ -41,6 +41,34 @@ export function supportGuoba () {
           label: '查询天气地址顺序',
           bottomHelpMessage: '\'鳄梨酱。\'对应第一个值。查询地址随着。个数递增选择。',
           component: 'Input'
+        },
+        {
+          field: 'isAutoOnset',
+          label: '主动发电',
+          bottomHelpMessage: '鳄梨酱，我吃过重庆面、陕西面、天津面、北京面，就是没吃过宁夏面🤤🤤。',
+          component: 'Switch'
+        },
+        {
+          field: 'is24HourOnset',
+          label: '全天候发电',
+          bottomHelpMessage: '鳄梨酱，对不起，瞒了你这么久，其实我不是人类，我是海边的一种贝壳，我的名字叫沃事泥得堡贝。',
+          component: 'Switch'
+        },
+        {
+          field: 'onsetLatentPeriod',
+          label: '发电周期',
+          bottomHelpMessage: '请问鳄梨酱是意大利和中国的混血吗？不然怎么会这么像我的意中人。(PS:0-23为小时。大于23为分钟 => 时间周期为你填的数字-23。)',
+          component: 'InputNumber',
+          componentProps: {
+            min: 0,
+            max: 83,
+          }
+        },
+        {
+          field: 'initiativeGroups',
+          label: '发电群组',
+          bottomHelpMessage: '和鳄梨酱做顶流，我顶他流',
+          component: 'Input'
         }
       ],
       // 获取配置数据方法（用于前端填充显示数据）
@@ -50,7 +78,7 @@ export function supportGuoba () {
       // 设置配置的方法（前端点确定后调用的方法）
       setConfigData (data, { Result }) {
         for (let [keyPath, value] of Object.entries(data)) {
-          if (keyPath === 'translateLang' || keyPath === 'targetArea') { value = value.toString().split(/[,，;；|]/) }
+          if (keyPath === 'translateLang' || keyPath === 'targetArea' || keyPath === 'initiativeGroups') { value = value.toString().split(/[,，;；|]/) }
           if (Config[keyPath] !== value) { Config[keyPath] = value }
         }
         return Result.ok({}, '保存成功~')

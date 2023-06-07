@@ -12,5 +12,10 @@
     "长沙"
   ],
   "OHMYGOD": "鳄梨酱",
-  "executablePath": ""
+  "executablePath": "",
+  "executablePath": "",
+  "isAutoOnset": false,
+  "onsetLatentPeriod": 5,
+  "is24HourOnset": false,
+  "initiativeGroups": []
 }

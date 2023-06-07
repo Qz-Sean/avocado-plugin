@@ -4,8 +4,13 @@ const defaultConfig = {
   translateLang: ['日语', '韩语', '阿拉伯语', '法语'],
   targetArea: ['南昌', '上海', '南京'],
   OHMYGOD: '鳄梨酱',
+  isAutoOnset: false,
+  is24HourOnset: false,
+  onsetLatentPeriod: '',
+  initiativeGroups: '',
+  initiativeName: '',
   executablePath: '',
-  version: 'v1.0.0'
+  version: 'v1.1.0'
 }
 const _path = process.cwd()
 let config = {}
