@@ -22,7 +22,9 @@ class PuppeteerManager {
           '--disable-gpu',
           '--disable-setuid-sandbox',
           '--no-sandbox',
-          '--no-zygote'
+          '--no-zygote',
+          '--font-render-hinting=medium',
+          '--disable-application-cache'
         ]
       }
       this.puppeteer = new Puppeteer(puppeteerCfg)
@@ -38,9 +40,11 @@ class PuppeteerManager {
         '--disable-setuid-sandbox',
         '--disable-infobars',
         '--disable-dev-shm-usage',
+        '--disable-application-cache',
         '--disable-blink-features=AutomationControlled',
         '--ignore-certificate-errors',
         '--no-first-run',
+        '--font-render-hinting=medium',
         '--no-service-autorun',
         '--password-store=basic',
         '--system-developer-mode',

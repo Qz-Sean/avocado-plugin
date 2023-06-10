@@ -14,6 +14,7 @@ export const md = new MarkdownIt({
   html: true,
   breaks: true
 })
+// 欢迎补充
 export const phantomTransformation = {
   '黑夜之力，赐予我力量！': '黑暗的力量已经注入你的身体，从此你将成为黑夜的主宰！\n黑夜啊，听从我的召唤，降临于这片大地吧！',
   '万象之力，汇聚我身！': '宇宙的能量已经融入你的血液，从此你将掌控万物之力！\n星辰啊，为我而闪耀，照亮前方的道路吧！',
@@ -121,4 +122,3 @@ export const translateLangSupports = [
   { code: 'id', label: '印度尼西亚语', abbr: '印', alphabet: 'Y' },
   { code: 'zh-CHS', label: '中文', abbr: '中', alphabet: 'Z' }
 ]
-const API_ERROR = '出了点小问题，待会再试试吧'

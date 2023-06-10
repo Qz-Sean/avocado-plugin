@@ -13,7 +13,7 @@ let uping = false
 /**
  * 处理插件更新
  */
-export class Update extends plugin {
+export class avocadoUpdate extends plugin {
   constructor () {
     super({
       name: '鳄梨酱(●’◡’●)ﾉ♥update',

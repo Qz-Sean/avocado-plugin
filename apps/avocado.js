@@ -1,23 +1,14 @@
 import plugin from '../../../lib/plugins/plugin.js'
-import { segment } from 'icqq'
+import {segment} from 'icqq'
 import path from 'path'
-import { Config } from '../utils/config.js'
-import { translate } from '../utils/translate.js'
-import {
-  getImageOcrText, getImg, getMovieList,
-  getSourceMsg,
-  makeForwardMsg
-} from '../utils/common.js'
-import { getAreaInfo, weather } from '../utils/weather.js'
-import {
-  cities,
-  md,
-  movieKeyMap,
-  translateLangSupports,
-  urlRegex,
-  pluginRoot
-} from '../utils/const.js'
+import {Config} from '../utils/config.js'
+import {translate} from '../utils/translate.js'
+import {getImageOcrText, getImg, getMovieList, getSourceMsg, makeForwardMsg} from '../utils/common.js'
+import {getAreaInfo, weather} from '../utils/weather.js'
+import {cities, md, movieKeyMap, pluginRoot, translateLangSupports, urlRegex} from '../utils/const.js'
 import puppeteerManager from '../utils/puppeteer.js'
+import puppeteer from '../../../lib/puppeteer/puppeteer.js'
+
 export class AvocadoRuleALL extends plugin {
   constructor (e) {
     super({
@@ -41,27 +32,20 @@ export class AvocadoRuleALL extends plugin {
           fnc: 'avocadoImg'
         },
         {
-          reg: `^#?(.*)${global.God}[?？]([?？]*)`,
+          reg: `^#?(.*)${global.God}[?？]([?？]*)$`,
           fnc: 'avocadoTranslate'
         },
         {
-          reg: `^#?(.*)${global.God}[.。]([.。]*)`,
+          reg: `^#?(.*)${global.God}[.。]([.。]*)$`,
           fnc: 'avocadoWeather'
         },
         {
-          reg: `^#?(看懂)?${global.God}0.0`,
+          reg: `^#?(${global.God}0.0|来点好看的)$`,
           fnc: 'avocadoMovie'
         }
       ]
     })
   }
-
-  config = {}
-
-  /** 监听文件 */
-  watcher = {}
-
-  ignore = []
 
   async avocadoImg (e) {
     if (e.source) {
@@ -78,7 +62,8 @@ export class AvocadoRuleALL extends plugin {
       }
       if (!msgType) {
         await this.reply(`${global.God}！！！`)
-        await this.avocadoRender(e, `# ${global.God}！！！`)
+        const img = await this.avocadoRender(e, `# ${global.God}！！！`)
+        if (img) await e.reply(img)
         return true
       }
       if (!msgInfo) {
@@ -88,7 +73,8 @@ export class AvocadoRuleALL extends plugin {
       logger.warn('msgType: ', msgType)
       if (msgType === 'text') {
         for (const item of msgInfo) {
-          await this.avocadoRender(e, item)
+          const img = await this.avocadoRender(e, item)
+          if (img) await e.reply(img)
         }
         return true
       }
@@ -117,7 +103,7 @@ export class AvocadoRuleALL extends plugin {
     } else {
       let msg
       // msg = e.msg.trim().replace(/#?鳄梨酱([！!]+)\s?/, '')
-      const regex = new RegExp(`#?${global.God}([!！]+)\\s?(.*)`)
+      const regex = new RegExp(`#?${global.God}([!！]+)([?？]+)\\s?(.*)`)
       msg = e.msg.trim().match(regex)
       if (!msg) { return false }
       // 当为鳄梨酱！！！！时获取其ocr结果
@@ -129,8 +115,13 @@ export class AvocadoRuleALL extends plugin {
         }
         return true
       }
-      if (!msg[2].length) {
+      if (!msg[3].length) {
         await this.reply(`${global.God}！！！`)
+        return true
+      }
+      if (msg[1].length === 1 && msg[2].length === 1) {
+        const img = await this.avocadoRender(e, msg[3])
+        if (img) await e.reply(img)
         return true
       }
       // 存在链接和其他信息混合时，只预览链接
@@ -146,14 +137,11 @@ export class AvocadoRuleALL extends plugin {
           await this.avocadoPreview(this, item)
         }
         return true
-      } else {
-        await this.avocadoRender(this, msg)
-        return true
       }
     }
   }
 
-  async avocadoRender (e, param = '') {
+  async avocadoRender (e, param = '', title = '') {
     let text
     if (param.length) {
       text = param
@@ -172,36 +160,38 @@ export class AvocadoRuleALL extends plugin {
         }
         if (!msgType) {
           await this.reply(`${global.God}！！！`)
-          await this.avocadoRender(e, `# ${global.God}！！！`)
+          const img = await this.avocadoRender(e, `# ${global.God}！！！`)
+          if (img) await e.reply(img)
           return true
         }
         text = msgInfo
         for (const item of text) {
-          await this.avocadoRender(this, item)
+          const img = await this.avocadoRender(this, item)
+          if (img) await e.reply(img)
         }
       } else {
-        text = e.msg.trim().replace(new RegExp(`#?(${global.God}[！!]|md)\\s?`, 'g'), '')
+        text = e.msg.trim().replace(new RegExp(`#?${global.God}[！!]\\s?`), '')
       }
     }
     // 递归终止
     if (Array.isArray(text)) return true
-    const markdownHtml = md.render(text)
     const tplFile = path.join(pluginRoot, 'resources', 'markdown.html')
+    if (title === '') {
+      title = 'Here Is Avocado'
+    }
+    const markdownHtml = md.render(text)
     let data = {
+      title,
       markdownHtml,
       tplFile,
+      fullPage: true,
       quality: 100
     }
     try {
-      await puppeteerManager.init()
-      const page = await puppeteerManager.newPage()
-      await this.reply(await page.screenshot('markdown', data))
-      await puppeteerManager.closePage(page)
-      await puppeteerManager.close()
+      return await puppeteer.screenshot('markdown', data)
     } catch (error) {
       logger.error(`${e.msg}图片生成失败:${error}`)
-      await puppeteerManager.close()
-      await this.reply(`图片生成失败:${error}`)
+      await e.reply(`图片生成失败:${error}`)
     }
   }
 
@@ -273,6 +263,7 @@ export class AvocadoRuleALL extends plugin {
   }
 
   async avocadoHelp (e) {
+    await this.reply('详细帮助可前往插件地址查看：https://github.com/Qz-Sean/avocado-plugin')
     await puppeteerManager.init()
     const page = await puppeteerManager.newPage()
     try {
@@ -282,7 +273,7 @@ export class AvocadoRuleALL extends plugin {
       await page.evaluate(() => {
         const p = document.createElement('p')
         p.style.textAlign = 'center'
-        p.style.fontSize = '20px'
+        p.style.fontSize = '18px'
         p.style.marginTop = '-5px'
         p.style.fontWeight = 'bold'
         p.textContent = 'Created By Yunzai-Bot & Avocado-Plugin'
@@ -499,7 +490,7 @@ export class AvocadoRuleALL extends plugin {
       transformedMoviesDetails.push(`${movieKeyMap[key]}: ${selectedMovie[key]}\n`)
       return true
     })
-    await this.reply(await makeForwardMsg(e, [transformedMoviesDetails], `${global.God.charAt(0)}门...🙏`))
+    await this.reply(await makeForwardMsg(e, [transformedMoviesDetails], '鳄门🙏...'))
     await this.reply(`可继续选择影片~~输入 超！是${global.God}啊！ 结束此次操作¡¡¡( •̀ ᴗ •́ )و!!!`)
   }
 }
