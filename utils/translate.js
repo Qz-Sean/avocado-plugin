@@ -4,7 +4,7 @@ import { translateLangSupports } from './const.js'
 // 代码参考：https://github.com/yeyang52/yenai-plugin/blob/b50b11338adfa5a4ef93912eefd2f1f704e8b990/model/api/funApi.js#L25
 export async function translate (msg, to = 'auto') {
   let from = 'auto'
-  if (to !== 'auto') to = translateLangSupports.find(item => item.abbr === to)?.code
+  if (to !== 'auto') to = translateLangSupports.find(item => item.code === to || item.label === to)?.code
   if (!to) return `未找到翻译的语种，支持的语言为：\n${translateLangSupports.map(item => item.abbr).join('，')}\n`
   // 翻译结果为空的提示
   const RESULT_ERROR = '找不到翻译结果'

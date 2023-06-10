@@ -33,7 +33,7 @@ export class AvocadoRuleALL extends plugin {
           fnc: 'avocadoImg'
         },
         {
-          reg: `^#?(.*)${global.God}[?？]([?？]*)$`,
+          reg: `^#?(.*)${global.God}[?？]([?？]*)`,
           fnc: 'avocadoTranslate'
         },
         {
@@ -330,29 +330,37 @@ export class AvocadoRuleALL extends plugin {
     return true
   }
 
-  async avocadoTranslate (e, languageCode = '', param = '') {
+  /**
+   * 鳄梨酱爱学习
+   * @param e
+   * @param text - 待翻译文本
+   * @param languageCode - 语言代码
+   * @returns {Promise<boolean>}
+   */
+  async avocadoTranslate (e, text = '', languageCode = 'auto') {
     let pendingText, langCode
     const codeConfig = Config.translateLang
-    logger.warn(codeConfig)
-    // [?？]([?？]+) => 使match结果和配置数组的索引保持一致
+    // [?？]([?？]+) => 使match[2]结果和配置数组的索引保持一致
     const translateRegex = new RegExp(`^#?(.*)${global.God}[?？]([?？]*)`)
     const match = this.e.msg.trim().match(translateRegex)
-    logger.warn(match)
     if (match[1]) {
-      langCode = translateLangSupports.find(item => item.label === match[1])?.code || 'auto'
-      if (langCode === 'auto') {
-        await this.reply(`还不支持${match[1]}${global.God}ヾ(≧O≦)〃嗷~`, e.isGroup)
-        return true
+      // 支持传入语言code或全称
+      langCode = translateLangSupports.find(item => item.label === match[1] || item.code === match[1])?.code
+      if (!langCode) {
+        await this.reply(`还不支持${match[1]}鳄梨酱哦！`)
+        return false
       }
     } else if (match[2]) {
-      langCode = codeConfig.length > (match[2].length - 1)
-        ? codeConfig[match[2].length - 1].charAt(0)
-        : languageCode || 'auto'
+      const langIndex = match[2].length - 1
+      langCode = codeConfig.length > langIndex
+        ? codeConfig[langIndex]
+        : 'auto'
     } else {
-      langCode = 'auto'
+      langCode = languageCode
     }
-    if (param.length) {
-      pendingText = param
+    // 插件内部调用
+    if (text.length) {
+      pendingText = text
       langCode = languageCode
     } else {
       if (e.source) {
@@ -385,7 +393,7 @@ export class AvocadoRuleALL extends plugin {
               await this.reply(`www.iLove${global.God}.icu`)
               return false
             }
-            await this.avocadoTranslate(this, langCode, i)
+            await this.avocadoTranslate(this, i, langCode)
           }
         }
       } else {

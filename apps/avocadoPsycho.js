@@ -27,7 +27,7 @@ if (Config.is24HourOnset) {
 }
 
 let cronExpression = period + ' ' + period1 + ' * * *'
-logger.warn('cronExpression:', cronExpression)
+// logger.info('cronExpression:', cronExpression)
 export class avocadoPsycho extends plugin {
   constructor (e) {
     super({
@@ -54,23 +54,24 @@ export class avocadoPsycho extends plugin {
   }
 
   async avocadoPsycho (e) {
-    if (Math.random() < 0.6) return true
     if (e.msg.includes('#')) return true
-    let result
-    result = await getBonkersBabble(e, global.God, 'api')
-    if (!result) {
+    if (Math.random() < 0.6) return true
+    let replyMsg
+    replyMsg = await getBonkersBabble(e, global.God, 'api')
+    if (!replyMsg) {
       await this.e.reply('发电失败(ノへ￣、)该提醒作者更换API啦...将使用本地发电¡¡¡( •̀ ᴗ •́ )و!!!')
       await sleep(1500)
-      result = await getBonkersBabble(e, global.God, 'native')
-      if (!result) {
+      replyMsg = await getBonkersBabble(e, global.God, 'native')
+      if (!replyMsg) {
         await this.e.reply('Σ( ° △ °|||)︴ 震惊！本地发电失败！')
         return true
       }
     }
     if (Math.random() < 0.5) {
-      await this.e.reply(result)
+      await this.e.reply(replyMsg)
     } else {
-      const img = await new AvocadoRuleALL().avocadoRender({}, '# ' + result)
+      replyMsg = replyMsg.split('\n').map(item => '# ' + item + '\n').join('')
+      const img = await new AvocadoRuleALL().avocadoRender({}, replyMsg)
       if (img) {
         await this.e.reply(img)
       }
@@ -97,7 +98,15 @@ export class avocadoPsycho extends plugin {
         }
         let replyMsg = await getBonkersBabble({}, global.God, 'native')
         if (replyMsg) {
-          await Bot.sendGroupMsg(groupId, replyMsg)
+          if (Math.random() < 0.5) {
+            await Bot.sendGroupMsg(groupId, replyMsg)
+          } else {
+            replyMsg = replyMsg.split('\n').map(item => '# ' + item + '\n').join('')
+            const img = await new AvocadoRuleALL().avocadoRender({}, replyMsg)
+            if (img) {
+              await Bot.sendGroupMsg(groupId, img)
+            }
+          }
           await sleep(2000)
         }
       } else {
