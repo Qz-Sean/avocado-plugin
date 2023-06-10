@@ -9,11 +9,20 @@ if (Config.is24HourOnset) {
   if (Config.onsetLatentPeriod >= 83) {
     period = '*/60'
   } else {
-    period = '*/' + ((parseInt(Config.onsetLatentPeriod) - 23))
+    if (Config.onsetLatentPeriod > 23) {
+      period = '*/' + ((parseInt(Config.onsetLatentPeriod) - 23))
+    } else {
+      period = Math.ceil(Math.random() * 10)
+      period1 = '0-23/' + Config.onsetLatentPeriod
+    }
   }
 } else {
   period = Math.ceil(Math.random() * 10)
-  period1 = '7-23/' + Config.onsetLatentPeriod
+  if (Config.onsetLatentPeriod > 23) {
+    period1 = '7-23/23'
+  } else {
+    period1 = '7-23/' + Config.onsetLatentPeriod
+  }
 }
 
 let cronExpression = period + ' ' + period1 + ' * * *'
