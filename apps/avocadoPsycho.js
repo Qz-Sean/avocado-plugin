@@ -2,6 +2,7 @@ import plugin from '../../../lib/plugins/plugin.js'
 import fetch from 'node-fetch'
 import { sleep } from '../utils/common.js'
 import { Config } from '../utils/config.js'
+import { AvocadoRuleALL } from './avocado.js'
 
 let period, period1
 if (Config.is24HourOnset) {
@@ -53,7 +54,7 @@ export class avocadoPsycho extends plugin {
   }
 
   async avocadoPsycho (e) {
-    if (Math.random() < 0.6) return false
+    if (Math.random() < 0.6) return true
     if (e.msg.includes('#')) return true
     let result
     result = await getBonkersBabble(e, global.God, 'api')
@@ -66,7 +67,14 @@ export class avocadoPsycho extends plugin {
         return true
       }
     }
-    await this.e.reply(result)
+    if (Math.random() < 0.5) {
+      await this.e.reply(result)
+    } else {
+      const img = await new AvocadoRuleALL().avocadoRender({}, '# ' + result)
+      if (img) {
+        await this.e.reply(img)
+      }
+    }
     return true
   }
 

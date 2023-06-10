@@ -178,7 +178,7 @@ export class AvocadoRuleALL extends plugin {
     if (Array.isArray(text)) return true
     const tplFile = path.join(pluginRoot, 'resources', 'html', 'markdown.html')
     if (title === '') {
-      title = 'Here Is Avocado'
+      title = Math.random() > 0.5 ? ' Here is Avocado! ' : ' Avocado’s here! '
     }
     // 接替md语法
     const md = new MarkdownIt({
