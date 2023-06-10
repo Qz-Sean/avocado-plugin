@@ -17,5 +17,6 @@
   "isAutoOnset": false,
   "onsetLatentPeriod": 5,
   "is24HourOnset": false,
-  "initiativeGroups": []
+  "initiativeGroups": [],
+  "wyy": ""
 }

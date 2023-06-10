@@ -11,7 +11,7 @@ const defaultConfig = {
   initiativeName: '',
   executablePath: '',
   wyy: '',
-  version: 'v1.1.1'
+  version: 'v1.2.0'
 }
 const _path = process.cwd()
 let config = {}

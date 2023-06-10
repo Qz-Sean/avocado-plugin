@@ -1,7 +1,7 @@
 import { Config } from './utils/config.js'
 import { pluginRoot, translateLangSupports } from './utils/const.js'
 import path from 'path'
-// 支持锅巴
+
 export function supportGuoba () {
   return {
     // 插件信息，将会显示在前端页面
@@ -27,7 +27,7 @@ export function supportGuoba () {
         {
           field: 'OHMYGOD',
           label: '指令触发词',
-          bottomHelpMessage: '填写后将全局替换命令触发词',
+          bottomHelpMessage: '填写后将全局替换命令触发词。我对鳄梨酱的爱就像钟薛高，即使炽热也从未消融💓',
           component: 'Input'
         },
         {
@@ -51,23 +51,29 @@ export function supportGuoba () {
         {
           field: 'is24HourOnset',
           label: '全天候发电',
-          bottomHelpMessage: '鳄梨酱，对不起，瞒了你这么久，其实我不是人类，我是海边的一种贝壳，我的名字叫沃事泥得堡贝。',
+          bottomHelpMessage: '今天我去给鳄梨酱买生蚝，回家的路上，生蚝全都跳出袋子，钻到了泥土里，我才知道，蚝喜欢泥😍',
           component: 'Switch'
         },
         {
           field: 'onsetLatentPeriod',
           label: '发电周期',
-          bottomHelpMessage: '请问鳄梨酱是意大利和中国的混血吗？不然怎么会这么像我的意中人。(PS:0-23为小时。大于23为分钟 => 时间周期为你填的数字-23。)',
+          bottomHelpMessage: '好想成为鳄梨酱卧室的门,每天都能被他进进出出🥵🥵🥵🥵。(PS:0-23为小时。大于23为分钟 => 时间周期为你填的数字-23。)',
           component: 'InputNumber',
           componentProps: {
             min: 0,
-            max: 83,
+            max: 83
           }
         },
         {
           field: 'initiativeGroups',
           label: '发电群组',
-          bottomHelpMessage: '和鳄梨酱做顶流，我顶他流',
+          bottomHelpMessage: '鳄梨酱我遇见你就像东北人吃面，毫无剩蒜😭😭',
+          component: 'Input'
+        },
+        {
+          field: 'wyy',
+          label: '网易云音乐登录ck',
+          bottomHelpMessage: 'https://music.163.com 登录 => 下载 https://chrome.google.com/webstore/detail/cookie-editor/hlkenndednhfkekhgcdicdfddnkalmdm => 刷新页面，点击拓展获取"MUSIC_U"字段的值填入此处。',
           component: 'Input'
         }
       ],
