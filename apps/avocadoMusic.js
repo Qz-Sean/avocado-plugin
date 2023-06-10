@@ -78,7 +78,7 @@ export class avocadoMusic extends plugin {
       }
       if (isHotList) {
         const text = hotList.map(obj => `${obj.index}: ${obj.songName}\n`).toString().replace(/[,，]/g, '')
-        const img = await new AvocadoRuleALL().avocadoRender(e, text, `${param}-热门播放50`)
+        const img = await new AvocadoRuleALL().avocadoRender({}, text, `${param}-热门播放50`)
         if (img) await e.reply(img)
         this.setContext('selectMusic')
         return true

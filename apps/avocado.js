@@ -1,13 +1,14 @@
 import plugin from '../../../lib/plugins/plugin.js'
-import {segment} from 'icqq'
+import { segment } from 'icqq'
 import path from 'path'
-import {Config} from '../utils/config.js'
-import {translate} from '../utils/translate.js'
-import {getImageOcrText, getImg, getMovieList, getSourceMsg, makeForwardMsg} from '../utils/common.js'
-import {getAreaInfo, weather} from '../utils/weather.js'
-import {cities, md, movieKeyMap, pluginRoot, translateLangSupports, urlRegex} from '../utils/const.js'
+import { Config } from '../utils/config.js'
+import { translate } from '../utils/translate.js'
+import { getImageOcrText, getImg, getMovieList, getSourceMsg, makeForwardMsg } from '../utils/common.js'
+import { getAreaInfo, weather } from '../utils/weather.js'
+import { cities, movieKeyMap, pluginRoot, translateLangSupports, urlRegex } from '../utils/const.js'
 import puppeteerManager from '../utils/puppeteer.js'
-import puppeteer from '../../../lib/puppeteer/puppeteer.js'
+import template from 'art-template'
+import MarkdownIt from 'markdown-it'
 
 export class AvocadoRuleALL extends plugin {
   constructor (e) {
@@ -24,7 +25,7 @@ export class AvocadoRuleALL extends plugin {
           fnc: 'avocadoPreview'
         },
         {
-          reg: `^#?(.*)${global.God}[!！]{3}$`,
+          reg: `^#?${global.God}[!！]{3}$`,
           fnc: 'avocadoHelp'
         },
         {
@@ -142,7 +143,7 @@ export class AvocadoRuleALL extends plugin {
   }
 
   async avocadoRender (e, param = '', title = '') {
-    let text
+    let text, img
     if (param.length) {
       text = param
     } else {
@@ -175,24 +176,37 @@ export class AvocadoRuleALL extends plugin {
     }
     // 递归终止
     if (Array.isArray(text)) return true
-    const tplFile = path.join(pluginRoot, 'resources', 'markdown.html')
+    const tplFile = path.join(pluginRoot, 'resources', 'html', 'markdown.html')
     if (title === '') {
       title = 'Here Is Avocado'
     }
+    // 接替md语法
+    const md = new MarkdownIt({
+      html: true,
+      breaks: true
+    })
     const markdownHtml = md.render(text)
-    let data = {
-      title,
-      markdownHtml,
-      tplFile,
-      fullPage: true,
-      quality: 100
-    }
     try {
-      return await puppeteer.screenshot('markdown', data)
+      await puppeteerManager.init()
+      const page = await puppeteerManager.newPage()
+      await page.goto(`file://${tplFile}`, { waitUntil: 'networkidle0' })
+      const templateContent = await page.content()
+      const render = template.compile(templateContent)
+      const data = { title, markdownHtml }
+      const htmlContent = render(data)
+      await page.setContent(htmlContent)
+      const body = await page.$('body')
+      img = segment.image(await body.screenshot({
+        type: 'jpeg',
+        quality: 100
+      }))
+      await puppeteerManager.closePage(page)
+      await puppeteerManager.close()
     } catch (error) {
       logger.error(`${e.msg}图片生成失败:${error}`)
-      await e.reply(`图片生成失败:${error}`)
+      return `${e.msg}图片生成失败:${error}`
     }
+    return img
   }
 
   async avocadoPreview (e, param = '') {
@@ -263,11 +277,10 @@ export class AvocadoRuleALL extends plugin {
   }
 
   async avocadoHelp (e) {
-    await this.reply('详细帮助可前往插件地址查看：https://github.com/Qz-Sean/avocado-plugin')
     await puppeteerManager.init()
     const page = await puppeteerManager.newPage()
     try {
-      const filePath = path.join(pluginRoot, 'resources', 'README.html')
+      const filePath = path.join(pluginRoot, 'resources', 'html', 'README.html')
       await page.goto(`file://${filePath}`, { timeout: 120000 })
       await page.waitForTimeout(1000)
       await page.evaluate(() => {
@@ -279,9 +292,9 @@ export class AvocadoRuleALL extends plugin {
         p.textContent = 'Created By Yunzai-Bot & Avocado-Plugin'
         document.querySelector('#write').appendChild(p)
       })
-
       // await page.waitForNavigation({ timeout: 10000 })
       await this.reply(segment.image(await page.screenshot({ fullPage: true, type: 'jpeg', quality: 100 })))
+      await this.reply('详细帮助可前往插件地址查看：https://github.com/Qz-Sean/avocado-plugin')
       await puppeteerManager.closePage(page)
       await puppeteerManager.close()
     } catch (error) {
@@ -422,7 +435,10 @@ export class AvocadoRuleALL extends plugin {
         }
         return `${index + 1}.${item.nm} -> ${n}`
       })
-    await e.reply(`最近上映的影片共有${mlistLength}部\n${scList.join('\n')}\n你想了解关于哪一部影片的详细信息呢~`)
+    const img = await this.avocadoRender({}, `最近上映的影片共有${mlistLength}部\n${scList.join('\n')}\n你想了解关于哪一部影片的详细信息呢~`, '热映电影')
+    if (img) {
+      await this.reply(img)
+    }
     this.setContext('pickMe', false, 180)
   }
 
@@ -434,7 +450,6 @@ export class AvocadoRuleALL extends plugin {
       return true
     }
     let mainInfoList = JSON.parse(await redis.get('AVOCADO:MOVIE_DETAILS'))
-    logger.warn(parseInt(msg), mainInfoList.some(item => item.nm === msg))
     if (!/^\d+$/.test(msg)) {
       if (!mainInfoList.some(item => item.nm === msg)) {
         await this.reply('...')

@@ -18,7 +18,7 @@ export function supportGuoba () {
       description: '鳄梨酱！！！',
       icon: 'emojione:avocado',
       iconColor: '#d5e145',
-      iconPath: path.join(pluginRoot, 'resources', 'icon.png')
+      iconPath: path.join(pluginRoot, 'resources', 'images', 'icon.png')
     },
     // 配置项信息
     configInfo: {
