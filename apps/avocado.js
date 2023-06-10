@@ -3,7 +3,7 @@ import { segment } from 'icqq'
 import path from 'path'
 import { Config } from '../utils/config.js'
 import { translate } from '../utils/translate.js'
-import { getImageOcrText, getImg, getMovieList, getSourceMsg, makeForwardMsg } from '../utils/common.js'
+import { getImageOcrText, getImg, getMovieList, getSourceMsg, makeForwardMsg, sleep } from '../utils/common.js'
 import { getAreaInfo, weather } from '../utils/weather.js'
 import { cities, movieKeyMap, pluginRoot, translateLangSupports, urlRegex } from '../utils/const.js'
 import puppeteerManager from '../utils/puppeteer.js'
@@ -294,7 +294,8 @@ export class AvocadoRuleALL extends plugin {
       })
       // await page.waitForNavigation({ timeout: 10000 })
       await this.reply(segment.image(await page.screenshot({ fullPage: true, type: 'jpeg', quality: 100 })))
-      await this.reply('详细帮助可前往插件地址查看：https://github.com/Qz-Sean/avocado-plugin')
+      await sleep(1300)
+      await this.reply('更多可前往：https://github.com/Qz-Sean/avocado-plugin')
       await puppeteerManager.closePage(page)
       await puppeteerManager.close()
     } catch (error) {
