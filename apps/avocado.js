@@ -281,7 +281,7 @@ export class AvocadoRuleALL extends plugin {
     const page = await puppeteerManager.newPage()
     try {
       const filePath = path.join(pluginRoot, 'resources', 'html', 'README.html')
-      await page.goto(`file://${filePath}`, { timeout: 120000 })
+      await page.goto(`file://${filePath}`, { timeout: 120000, waitUntil: 'networkidle0' })
       await page.waitForTimeout(1000)
       await page.evaluate(() => {
         const p = document.createElement('p')
@@ -292,8 +292,9 @@ export class AvocadoRuleALL extends plugin {
         p.textContent = 'Created By Yunzai-Bot & Avocado-Plugin'
         document.querySelector('#write').appendChild(p)
       })
+      const body = await page.$('body')
       // await page.waitForNavigation({ timeout: 10000 })
-      await this.reply(segment.image(await page.screenshot({ fullPage: true, type: 'jpeg', quality: 100 })))
+      await this.reply(segment.image(await body.screenshot({ type: 'jpeg', quality: 100 })))
       await sleep(1300)
       await this.reply('更多可前往：https://github.com/Qz-Sean/avocado-plugin')
       await puppeteerManager.closePage(page)
