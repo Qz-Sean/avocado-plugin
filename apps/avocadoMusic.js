@@ -14,7 +14,7 @@ export class avocadoMusic extends plugin {
       priority: 300,
       rule: [
         {
-          reg: `^#?${global.God}#(随机|热门)?(.+)`,
+          reg: `^#?${global.God}#(随机|热门)?(.*)`,
           fnc: 'pickMusic'
         },
         {
@@ -43,55 +43,74 @@ export class avocadoMusic extends plugin {
   }
 
   async pickMusic (e) {
-    const regex = new RegExp(`^#?${global.God}#(随机|热门)?(.+)`)
+    const regex = new RegExp(`^#?${global.God}#(随机|热门)?(.*)`)
     const match = e.msg.trim().match(regex)
     const { isRandom, isHotList } = { isRandom: match[1] === '随机', isHotList: match[1] === '热门' }
     const isSinger = !!(await getSingerId(match[2].replace(/，/g, ',')))
     let param = match[2].replace(/，/g, ',')
-    // 输入中存在 ‘热门|随机’
+    // 指令没有包含点歌类别且没有待处理信息
+    if (!match[1] && !match[2]) {
+      await this.reply('告诉我你想听什么吧~')
+      return true
+    }
+    // 参数1存在
     if (match[1]) {
       let isListExist
       const res = await redis.get(`AVOCADO:MUSIC_${e.sender.user_id}_HOTLIST`)
       if (res) {
         hotList = JSON.parse(res)
-        // 判断是否已存在相同歌手的热门歌曲
-        let count = 0
-        let total = 0
-        hotList.forEach(eachSong => {
-          count += eachSong.singer.filter(name => name.includes(param.toLowerCase())).length
-          total += eachSong.singer.length
-        })
-        isListExist = count / total > 0.2
-        // logger.warn(isListExist, isSinger, count, total)
-        if (!isListExist && isSinger) {
-          hotList = await getHotList(e.sender.user_id, param)
-        }
-      } else {
-        // 不存在且输入为歌手名称则重新获取热门歌曲
-        if (isSinger) {
-          hotList = await getHotList(e.sender.user_id, param)
-        } else {
-          const img = await new AvocadoRuleALL().avocadoRender(e, `没有找到${param}的歌曲信息呢...\n${await getBonkersBabble({}, global.God, 'native')}`, `${param}-热门播放50`)
+        // 参数2存在且为歌手
+        if (match[2] && isSinger) {
+          // 判断是否已存在相同歌手的热门歌曲
+          let count = 0
+          let total = 0
+          hotList.forEach(eachSong => {
+            count += eachSong.singer.filter(name => name.includes(param.toLowerCase())).length
+            total += eachSong.singer.length
+          })
+          isListExist = count / total > 0.2
+          // logger.warn(isListExist, isSinger, count, total)
+          // 与数据库中歌手不同则重新获取
+          if (!isListExist && isSinger) {
+            hotList = await getHotList(e.sender.user_id, param)
+          }
+          // 参数2存在且不为歌手 ps: ‘热门’参数只支持歌手为参数2
+        } else if (match[2] && !isSinger) {
+          const img = await new AvocadoRuleALL().avocadoRender(e, `## 没有找到名为${param}的歌手呢...\n### ${await getBonkersBabble({}, global.God, 'native')}`, `${param}-热门播放50`)
           if (img) await e.reply(img)
           return true
+          // 参数2不存在
+        } else if (!match[2]) {
+          // 随机歌手点歌
+          if (isRandom) {
+            const song = hotList[Math.floor(Math.random() * hotList.length)]
+            const songInfo = await findSong(e, { param: song.songName, isRandom: false, songId: song.songId, from: 'random' })
+            await sendMusic(e, songInfo)
+          }
+          // 热门歌手点歌
+          if (isHotList) {
+            const text = hotList.map(obj => `${obj.index}: ${obj.songName}\n`).toString().replace(/[,，]/g, '')
+            const img = await new AvocadoRuleALL().avocadoRender({}, text, `${param}-热门播放50`)
+            if (img) await e.reply(img)
+            this.setContext('selectMusic')
+            return true
+          }
         }
-      }
-      if (isHotList) {
+        // 参数1存在但数据库中没有用户数据且参数2为歌手
+      } else if (isSinger) {
+        hotList = await getHotList(e.sender.user_id, param)
         const text = hotList.map(obj => `${obj.index}: ${obj.songName}\n`).toString().replace(/[,，]/g, '')
         const img = await new AvocadoRuleALL().avocadoRender({}, text, `${param}-热门播放50`)
         if (img) await e.reply(img)
         this.setContext('selectMusic')
         return true
-      } else if (isRandom && isListExist) {
-        // 随机歌手点歌
-        const song = hotList[Math.floor(Math.random() * hotList.length)]
-        const songInfo = await findSong(e, { param: song.songName, isRandom: false, songId: song.songId, from: 'random' })
-        await sendMusic(e, songInfo)
+        // 参数1存在但数据库中没有用户数据且参数2不为歌手名称
       } else {
         // 随机歌名点歌
         const songInfo = await findSong(e, { param, isRandom, songId: '', from: 'random' })
         await sendMusic(e, songInfo)
       }
+      // 参数1不存在
     } else {
       // 正常点歌
       const songInfo = await findSong(e, { param, isRandom: false, songId: '', from: '' })
@@ -156,15 +175,8 @@ export class avocadoMusic extends plugin {
       return false
     }
     const selectedMusic = songList[Math.floor(songList.length * Math.random())]
-    const songName = selectedMusic.songName
-    const songId = selectedMusic.songId
-    const songInfo = await findSong(this.e, {
-      param: songName,
-      isRandom: false,
-      songId,
-      from: 'fav'
-    })
-    await sendMusic(this.e, songInfo)
+    const musicDetail = await getMusicDetail(selectedMusic)
+    await sendMusic(this.e, musicDetail)
     return true
   }
 
@@ -268,17 +280,21 @@ async function getMusicUrl (songId) {
  * @returns {Promise<{}|boolean>}
  */
 async function findSong (e, data = { param: '', songId: '', isRandom: false, from: '' }) {
-  const url = `http://110.41.21.181:3000/cloudsearch?keywords=${data.param}`
+  const url = `http://110.41.21.181:3000/cloudsearch?keywords=${data.param}&limit=60`
   try {
     let response = await fetch(url)
     const result = await response.json()
     if (result.code !== 200 || result.songCount === 0) {
-      logger.warn('没有获取到有效歌单')
+      if (result.code === 400) {
+        logger.error('limit参数设置过大')
+      } else {
+        logger.error('没有获取到有效歌单')
+      }
       return false
     }
     let searchRes
-    if (data.songId && !!data.from) {
-      logger.warn('热门|随机|最爱歌手点歌')
+    if (data.songId && (data.from === 'random' || data.from === 'hot')) {
+      logger.warn('热门|随机点歌')
       searchRes = result?.result?.songs
       // 处理搜id有概率搜不到的问题
       searchRes = searchRes.find(song => song.id === data.songId)
@@ -296,13 +312,21 @@ async function findSong (e, data = { param: '', songId: '', isRandom: false, fro
     return false
   }
 }
+
+/**
+ * 获取单曲所有信息
+ * @param musicElem
+ * - 可以是未处理的musicElem，也可以是经过getFavList处理后的elem（已提前获取并处理artist/albumId）
+ * - 后期考虑将favList通过图片发送给用户
+ * @returns {Promise<{}>}
+ */
 async function getMusicDetail (musicElem) {
   let response, resJson
   const songInfo = {}
   songInfo.id = musicElem.id
   songInfo.name = musicElem.name
-  songInfo.artist = musicElem.ar.map(item => item.name).join(',')
-  songInfo.albumId = musicElem.al.id
+  songInfo.artist = musicElem?.artist || musicElem.ar.map(item => item.name).join(',')
+  songInfo.albumId = musicElem?.albumId || musicElem.al.id
   response = await fetch(`http://110.41.21.181:3000/song/detail?ids=${musicElem.id}`)
   resJson = await response.json()
   songInfo.pic = resJson.songs[0].al.picUrl
@@ -353,11 +377,12 @@ async function getSingerId (singer) {
   let res = await response.json()
   if (res.code !== 200) { return false }
   // 不存在时为空数组
-  const songs = res.result.songs
+  const songs = res.result?.songs
   // songs.forEach(item => {
   //   let lowerCaseSinger = singer.toLowerCase()
   //   singerId = item.ar.find(item => item.name.toLowerCase() === lowerCaseSinger || (item?.tns.length ? item?.tns[0]?.toLowerCase() === lowerCaseSinger : false) || (item?.alias.length ? item?.alias[0]?.toLowerCase() === lowerCaseSinger : false) || (item?.alia ? (item?.alia.length ? item?.alia[0]?.toLowerCase() === lowerCaseSinger : false) : false))?.id
   // })
+  if (!songs?.length) { return false }
   songs.forEach(item => {
     const lowerCaseSinger = singer.toLowerCase()
     singerId = item.ar.find(arItem => [arItem.name, arItem?.tns?.[0], arItem?.alias?.[0], arItem?.alia?.[0]].some(name => name?.toLowerCase() === lowerCaseSinger))?.id
@@ -365,7 +390,7 @@ async function getSingerId (singer) {
   return singerId || false
 }
 async function getFavList (userID, SingerID) {
-  let url = `http://110.41.21.181:3000/artist/songs?id=${SingerID}&limit=300`
+  let url = `http://110.41.21.181:3000/artist/songs?id=${SingerID}&limit=100`
   try {
     let response = await fetch(url)
     const result = await response.json()
@@ -373,7 +398,15 @@ async function getFavList (userID, SingerID) {
       return false
     }
     let searchRes = result.songs
-    const favList = searchRes.map((item, index) => ({ index: index + 1, songId: item.id, songName: item.name, singer: item?.ar.map(singer => singer.name) }))
+    const favList = searchRes.map((item, index) => ({
+      index: index + 1,
+      id: item.id,
+      name: item.name,
+      artist: item?.ar.map(singer => singer.name),
+      albumId: item.al.id,
+      fee: item.fee,
+      mv: item.mv
+    }))
     await redis.set(`AVOCADO:MUSIC_${userID}_FAVSONGLIST`, JSON.stringify(favList))
   } catch (e) {
     logger.error(e)
@@ -445,8 +478,8 @@ async function sendMusic (e, data, toUin = null) {
 
   prompt = prompt + title + '-' + singer
 
-  let recvUin = 0
-  let sendType = 0
+  let recvUin
+  let sendType
   let recvGuildId = 0
 
   if (e.isGroup && toUin == null) { // 群聊
