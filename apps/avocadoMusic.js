@@ -162,7 +162,6 @@ export class avocadoMusic extends plugin {
       if (img) await this.reply(img)
     } else {
       if (parseInt(this.e.msg) === 0) {
-        await this.e.reply('鳄梨酱！！！')
         this.finish('pickHotSinger')
         return true
       }
@@ -215,7 +214,6 @@ export class avocadoMusic extends plugin {
       if (img) await this.reply(img)
     } else {
       if (/算了|0/.test(this.e.msg)) {
-        await this.e.reply('鳄梨酱！！！')
         logger.info('finish isContinue')
         this.finish('isContinue')
         return true
@@ -241,7 +239,6 @@ export class avocadoMusic extends plugin {
       if (img) await this.reply(img)
     } else {
       if (parseInt(this.e.msg) === 0) {
-        await this.e.reply('鳄梨酱！！！')
         logger.info('finish selectMusic')
         this.finish('selectMusic')
         return true
@@ -378,7 +375,6 @@ export class avocadoMusic extends plugin {
       if (img) await this.reply(img)
     } else {
       if (parseInt(this.e.msg) === 0) {
-        await this.e.reply('鳄梨酱！！！')
         this.finish('pickRankingSinger')
         return true
       }

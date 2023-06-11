@@ -424,7 +424,7 @@ export class AvocadoRuleALL extends plugin {
       try {
         mainInfoList = await getMovieList(this)
         await redis.set('AVOCADO:MOVIE_DETAILS', JSON.stringify(mainInfoList))
-        await redis.set('AVOCADO:MOVIE_EXPIRE', 1, { EX: 60 * 60 * 24 * 3})
+        await redis.set('AVOCADO:MOVIE_EXPIRE', 1, { EX: 60 * 60 * 24 * 3 })
       } catch (error) {
         this.reply(`啊哦!${error}`)
         return false

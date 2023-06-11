@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    @font-face {
+      font-family: "genshin";
+      src: url('../fonts/9w6ve-4l668.ttf')
+    }
+    body {
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      font-family: "genshin";
+    }
+    .bg-img {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      background: url('http://unsplash.it/1200x800') center center no-repeat;
+      background-size: cover;
+    }
+
+    .bg-img:before {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      background-image: linear-gradient(to bottom right,#002f4b,#dc4225);
+      opacity: .6;
+    }
+
+    .box {
+      margin: 10px;
+      padding: 10px;
+      background-color: rgba(255, 255, 255, 0.45);
+      box-shadow: 0px 8px 32px rgba(31,38,135,0.37);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.18);
+      transition: all .3s ease-in-out;
+    }
+    .box:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 12px 40px rgba(31,38,135,.4);
+    }
+    .title, .footer{
+      transition: all .3s ease-in-out;
+    }
+    .footer span{
+      box-shadow: 0px 8px 32px rgba(31,38,135,0.37);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      background-color: rgba(255, 255, 255, 0.45);
+      padding: 5px;
+      border-radius: 5px;
+      border:1px solid rgba(255,255,255,0.18);
+    }
+    .title span{
+      box-shadow: 0px 8px 32px rgba(31,38,135,0.37);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      background-color: rgba(255, 255, 255, 0.45);
+      padding: 5px;
+      border-radius: 5px;
+      border:1px solid rgba(255,255,255,0.18);
+    }
+    .title span{
+      display: inline-block;
+      white-space: nowrap;
+      font-size: 23px;
+      min-width: 100px;
+    }
+    .footer span{
+      font-size: 15px;
+    }
+    .footer:hover{
+      transform: translateY(-5px);
+    }
+    .title:hover{
+      transform: translateY(-5px);
+    }
+    .tb { display: flex; justify-content: center; align-items: center; }
+
+    table { width: 100%; border-collapse: collapse; }
+
+    th, td {padding: 10px; }
+  </style>
+</head>
+<body class="bg-img">
+<div class="title" style="text-align: center;margin: 20px 0;">
+  <span>{{@title}}</span>
+</div>
+<div  class="box">
+<div class="tb">
+  <table>
+    <caption>{{@caption}}</caption>
+    <thead>
+    <tr>
+      <th></th>
+    </tr>
+    </thead>
+    <tbody>
+    {{each columns[0]  item index}}
+    <tr>
+      {{each columns  column}}
+      <td>{{column[index]}}</td>
+      {{/each}}
+    </tr>
+    {{/each}}
+    </tbody>
+  </table>
+</div>
+  <p style="text-align:center">{{@footer}}</p>
+</div>
+<div class="footer" style="text-align: center;margin: 20px 0">
+  <span>Created By Yunzai-Bot & Avocado-Plugin</span>
+</div>
+</body>
