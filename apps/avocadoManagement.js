@@ -17,7 +17,7 @@ export class AvocadoManagement extends plugin {
       priority: 200,
       rule: [
         {
-          reg: `^#?(${Object.keys(phantomTransformation).join('|')})?变身！([\u4e00-\u9fa5]*)`,
+          reg: `^#?(${Object.keys(phantomTransformation).join('|')})?(变身|切换)！?([\u4e00-\u9fa5]*)`,
           fnc: 'setGod',
           permission: 'master'
         },
@@ -91,8 +91,8 @@ export class AvocadoManagement extends plugin {
 
   async setGod (e) {
     const abracadabra = Object.keys(phantomTransformation).join('|')
-    const match = this.e.msg.trim().match(new RegExp(`^#?(${abracadabra})?变身！([\u4e00-\u9fa5a-zA-Z0-9]+)`), '')
-    const GodName = match[2]
+    const match = this.e.msg.trim().match(new RegExp(`^#?(${abracadabra})?(变身|切换)！?([\u4e00-\u9fa5a-zA-Z0-9]+)`), '')
+    const GodName = match[3]
     if (!GodName) {
       await this.reply(confusedSpells[Math.floor(Math.random() * confusedSpells.length)], e.isGroup)
       this.setContext('setGod')
