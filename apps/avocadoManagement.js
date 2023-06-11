@@ -91,7 +91,7 @@ export class AvocadoManagement extends plugin {
 
   async setGod (e) {
     const abracadabra = Object.keys(phantomTransformation).join('|')
-    const match = this.e.msg.trim().match(new RegExp(`^#?(${abracadabra})?变身！([\u4e00-\u9fa5]*)`), '')
+    const match = this.e.msg.trim().match(new RegExp(`^#?(${abracadabra})?变身！([\u4e00-\u9fa5a-zA-Z0-9]+)`), '')
     const GodName = match[2]
     if (!GodName) {
       await this.reply(confusedSpells[Math.floor(Math.random() * confusedSpells.length)], e.isGroup)

@@ -1,6 +1,6 @@
 import plugin from '../../../lib/plugins/plugin.js'
 import fetch from 'node-fetch'
-import {avocadoRender, generateRandomHeader, sleep} from '../utils/common.js'
+import { avocadoRender, generateRandomHeader, sleep } from '../utils/common.js'
 import { Config } from '../utils/config.js'
 
 let period, period1
@@ -33,7 +33,7 @@ export class avocadoPsycho extends plugin {
       name: '鳄梨酱！！！ => 发癫',
       dsc: '鳄梨酱！！！',
       event: 'message',
-      priority: 99999,
+      priority: 6000,
       rule: [
         {
           reg: `${global.God}`,
@@ -54,7 +54,6 @@ export class avocadoPsycho extends plugin {
 
   async avocadoPsycho (e) {
     if (e.msg.includes('#')) return true
-    if (Math.random() < 0.6) return true
     let replyMsg
     replyMsg = await getBonkersBabble(e, global.God, 'api')
     if (!replyMsg) {
@@ -70,7 +69,7 @@ export class avocadoPsycho extends plugin {
       await this.e.reply(replyMsg)
     } else {
       replyMsg = replyMsg.split('\n').map(item => '# ' + item + '\n').join('')
-      const img = await avocadoRender(replyMsg)
+      const img = await avocadoRender(replyMsg, {})
       if (img) {
         await this.e.reply(img)
       }
