@@ -92,6 +92,7 @@ export class avocadoMusic extends plugin {
               const img = await avocadoRender(replyMsg.join(''), { title: '', caption: '', footer: `你想不想继续了解${singerInfo.name}的热门单曲呢~` })
               if (img) await this.reply(img)
               await getHotList(e.sender.user_id, singerInfo.name)
+              await redis.set(`AVOCADO:MUSIC_${this.e.sender.user_id}_FROM`, 'randomSinger' , { EX: 60 * 10 })
               this.setContext('isContinue')
               return true
             }
@@ -128,7 +129,7 @@ export class avocadoMusic extends plugin {
         }
       } else if (!query) {
         if (isRandom) {
-          await this.reply(`随机什么？可通过发送 '${global.God}#随机+歌手名' 随机播放歌手的热门单曲哦！`)
+          await this.reply(`什么？可通过发送 '${global.God}#随机+歌手名' 随机播放歌手的热门单曲哦！`)
           return false
         }
         if (isHotList) {
@@ -208,15 +209,33 @@ export class avocadoMusic extends plugin {
 
   async isContinue (e) {
     if (typeof this.e.msg !== 'string') { return }
-    const reg = /算了|0|想|1/
+    const reg = /算了|0|想|1|换/
     if (!reg.test(this.e.msg)) {
-      const img = await avocadoRender(`### 🤔💭 想要呢还是算了呢？\n${await getBonkersBabble({}, global.God, 'native')}`, { title: '', caption: '', footer: '' })
-      if (img) await this.reply(img)
+      // const img = await avocadoRender(`### 🤔💭 想要呢还是算了呢？\n${await getBonkersBabble({}, global.God, 'native')}`, { title: '', caption: '', footer: '' })
+      // if (img) await this.reply(img)
     } else {
       if (/算了|0/.test(this.e.msg)) {
         logger.info('finish isContinue')
         this.finish('isContinue')
         return true
+      }
+      if (/换/.test(this.e.msg)) {
+        const from = await redis.get(`AVOCADO:MUSIC_${this.e.sender.user_id}_FROM`)
+        if (from === 'randomSinger') {
+          const singerRankingList = await getSingerRankingList(e.sender.user_id, Math.ceil(Math.random() * 4))
+          const picked = singerRankingList[Math.floor(Math.random() * singerRankingList.length)]
+          const singerInfo = await getSingerDetail(picked.id)
+          const replyMsg = []
+          for (const key in singerInfo) {
+            replyMsg.push([singerInfo[key]].join('').length ? `${singerMap[key]}：${singerInfo[key]}\n` : '')
+          }
+          const img = await avocadoRender(replyMsg.join(''), { title: '', caption: '', footer: `你愿意继续了解${singerInfo.name}最受欢迎的单曲吗~☺️` })
+          if (img) await this.reply(img)
+          await getHotList(e.sender.user_id, singerInfo.name)
+          this.finish('isContinue')
+          this.setContext('isContinue')
+          return true
+        }
       }
       const hotList = JSON.parse(await redis.get(`AVOCADO:MUSIC_${e.sender.user_id}_HOTLIST`))
       const singer = hotList.find(obj => obj.singer.length === 1).singer[0]
@@ -235,8 +254,8 @@ export class avocadoMusic extends plugin {
     const reg = new RegExp(`^((0)|(${hotList.map(item => item.index).join('|')})|(${hotList.map(item => item.songName).join('|').replace(/\*/g, '')}))$`)
     let res, img
     if (!reg.test(this.e.msg)) {
-      img = await avocadoRender(`### 没有找到 ${this.e.msg} 呢...试试其他选择吧~\n${await getBonkersBabble({}, global.God, 'native')}`, { title: '', caption: '', footer: '' })
-      if (img) await this.reply(img)
+      // img = await avocadoRender(`### 没有找到 ${this.e.msg} 呢...试试其他选择吧~\n${await getBonkersBabble({}, global.God, 'native')}`, { title: '', caption: '', footer: '' })
+      // if (img) await this.reply(img)
     } else {
       if (parseInt(this.e.msg) === 0) {
         logger.info('finish selectMusic')
@@ -670,7 +689,7 @@ async function getSingerRankingList (userId = '', singerType) {
     }))
     //  保存用户的选择
     if (userId) {
-      await redis.set(`AVOCADO:MUSIC_${userId}_SINGERTYPE`, singerType, { EX: 60 * 60 })
+      await redis.set(`AVOCADO:MUSIC_${userId}_SINGERTYPE`, singerType, { EX: 60 * 10 })
     }
     return list
   } catch (err) {
