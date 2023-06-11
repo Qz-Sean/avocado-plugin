@@ -1,8 +1,7 @@
 import plugin from '../../../lib/plugins/plugin.js'
 import fetch from 'node-fetch'
-import { sleep } from '../utils/common.js'
+import {avocadoRender, generateRandomHeader, sleep} from '../utils/common.js'
 import { Config } from '../utils/config.js'
-import { AvocadoRuleALL } from './avocado.js'
 
 let period, period1
 if (Config.is24HourOnset) {
@@ -71,7 +70,7 @@ export class avocadoPsycho extends plugin {
       await this.e.reply(replyMsg)
     } else {
       replyMsg = replyMsg.split('\n').map(item => '# ' + item + '\n').join('')
-      const img = await new AvocadoRuleALL().avocadoRender({}, replyMsg)
+      const img = await avocadoRender(replyMsg)
       if (img) {
         await this.e.reply(img)
       }
@@ -102,7 +101,7 @@ export class avocadoPsycho extends plugin {
             await Bot.sendGroupMsg(groupId, replyMsg)
           } else {
             replyMsg = replyMsg.split('\n').map(item => '# ' + item + '\n').join('')
-            const img = await new AvocadoRuleALL().avocadoRender({}, replyMsg)
+            const img = await avocadoRender(replyMsg)
             if (img) {
               await Bot.sendGroupMsg(groupId, img)
             }
@@ -136,7 +135,12 @@ export async function getBonkersBabble (e = {}, GodName = '', dataSource = '', w
     // let url = `https://xiaobapi.top/api/xb/api/onset.php?name=${GOD}`
     let url = `http://api.caonm.net/api/fab/f.php?msg=${GodName}`
     try {
-      let response = await fetch(url)
+      const headers = generateRandomHeader()
+      const options = {
+        method: 'GET',
+        headers
+      }
+      const response = await fetch(url, options)
       if (response.status === 200) {
         let json = await response.json()
         if (json.code === 1 && json.data) {

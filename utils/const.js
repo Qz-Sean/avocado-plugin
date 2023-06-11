@@ -53,6 +53,23 @@ export const incantationResult = [
   '无论是追逐风中漫舞的花瓣，还是迎战绝境之时残酷剑影下挥洒鲜血；我的心里只有你，在我们值得纪念的岁月里一同战斗、共度荣耀！(๑•̀ㅂ•́)و✧',
   '昔日埋藏在山沟海角之中的宝藏早已失去光彩。但如今有你与我一起寻宝探险，世间万物也都将为我们而亮相！٩(๑^o^๑)۶❤'
 ]
+export const singerTypeMap = {
+  华语: 1,
+  欧美: 2,
+  韩国: 3,
+  日本: 4
+}
+export const singerMap = {
+  name: '姓名',
+  transName: '中文名',
+  trans: '中文名',
+  alias: '昵称',
+  secondaryExpertIdentiy: '音乐身份',
+  briefDesc: '简介',
+  albumSize: '专辑数目',
+  musicSize: '单曲数目',
+  mvSize: 'mv数目'
+}
 export const movieKeyMap = {
   img: '封面',
   nm: '电影名称',

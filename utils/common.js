@@ -1,4 +1,10 @@
-import { urlRegex } from './const.js'
+import { pluginRoot, urlRegex } from './const.js'
+import path from 'path'
+import puppeteerManager from './puppeteer.js'
+import fs from 'fs'
+import template from 'art-template'
+import { segment } from 'icqq'
+import MarkdownIt from 'markdown-it'
 
 export async function getSource (e) {
   if (!e.source) return false
@@ -148,7 +154,8 @@ async function replyPrivate (userId, msg) {
     })
   }
 }
-function generateRandomHeader () {
+
+export function generateRandomHeader () {
   const userAgents = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36',
     'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.103 Safari/537.36',
@@ -186,7 +193,63 @@ function generateRandomHeader () {
   for (let key of keys) {
     result[key] = headers[key]
   }
+  return result
+}
+export function splitArray (arr, num) {
+  const result = []
+  const len = arr.length
+  const size = Math.ceil(len / num)
+  for (let i = 0; i < len; i += size) {
+    result.push(arr.slice(i, i + size))
+  }
+  return result
+}
 
+export async function avocadoRender (pendingText, otherInfo = { title: '', caption: '', footer: '' }) {
+  let result, tplFile, data
+  let title = otherInfo.title
+  if (title === '') title = Math.random() > 0.5 ? ' Here is Avocado! ' : ' Avocado’s here! '
+  try {
+    await puppeteerManager.init()
+    const page = await puppeteerManager.newPage()
+    if (Array.isArray(pendingText)) {
+      tplFile = path.join(pluginRoot, 'resources', 'html', 'table.html')
+      data = {
+        title,
+        caption: otherInfo.caption,
+        columns: pendingText,
+        footer: otherInfo.footer
+      }
+    } else {
+      tplFile = path.join(pluginRoot, 'resources', 'html', 'markdown.html')
+      // 接替md语法
+      const md = new MarkdownIt({
+        html: true,
+        breaks: true
+      })
+      const markdownHtml = md.render(pendingText)
+      data = {
+        title,
+        markdownHtml,
+        footer: otherInfo.footer
+      }
+    }
+    await page.goto(`file://${tplFile}`, { waitUntil: 'networkidle0' })
+    const templateContent = await fs.promises.readFile(tplFile, 'utf-8')
+    const render = template.compile(templateContent)
+    const htmlContent = render(data)
+    await page.setContent(htmlContent)
+    const body = await page.$('body')
+    result = segment.image(await body.screenshot({
+      type: 'jpeg',
+      quality: 100
+    }))
+    await puppeteerManager.closePage(page)
+    await puppeteerManager.close()
+  } catch (error) {
+    logger.error(`图片生成失败:${error}`)
+    return `图片生成失败:${error}`
+  }
   return result
 }
 

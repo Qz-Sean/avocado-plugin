@@ -3,12 +3,18 @@ import { segment } from 'icqq'
 import path from 'path'
 import { Config } from '../utils/config.js'
 import { translate } from '../utils/translate.js'
-import { getImageOcrText, getImg, getMovieList, getSourceMsg, makeForwardMsg, sleep } from '../utils/common.js'
+import {
+  avocadoRender,
+  getImageOcrText,
+  getImg,
+  getMovieList,
+  getSourceMsg,
+  makeForwardMsg,
+  sleep, splitArray
+} from '../utils/common.js'
 import { getAreaInfo, weather } from '../utils/weather.js'
 import { cities, movieKeyMap, pluginRoot, translateLangSupports, urlRegex } from '../utils/const.js'
 import puppeteerManager from '../utils/puppeteer.js'
-import template from 'art-template'
-import MarkdownIt from 'markdown-it'
 
 export class AvocadoRuleALL extends plugin {
   constructor (e) {
@@ -63,7 +69,7 @@ export class AvocadoRuleALL extends plugin {
       }
       if (!msgType) {
         await this.reply(`${global.God}！！！`)
-        const img = await this.avocadoRender(e, `# ${global.God}！！！`)
+        const img = await avocadoRender(`# ${global.God}！！！`)
         if (img) await e.reply(img)
         return true
       }
@@ -74,7 +80,7 @@ export class AvocadoRuleALL extends plugin {
       logger.warn('msgType: ', msgType)
       if (msgType === 'text') {
         for (const item of msgInfo) {
-          const img = await this.avocadoRender(e, item)
+          const img = await avocadoRender(item)
           if (img) await e.reply(img)
         }
         return true
@@ -121,7 +127,7 @@ export class AvocadoRuleALL extends plugin {
         return true
       }
       if (msg[1].length === 1 && msg[2].length === 1) {
-        const img = await this.avocadoRender(e, msg[3])
+        const img = await avocadoRender(msg[3])
         if (img) await e.reply(img)
         return true
       }
@@ -142,72 +148,72 @@ export class AvocadoRuleALL extends plugin {
     }
   }
 
-  async avocadoRender (e, param = '', title = '') {
-    let text, img
-    if (param.length) {
-      text = param
-    } else {
-      if (e.source) {
-        let msgType, msgInfo
-        const isImg = await getImg(e)
-        if (isImg.length) {
-          [msgType, msgInfo] = await getImageOcrText(e) || ['', []]
-        } else {
-          [msgType, msgInfo] = await getSourceMsg(e) || ['', []]
-        }
-        if (msgType === 'xml') {
-          await this.reply('xml信息目前还无能为力哦~')
-          return true
-        }
-        if (!msgType) {
-          await this.reply(`${global.God}！！！`)
-          const img = await this.avocadoRender(e, `# ${global.God}！！！`)
-          if (img) await e.reply(img)
-          return true
-        }
-        text = msgInfo
-        for (const item of text) {
-          const img = await this.avocadoRender(this, item)
-          if (img) await e.reply(img)
-        }
-      } else {
-        text = e.msg.trim().replace(new RegExp(`#?${global.God}[！!]\\s?`), '')
-      }
-    }
-    // 递归终止
-    if (Array.isArray(text)) return true
-    const tplFile = path.join(pluginRoot, 'resources', 'html', 'markdown.html')
-    if (title === '') {
-      title = Math.random() > 0.5 ? ' Here is Avocado! ' : ' Avocado’s here! '
-    }
-    // 接替md语法
-    const md = new MarkdownIt({
-      html: true,
-      breaks: true
-    })
-    const markdownHtml = md.render(text)
-    try {
-      await puppeteerManager.init()
-      const page = await puppeteerManager.newPage()
-      await page.goto(`file://${tplFile}`, { waitUntil: 'networkidle0' })
-      const templateContent = await page.content()
-      const render = template.compile(templateContent)
-      const data = { title, markdownHtml }
-      const htmlContent = render(data)
-      await page.setContent(htmlContent)
-      const body = await page.$('body')
-      img = segment.image(await body.screenshot({
-        type: 'jpeg',
-        quality: 100
-      }))
-      await puppeteerManager.closePage(page)
-      await puppeteerManager.close()
-    } catch (error) {
-      logger.error(`${e.msg}图片生成失败:${error}`)
-      return `${e.msg}图片生成失败:${error}`
-    }
-    return img
-  }
+  // async avocadoRender (e, param = '', title = '') {
+  //   let text, img
+  //   if (param.length) {
+  //     text = param
+  //   } else {
+  //     if (e.source) {
+  //       let msgType, msgInfo
+  //       const isImg = await getImg(e)
+  //       if (isImg.length) {
+  //         [msgType, msgInfo] = await getImageOcrText(e) || ['', []]
+  //       } else {
+  //         [msgType, msgInfo] = await getSourceMsg(e) || ['', []]
+  //       }
+  //       if (msgType === 'xml') {
+  //         await this.reply('xml信息目前还无能为力哦~')
+  //         return true
+  //       }
+  //       if (!msgType) {
+  //         await this.reply(`${global.God}！！！`)
+  //         const img = await avocadoRender(`# ${global.God}！！！`)
+  //         if (img) await e.reply(img)
+  //         return true
+  //       }
+  //       text = msgInfo
+  //       for (const item of text) {
+  //         const img = await avocadoRender(item)
+  //         if (img) await e.reply(img)
+  //       }
+  //     } else {
+  //       text = e.msg.trim().replace(new RegExp(`#?${global.God}[！!]\\s?`), '')
+  //     }
+  //   }
+  //   // 递归终止
+  //   if (Array.isArray(text)) return true
+  //   const tplFile = path.join(pluginRoot, 'resources', 'html', 'markdown.html')
+  //   if (title === '') {
+  //     title = Math.random() > 0.5 ? ' Here is Avocado! ' : ' Avocado’s here! '
+  //   }
+  //   // 接替md语法
+  //   const md = new MarkdownIt({
+  //     html: true,
+  //     breaks: true
+  //   })
+  //   const markdownHtml = md.render(text)
+  //   try {
+  //     await puppeteerManager.init()
+  //     const page = await puppeteerManager.newPage()
+  //     await page.goto(`file://${tplFile}`, { waitUntil: 'networkidle0' })
+  //     const templateContent = await page.content()
+  //     const render = template.compile(templateContent)
+  //     const data = { title, markdownHtml }
+  //     const htmlContent = render(data)
+  //     await page.setContent(htmlContent)
+  //     const body = await page.$('body')
+  //     img = segment.image(await body.screenshot({
+  //       type: 'jpeg',
+  //       quality: 100
+  //     }))
+  //     await puppeteerManager.closePage(page)
+  //     await puppeteerManager.close()
+  //   } catch (error) {
+  //     logger.error(`${e.msg}图片生成失败:${error}`)
+  //     return `${e.msg}图片生成失败:${error}`
+  //   }
+  //   return img
+  // }
 
   async avocadoPreview (e, param = '') {
     let url
@@ -414,11 +420,11 @@ export class AvocadoRuleALL extends plugin {
     if (await redis.get('AVOCADO:MOVIE_EXPIRE')) {
       mainInfoList = JSON.parse(await redis.get('AVOCADO:MOVIE_DETAILS'))
     } else {
-      await this.reply('更新数据中...请稍等...')
+      await this.reply('更新数据中...此过程需要较长时间，请稍等...')
       try {
         mainInfoList = await getMovieList(this)
         await redis.set('AVOCADO:MOVIE_DETAILS', JSON.stringify(mainInfoList))
-        await redis.set('AVOCADO:MOVIE_EXPIRE', 1, { EX: 60 * 60 * 24 })
+        await redis.set('AVOCADO:MOVIE_EXPIRE', 1, { EX: 60 * 60 * 24 * 3})
       } catch (error) {
         this.reply(`啊哦!${error}`)
         return false
@@ -445,7 +451,12 @@ export class AvocadoRuleALL extends plugin {
         }
         return `${index + 1}.${item.nm} -> ${n}`
       })
-    const img = await this.avocadoRender({}, `最近上映的影片共有${mlistLength}部\n${scList.join('\n')}\n你想了解关于哪一部影片的详细信息呢~`, '热映电影')
+    scList = splitArray(scList, 2)
+    const img = await avocadoRender(scList, {
+      title: '热映电影',
+      caption: `最近上映的影片共有${mlistLength}部`,
+      footer: '你想了解哪一部影片呢~'
+    })
     if (img) {
       await this.reply(img)
     }
