@@ -69,7 +69,7 @@ export class avocadoPsycho extends plugin {
       await this.e.reply(replyMsg)
     } else {
       replyMsg = replyMsg.split('\n').map(item => '# ' + item + '\n').join('')
-      const img = await avocadoRender(replyMsg, {})
+      const img = await avocadoRender(replyMsg)
       if (img) {
         await this.e.reply(img)
       }
