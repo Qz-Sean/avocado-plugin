@@ -92,7 +92,7 @@ export class avocadoMusic extends plugin {
               const img = await avocadoRender(replyMsg.join(''), { title: '', caption: '', footer: `你想不想继续了解${singerInfo.name}的热门单曲呢~` })
               if (img) await this.reply(img)
               await getHotList(e.sender.user_id, singerInfo.name)
-              await redis.set(`AVOCADO:MUSIC_${this.e.sender.user_id}_FROM`, 'randomSinger' , { EX: 60 * 10 })
+              await redis.set(`AVOCADO:MUSIC_${this.e.sender.user_id}_FROM`, 'randomSinger', { EX: 60 * 10 })
               this.setContext('isContinue')
               return true
             }
@@ -186,6 +186,7 @@ export class avocadoMusic extends plugin {
 
   async getSinger (e) {
     const singer = e.msg.trim().replace(/#?了解/, '')
+    logger.warn(singer)
     const singerId = await getSingerId(singer)
     if (!singerId) {
       const img = await avocadoRender(`### 没有找到名为 ${singer} 的歌手呢...\n${await getBonkersBabble({}, global.God, 'native')}`, { title: '', caption: '', footer: '' })
@@ -211,10 +212,15 @@ export class avocadoMusic extends plugin {
     if (typeof this.e.msg !== 'string') { return }
     const reg = /算了|0|想|1|换/
     if (!reg.test(this.e.msg)) {
-      // const img = await avocadoRender(`### 🤔💭 想要呢还是算了呢？\n${await getBonkersBabble({}, global.God, 'native')}`, { title: '', caption: '', footer: '' })
-      // if (img) await this.reply(img)
+      const count = await redis.get(`AVOCADO_${this.e.sender.user_id}_CMDCOUNT`)
+      if (!count) {
+        const img = await avocadoRender(`### 🤔💭 想要呢？还是算了呢？\n${await getBonkersBabble({}, global.God, 'native')}`, { title: '', caption: '', footer: '' })
+        if (img) await this.reply(img)
+        await redis.set(`AVOCADO_${this.e.sender.user_id}_CMDCOUNT`, 1, { EX: 60 * 2 })
+      }
     } else {
       if (/算了|0/.test(this.e.msg)) {
+        await this.e.reply(`${global.God}！！！`)
         logger.info('finish isContinue')
         this.finish('isContinue')
         return true
@@ -267,16 +273,22 @@ export class avocadoMusic extends plugin {
       const songId = selectedMusic?.songId
       logger.warn('点歌: ', !!hotList, selectedMusic, songName, songId)
       if (!(songName && songId)) return false
-      const songInfo = await findSong(this.e, {
+      const songInfo = await findSong(e, {
         param: songName,
         isRandom: false,
         songId,
         from: 'hot'
       })
-      res = sendMusic(this.e, songInfo)
+      if (songInfo) {
+        res = sendMusic(this.e, songInfo)
+      } else {
+        logger.info('finish selectMusic')
+        this.finish('selectMusic')
+      }
     }
     if (!res) {
-      return false
+      logger.info('finish selectMusic')
+      this.finish('selectMusic')
     }
   }
 
@@ -561,11 +573,19 @@ async function findSong (e, data = { param: '', songId: '', isRandom: false, fro
       return false
     }
     let searchRes
-    if (data.songId && (data.from === 'random' || data.from === 'hot')) {
-      logger.warn('热门|随机点歌')
-      searchRes = result?.result?.songs
-      // 处理搜id有概率搜不到的问题
-      searchRes = searchRes.find(song => song.id === data.songId)
+    if (data.songId) {
+      if (data.from === 'random') {
+        logger.warn('随机点歌')
+        searchRes = result?.result?.songs
+        // 处理搜id有概率搜不到的问题
+        searchRes = searchRes.find(song => song.id === data.songId)
+      }
+      if (data.from === 'hot') {
+        logger.warn('热门点歌')
+        searchRes = result?.result?.songs
+        // 处理搜id有概率搜不到的问题
+        searchRes = searchRes.find(song => song.id === data.songId)
+      }
     } else if (!data.songId && data.isRandom) {
       logger.warn('随机歌名点歌')
       // 随机但没有传入songId ==> 即参数不是歌手
@@ -574,7 +594,13 @@ async function findSong (e, data = { param: '', songId: '', isRandom: false, fro
       logger.warn('普通点歌')
       searchRes = result?.result?.songs?.[0]
     }
-    return await getMusicDetail(searchRes)
+    if (!searchRes) {
+      const img = await avocadoRender(`### 没有找到名为 ${data.param} 的歌曲呢...试试其他选择吧~\n${await getBonkersBabble({}, global.God, 'native')}`, { title: '', caption: '', footer: '' })
+      if (img) await e.reply(img)
+      return false
+    } else {
+      return await getMusicDetail(searchRes)
+    }
   } catch (err) {
     logger.error(err)
     return false
@@ -859,7 +885,8 @@ async function sendMusic (e, data, toUin = null) {
   let comments = data.comments.map(item => [`点赞数：${item[0]}\n评论内容：${item[1]}`]).join('\n\n')
   let forwardMsg
   if (comments.length) {
-    if (data.lyrics) {
+    // ['']
+    if (data.lyrics.join('').length) {
       forwardMsg = [
         await avocadoRender(comments, { title: `${data.name} - 精选评论`, caption: '', footer: '' }),
         await avocadoRender(data.lyrics.join(''), { title: `${data.name}`, caption: '', footer: '' })
@@ -867,7 +894,7 @@ async function sendMusic (e, data, toUin = null) {
     } else {
       await avocadoRender(comments, { title: `${data.name} - 精选评论`, caption: '', footer: '' })
     }
-  } else if (data.lyrics) {
+  } else if (data.lyrics.join('').length) {
     forwardMsg = [
       await avocadoRender(data.lyrics.join(''), { title: `${data.name}`, caption: '', footer: '' })
     ]
