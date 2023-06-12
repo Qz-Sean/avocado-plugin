@@ -12,7 +12,7 @@ export function supportGuoba () {
       title: 'Avocado-Plugin',
       author: '@Sean Murphy',
       authorLink: 'https://github.com/Qz-Sean',
-      link: 'https://github.com/Qz-Sean?tab=repositories',
+      link: 'https://github.com/Qz-Sean/avocado-plugin',
       isV3: true,
       isV2: false,
       description: '鳄梨酱！！！',
