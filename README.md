@@ -16,8 +16,6 @@ pnpm i
 # 在QQ发送 鳄梨酱！！！ 获取使用帮助
 ```
 
-#### 已实现
-
 > **翻译和天气查询功能是受到 [yenai-plugin](https://github.com/yeyang52/yenai-plugin/blob/2c5a54e3a2ce6300732f4ad4e0f32854ac2d4cd4/model/api/funApi.js#L25) 与 [xiaofei-plugin](https://github.com/xfdown/xiaofei-plugin/blob/master/apps/%E5%A4%A9%E6%B0%94.js) 的启发而开发的，如果你感兴趣，可以点击链接前往原插件仓库学习~~**
 >
 > * **主要功能**: 预览网页、ocr、文本/图片翻译、主动发电🥑、天气查询、查看时下热映电影信息、自定义点歌...
