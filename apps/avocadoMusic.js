@@ -1,9 +1,10 @@
 import fetch from 'node-fetch'
 import plugin from '../../../lib/plugins/plugin.js'
 import { Config } from '../utils/config.js'
-import { avocadoRender, generateRandomHeader, makeForwardMsg, splitArray } from '../utils/common.js'
+import { avocadoRender, generateRandomHeader, sleep, splitArray } from '../utils/common.js'
 import { getBonkersBabble } from './avocadoPsycho.js'
 import { singerMap, singerTypeMap } from '../utils/const.js'
+import { ChatGPTAPI } from 'chatgpt'
 let stateArr = {}
 
 export class avocadoMusic extends plugin {
@@ -19,7 +20,7 @@ export class avocadoMusic extends plugin {
           fnc: 'pickMusic'
         },
         {
-          reg: `^(来点好听的|${global.God}[!！]|下一首|切歌|换歌|下一曲)$`,
+          reg: `^(来点好听的|${global.God}[!！]|下一首|切歌|听歌|换歌|下一曲)$`,
           fnc: 'randomMusic'
         },
         {
@@ -45,6 +46,27 @@ export class avocadoMusic extends plugin {
         }
       ]
     })
+
+    this.task = [
+      {
+        cron: '15 7 * * *',
+        // cron: '*/1 * * * *',
+        name: 'Good morning',
+        fnc: this.sayGoodMorning
+      },
+      {
+        cron: '5 12 * * *',
+        // cron: '*/1 * * * *',
+        name: 'Good afternoon',
+        fnc: this.sayGoodAfternoon
+      },
+      {
+        cron: '30 23 * * *',
+        // cron: '*/1 * * * *',
+        name: 'Nightly-night',
+        fnc: this.sayGoodnight
+      }
+    ]
   }
 
   async sendBoradCast () {
@@ -319,7 +341,7 @@ export class avocadoMusic extends plugin {
     const userData = await redis.get(`AVOCADO:MUSIC_${e.sender.user_id}_FAVSONGLIST`)
     const songList = JSON.parse(userData)
     if (!songList) {
-      await this.reply('我还不知道你喜欢听谁的歌呢ο(=•ω＜=)ρ⌒☆')
+      await this.reply('我还不知道你喜欢听谁的歌呢ο(=•ω＜=)ρ⌒☆\n通过 #设置歌手 告诉我吧~')
       return false
     }
     const selectedMusic = songList[Math.floor(songList.length * Math.random())]
@@ -428,6 +450,108 @@ export class avocadoMusic extends plugin {
     }
   }
 
+  async sayGoodMorning () {
+    const [replyMsg, songId, songName] = await getGreetMsg(105402228, 1)
+    const song = await findSong({}, { param: songName, songId, isRandom: false, from: 'goodMorning' })
+    let toSend = Config.initiativeGroups || []
+    let img
+    if (replyMsg && song) {
+      let comments = song.comments.map(item => [`🌻${item[1]}`]).join('\n\n')
+      if (comments.length) {
+        img = await avocadoRender(comments, { title: '🌻早上好呀🌻', caption: '', footer: '' })
+      }
+      for (const element of toSend) {
+        if (!element) {
+          continue
+        }
+        let groupId = parseInt(element)
+        if (Bot.getGroupList().get(groupId)) {
+          await Bot.sendGroupMsg(groupId, replyMsg)
+          const e = {}
+          e.group = {}
+          e.groupId = groupId
+          e.group.gid = groupId
+          e.isGroup = true
+          song.autoSend = true
+          await sendMusic(e, song)
+          await sleep(2000)
+          await Bot.sendGroupMsg(groupId, img)
+          await sleep(2000)
+        } else {
+          logger.warn('机器人不在要发送的群组里。' + groupId)
+        }
+      }
+    }
+  }
+
+  async sayGoodAfternoon () {
+    const [replyMsg, songId, songName] = await getGreetMsg(2878202769, 2)
+    const song = await findSong({}, { param: songName, songId, isRandom: false, from: 'goodAfternoon' })
+    let toSend = Config.initiativeGroups || []
+    let img
+    if (replyMsg && song) {
+      let comments = song.comments.map(item => [`🌊${item[1]}`]).join('\n\n')
+      if (comments.length) {
+        img = await avocadoRender(comments, { title: '🍴大家中午好呀！！', caption: '', footer: '' })
+      }
+      for (const element of toSend) {
+        if (!element) {
+          continue
+        }
+        let groupId = parseInt(element)
+        if (Bot.getGroupList().get(groupId)) {
+          await Bot.sendGroupMsg(groupId, replyMsg)
+          const e = {}
+          e.group = {}
+          e.groupId = groupId
+          e.group.gid = groupId
+          e.isGroup = true
+          song.autoSend = true
+          await sendMusic(e, song)
+          await sleep(2000)
+          await Bot.sendGroupMsg(groupId, img)
+          await sleep(2000)
+        } else {
+          logger.warn('机器人不在要发送的群组里。' + groupId)
+        }
+      }
+    }
+  }
+
+  async sayGoodnight () {
+    const [replyMsg, songId, songName] = await getGreetMsg(7350109521, 3)
+    const song = await findSong({}, { param: songName, songId, isRandom: false, from: 'goodnight' })
+    let toSend = Config.initiativeGroups || []
+    let img
+    if (replyMsg && song) {
+      let comments = song.comments.map(item => [`🌛${item[1]}`]).join('\n\n')
+      if (comments.length) {
+        img = await avocadoRender(comments, { title: '晚安😴', caption: '', footer: '' })
+      }
+      for (const element of toSend) {
+        if (!element) {
+          continue
+        }
+        let groupId = parseInt(element)
+        if (Bot.getGroupList().get(groupId)) {
+          await Bot.sendGroupMsg(groupId, replyMsg)
+          const e = {}
+          e.group = {}
+          e.groupId = groupId
+          e.group.gid = groupId
+          e.isGroup = true
+          song.autoSend = true
+          await sendMusic(e, song)
+          await sleep(2000)
+          await Bot.sendGroupMsg(groupId, img)
+          await sleep(2000)
+        } else {
+          logger.warn('机器人不在要发送的群组里。' + groupId)
+        }
+      }
+    }
+  }
+
   /**
    * @param msg 发送的消息
    * @param quote 是否引用回复
@@ -486,6 +610,120 @@ export class avocadoMusic extends plugin {
       delete stateArr[this.conKey(isGroup)][type]
     }
   }
+}
+async function getPlaylistById (listId) {
+  const url = 'http://110.41.21.181:3000/playlist/detail?id=' + listId
+  // logger.warn(url)
+  const headers = generateRandomHeader()
+  const options = {
+    method: 'GET',
+    headers
+  }
+  try {
+    const response = await fetch(url, options)
+    let res = await response.json()
+    if (res.code !== 200) { return false }
+    const songs = res?.playlist?.tracks
+    if (!songs || !songs.length) return false
+    // logger.warn('songs: ', songs)
+    return songs.map((eachSong, index) => ({
+      index: index + 1,
+      name: eachSong.name,
+      id: eachSong.id,
+      singer: eachSong?.ar.map(item => item.name),
+      albumId: eachSong?.al.id,
+      albumName: eachSong?.al.name
+    }))
+  } catch (err) {
+    logger.error(err)
+    return false
+  }
+}
+
+/**
+ * @param albumId
+ */
+async function getAlbumDetail (albumId) {
+  const url = 'http://110.41.21.181:3000/album?id=' + albumId
+  const headers = generateRandomHeader()
+  const options = {
+    method: 'GET',
+    headers
+  }
+  try {
+    const response = await fetch(url, options)
+    let res = await response.json()
+    if (res.code !== 200) { return false }
+    const songs = res?.songs.map((eachSong, index) => ({
+      index: index + 1,
+      name: eachSong.name,
+      id: eachSong.id
+    }))
+    const artist = res.album.artists.map(item => item.name)
+    const albumDesc = res.album.description
+    return [artist, albumDesc, songs]
+  } catch (err) {
+    logger.error(err)
+  }
+}
+
+/**
+ *
+ * @param listId - 歌单id
+ * @param greetType - 问候类型
+ * @returns {Promise<(string|*)[]|boolean>}
+ */
+async function getGreetMsg (listId, greetType) {
+  let proxy
+  if (Config.proxy) {
+    try {
+      proxy = (await import('https-proxy-agent')).default
+    } catch (e) {
+      console.warn('未安装https-proxy-agent，请在插件目录下执行pnpm add https-proxy-agent')
+    }
+  }
+  const goodnightList = await getPlaylistById(listId)
+  // logger.warn('goodnightList:', goodnightList)
+  const introSong = goodnightList ? goodnightList[Math.floor(Math.random() * goodnightList.length)] : ''
+  logger.warn('introSong:', introSong)
+  if (!introSong) {
+    return false
+  }
+  const hour = ('0' + new Date().getHours()).slice(-2)
+  const minute = ('0' + new Date().getMinutes()).slice(-2)
+  let question
+  switch (greetType) {
+    case 1:
+      question = `我们现在在一个群聊中，现在是早上${hour}:${minute}点，将这首来自${introSong.singer.join('')}的${introSong.name}推荐给群友。这首歌的歌曲专辑信息是${await getAlbumDetail(introSong.albumId)}，可以简单为群友介绍一下哦。就让我们来开启大家美好的一天吧！不用说大家好，大家已经很熟悉了。`
+      break
+    case 2:
+      question = `我们现在在一个群聊中，现在是中午${hour}:${minute}点，将这首来自${introSong.singer.join('')}的${introSong.name}推荐给群友。这首歌的歌曲专辑信息是${await getAlbumDetail(introSong.albumId)}，可以简单为群友介绍一下哦。大家下午也要干净满满！可以给大家一点类似'中午小睡一会儿'这样的小建议。不用说大家好，大家已经很熟悉了。`
+      break
+    case 3:
+      question = `我们现在在一个群聊中，已经晚上${hour}:${minute}点了，写一段话告诉群友早点休息，并将这首来自${introSong.singer.join('')}的${introSong.name}推荐给群友。这首歌的歌曲专辑信息是${await getAlbumDetail(introSong.albumId)}，可以简单为群友介绍一下哦。不用说大家好，大家已经很熟悉了。`
+      break
+  }
+  const newFetch = (url, options = {}) => {
+    const defaultOptions = Config.proxy
+      ? {
+          agent: proxy(Config.proxy)
+        }
+      : {}
+
+    const mergedOptions = {
+      ...defaultOptions,
+      ...options
+    }
+
+    return fetch(url, mergedOptions)
+  }
+  let api = new ChatGPTAPI({
+    apiBaseUrl: Config.apiBaseUrl,
+    apiKey: Config.apiKey,
+    fetch: newFetch
+  })
+  const res = await api.sendMessage(question)
+  return [res.text, introSong.id, introSong.name]
 }
 async function getSingerDetail (singerId) {
   let url = `http://110.41.21.181:3000/artist/detail?id=${singerId}`
@@ -548,10 +786,10 @@ async function getMusicUrl (songId) {
  * 获取歌曲信息
  * @param {object} e
  * @param {object} data
- * - param：必填，可以是歌曲名或歌曲名+歌手的组合
+ * - param：必填，不支持id搜歌，可以是歌曲名或歌曲名+歌手的组合
  * - songId：选填，使用该参数时需指定来源'from'
  * - isRandom：选填，是否随机点歌
- * - from： 选填，如果需要使用songId参数，则必须指定该参数。
+ * - from： 选填，如果需要使用songId参数，则必须指定该参数，以便更好处理搜索结果。ps：现在来看，意义不大 emmm
  * @returns {Promise<{}|boolean>}
  */
 async function findSong (e, data = { param: '', songId: '', isRandom: false, from: '' }) {
@@ -582,6 +820,12 @@ async function findSong (e, data = { param: '', songId: '', isRandom: false, fro
       }
       if (data.from === 'hot') {
         logger.warn('热门点歌')
+        searchRes = result?.result?.songs
+        // 处理搜id有概率搜不到的问题
+        searchRes = searchRes.find(song => song.id === data.songId)
+      }
+      if (data.from === 'goodnight' || data.from === 'goodAfternoon' || data.from === 'goodMorning') {
+        logger.warn('问好点歌')
         searchRes = result?.result?.songs
         // 处理搜id有概率搜不到的问题
         searchRes = searchRes.find(song => song.id === data.songId)
@@ -842,22 +1086,25 @@ async function sendMusic (e, data, toUin = null) {
   let recvUin
   let sendType
   let recvGuildId = 0
-
-  if (e.isGroup && toUin == null) { // 群聊
-    recvUin = e.group.gid
+  if (data.groupId) {
+    recvUin = data.groupId
     sendType = 1
-  } else if (e.guild_id) { // 频道
-    recvUin = Number(e.channel_id)
-    recvGuildId = BigInt(e.guild_id)
-    sendType = 3
-  } else if (toUin == null) { // 私聊
-    recvUin = e.friend.uid
-    sendType = 0
-  } else { // 指定号码私聊
-    recvUin = toUin
-    sendType = 0
+  } else {
+    if (e.isGroup && toUin == null) { // 群聊
+      recvUin = e.group.gid
+      sendType = 1
+    } else if (e.guild_id) { // 频道
+      recvUin = Number(e.channel_id)
+      recvGuildId = BigInt(e.guild_id)
+      sendType = 3
+    } else if (toUin == null) { // 私聊
+      recvUin = e.friend.uid
+      sendType = 0
+    } else { // 指定号码私聊
+      recvUin = toUin
+      sendType = 0
+    }
   }
-
   let body = {
     1: appid,
     2: 1,
@@ -880,30 +1127,42 @@ async function sendMusic (e, data, toUin = null) {
     },
     19: recvGuildId
   }
-  let payload = await Bot.sendOidb('OidbSvc.0xb77_9', core.pb.encode(body))
-  let result = core.pb.decode(payload)
-  let comments = data.comments.map(item => [`点赞数：${item[0]}\n评论内容：${item[1]}`]).join('\n\n')
-  let forwardMsg
-  if (comments.length) {
-    // ['']
-    if (data.lyrics.join('').length) {
-      forwardMsg = [
-        await avocadoRender(comments, { title: `${data.name} - 精选评论`, caption: '', footer: '' }),
-        await avocadoRender(data.lyrics.join(''), { title: `${data.name}`, caption: '', footer: '' })
-      ]
-    } else {
-      await avocadoRender(comments, { title: `${data.name} - 精选评论`, caption: '', footer: '' })
+  try {
+    let payload = await Bot.sendOidb('OidbSvc.0xb77_9', core.pb.encode(body))
+    let result = core.pb.decode(payload)
+    // let comments = data.comments.map(item => [`点赞数：${item[0]}\n评论内容：${item[1]}`]).join('\n\n')
+    // let forwardMsg
+    // if (comments.length) {
+    //   // ['']
+    //   if (data.lyrics.join('').length) {
+    //     forwardMsg = [
+    //       await avocadoRender(comments, { title: `${data.name} - 精选评论`, caption: '', footer: '' }),
+    //       await avocadoRender(data.lyrics.join(''), { title: `${data.name}`, caption: '', footer: '' })
+    //     ]
+    //   } else {
+    //     await avocadoRender(comments, { title: `${data.name} - 精选评论`, caption: '', footer: '' })
+    //   }
+    // } else if (data.lyrics.join('').length) {
+    //   forwardMsg = [
+    //     await avocadoRender(data.lyrics.join(''), { title: `${data.name}`, caption: '', footer: '' })
+    //   ]
+    // }
+    // if (!data.autoSend) {
+    //   return forwardMsg
+    // } else {
+    //   if (forwardMsg) {
+    //     const formattedMsg = await makeForwardMsg(e, forwardMsg, '鳄门🙏...')
+    //     await e.reply(formattedMsg)
+    //   }
+    // }
+    if (result[3] !== 0) {
+      if (!data.groupId) {
+        e.reply('歌曲分享失败：' + result[3], true)
+      } else {
+        logger.error('歌曲分享失败：' + result[3])
+      }
     }
-  } else if (data.lyrics.join('').length) {
-    forwardMsg = [
-      await avocadoRender(data.lyrics.join(''), { title: `${data.name}`, caption: '', footer: '' })
-    ]
-  }
-  if (forwardMsg) {
-    const formattedMsg = await makeForwardMsg(e, forwardMsg, '鳄门🙏...')
-    await e.reply(formattedMsg)
-  }
-  if (result[3] !== 0) {
-    e.reply('歌曲分享失败：' + result[3], true)
+  } catch (err) {
+    logger.error('err:', err)
   }
 }

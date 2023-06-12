@@ -10,6 +10,10 @@ const defaultConfig = {
   initiativeName: '',
   executablePath: '',
   wyy: '',
+  apiKey: '',
+  apiBaseUrl: '',
+  proxy: '',
+  favlist: '',
   version: 'v1.2.0'
 }
 const _path = process.cwd()

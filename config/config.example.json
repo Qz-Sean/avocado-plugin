@@ -16,5 +16,8 @@
   "isAutoOnset": false,
   "onsetLatentPeriod": 5,
   "initiativeGroups": [],
-  "wyy": ""
+  "wyy": "",
+  "proxy": "",
+  "apiBaseUrl": "",
+  "apiKey": ""
 }
