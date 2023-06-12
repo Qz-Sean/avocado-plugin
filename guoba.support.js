@@ -49,19 +49,14 @@ export function supportGuoba () {
           component: 'Switch'
         },
         {
-          field: 'is24HourOnset',
-          label: '全天候发电',
-          bottomHelpMessage: '今天我去给鳄梨酱买生蚝，回家的路上，生蚝全都跳出袋子，钻到了泥土里，我才知道，蚝喜欢泥😍',
-          component: 'Switch'
-        },
-        {
           field: 'onsetLatentPeriod',
           label: '发电周期',
-          bottomHelpMessage: '好想成为鳄梨酱卧室的门,每天都能被他进进出出🥵🥵🥵🥵。(PS:0-23为小时。大于23为分钟 => 时间周期为你填的数字-23。)',
+          bottomHelpMessage: '好想成为鳄梨酱卧室的门,每天都能被他进进出出🥵🥵🥵🥵。',
           component: 'InputNumber',
           componentProps: {
-            min: 0,
-            max: 83
+            min: 1,
+            max: 23,
+            addonAfter: '小时'
           }
         },
         {
@@ -85,6 +80,9 @@ export function supportGuoba () {
       setConfigData (data, { Result }) {
         for (let [keyPath, value] of Object.entries(data)) {
           if (keyPath === 'translateLang' || keyPath === 'targetArea' || keyPath === 'initiativeGroups') { value = value.toString().split(/[,，;；|]/) }
+          if (keyPath === 'onsetLatentPeriod') {
+            value = /^\d{1,2}$/.test(value) ? value : 3
+          }
           if (Config[keyPath] !== value) { Config[keyPath] = value }
         }
         return Result.ok({}, '保存成功~')

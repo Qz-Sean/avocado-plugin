@@ -5,7 +5,6 @@ import fs from 'fs'
 import template from 'art-template'
 import { segment } from 'icqq'
 import MarkdownIt from 'markdown-it'
-
 export async function getSource (e) {
   if (!e.source) return false
   let sourceReply
@@ -124,7 +123,9 @@ export async function getImageOcrText (e) {
 async function getMasterQQ () {
   return (await import('../../../lib/config/config.js')).default.masterQQ
 }
-
+function getOnsetMinutes () {
+  return Math.ceil(Math.random() * 3)
+}
 /**
  * 给主人发送消息
  * @param msg 消息内容
@@ -239,6 +240,14 @@ export async function avocadoRender (pendingText, otherInfo = { title: '', capti
     const render = template.compile(templateContent)
     const htmlContent = render(data)
     await page.setContent(htmlContent)
+    if (title === null) {
+      await page.evaluate(() => {
+        const elements = document.getElementsByClassName('title')
+        while (elements.length > 0) {
+          elements[0].remove()
+        }
+      })
+    }
     const body = await page.$('body')
     result = segment.image(await body.screenshot({
       type: 'jpeg',

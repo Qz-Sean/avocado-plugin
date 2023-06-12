@@ -3,30 +3,6 @@ import fetch from 'node-fetch'
 import { avocadoRender, generateRandomHeader, sleep } from '../utils/common.js'
 import { Config } from '../utils/config.js'
 
-let period, period1
-if (Config.is24HourOnset) {
-  period1 = '*'
-  if (Config.onsetLatentPeriod >= 83) {
-    period = '*/60'
-  } else {
-    if (Config.onsetLatentPeriod > 23) {
-      period = '*/' + ((parseInt(Config.onsetLatentPeriod) - 23))
-    } else {
-      period = Math.ceil(Math.random() * 10)
-      period1 = '0-23/' + Config.onsetLatentPeriod
-    }
-  }
-} else {
-  period = Math.ceil(Math.random() * 10)
-  if (Config.onsetLatentPeriod > 23) {
-    period1 = '7-23/23'
-  } else {
-    period1 = '7-23/' + Config.onsetLatentPeriod
-  }
-}
-
-let cronExpression = period + ' ' + period1 + ' * * *'
-// logger.info('cronExpression:', cronExpression)
 export class avocadoPsycho extends plugin {
   constructor (e) {
     super({
@@ -43,9 +19,7 @@ export class avocadoPsycho extends plugin {
     })
     this.task = [
       {
-        // 这玩意怎么不好使啊...
-        cron: cronExpression,
-        // cron: '*/1 * * * *',
+        cron: Math.ceil(5 + Math.random() * 15) + ' 7-23/' + Config.onsetLatentPeriod + ' * * *',
         name: '主动发电<(*￣▽￣*)/',
         fnc: this.sendBonkerBabble
       }
@@ -54,22 +28,34 @@ export class avocadoPsycho extends plugin {
 
   async avocadoPsycho (e) {
     if (e.msg.includes('#')) return true
+    const isApiErrorStr = await redis.get('AVOCADO_PSYCHO_APIERROR')
+    const isApiError = isApiErrorStr ? parseInt(isApiErrorStr) : 0
     let replyMsg
-    replyMsg = await getBonkersBabble(e, global.God, 'api')
-    if (!replyMsg) {
-      await this.e.reply('发电失败(ノへ￣、)该提醒作者更换API啦...将使用本地发电¡¡¡( •̀ ᴗ •́ )و!!!')
-      await sleep(1500)
-      replyMsg = await getBonkersBabble(e, global.God, 'native')
+    if (isApiError) {
+      replyMsg = false
+    } else {
+      replyMsg = await getBonkersBabble(e, global.God, 'api')
+      if (!replyMsg) {
+        await this.e.reply('发电失败(ノへ￣、)该提醒作者更换API啦...将使用本地发电¡¡¡( •̀ ᴗ •́ )و!!!')
+        await redis.set('AVOCADO_PSYCHO_APIERROR', 1, { EX: 60 * 90 })
+        await sleep(1500)
+      }
+    }
+    if (isApiError === 2) {
+      return false
+    } else {
+      replyMsg = !replyMsg ? await getBonkersBabble(e, global.God, 'native') : replyMsg
       if (!replyMsg) {
         await this.e.reply('Σ( ° △ °|||)︴ 震惊！本地发电失败！')
-        return true
+        await redis.set('AVOCADO_PSYCHO_APIERROR', 2, { EX: 60 * 90 })
+        return false
       }
     }
     if (Math.random() < 0.5) {
       await this.e.reply(replyMsg)
     } else {
       replyMsg = replyMsg.split('\n').map(item => '# ' + item + '\n').join('')
-      const img = await avocadoRender(replyMsg)
+      const img = await avocadoRender(replyMsg, { title: null, caption: '', footer: '' })
       if (img) {
         await this.e.reply(img)
       }
@@ -100,7 +86,7 @@ export class avocadoPsycho extends plugin {
             await Bot.sendGroupMsg(groupId, replyMsg)
           } else {
             replyMsg = replyMsg.split('\n').map(item => '# ' + item + '\n').join('')
-            const img = await avocadoRender(replyMsg)
+            const img = await avocadoRender(replyMsg, { title: null, caption: '', footer: '' })
             if (img) {
               await Bot.sendGroupMsg(groupId, img)
             }
@@ -108,7 +94,7 @@ export class avocadoPsycho extends plugin {
           await sleep(2000)
         }
       } else {
-        logger.warn('机器人不在要发送的群组里，忽略群。同时建议检查配置文件修改要打招呼的群号。' + groupId)
+        logger.warn('机器人不在要发送的群组里。' + groupId)
       }
     }
   }
@@ -128,9 +114,6 @@ export async function getBonkersBabble (e = {}, GodName = '', dataSource = '', w
   // 不存在则返回[], psychoData 存在 则 isExit === true
   const psychoData = await redis.lRange('AVOCADO:PSYCHODATA', 0, -1)
   if (dataSource === 'api' || dataSource === '') {
-    if ((Math.round(Math.random() * 10) / 10) > 0.5) {
-      replyMsg = e.msg + '！！！'
-    }
     // let url = `https://xiaobapi.top/api/xb/api/onset.php?name=${GOD}`
     let url = `http://api.caonm.net/api/fab/f.php?msg=${GodName}`
     try {
@@ -153,7 +136,11 @@ export async function getBonkersBabble (e = {}, GodName = '', dataSource = '', w
               logger.warn(`已存入：${json.data}`)
             }
           }
-          replyMsg = json.data
+          if (Math.random() > 0.8) {
+            replyMsg = e.msg + '！！！'
+          } else {
+            replyMsg = json.data
+          }
         } else {
           replyMsg = json.toString()
         }

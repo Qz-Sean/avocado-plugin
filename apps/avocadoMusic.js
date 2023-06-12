@@ -212,11 +212,11 @@ export class avocadoMusic extends plugin {
     if (typeof this.e.msg !== 'string') { return }
     const reg = /算了|0|想|1|换/
     if (!reg.test(this.e.msg)) {
-      const count = await redis.get(`AVOCADO_${this.e.sender.user_id}_CMDCOUNT`)
+      const count = await redis.get(`AVOCADO_${this.e.sender.user_id}_REQUESTCOUNT`)
       if (!count) {
         const img = await avocadoRender(`### 🤔💭 想要呢？还是算了呢？\n${await getBonkersBabble({}, global.God, 'native')}`, { title: '', caption: '', footer: '' })
         if (img) await this.reply(img)
-        await redis.set(`AVOCADO_${this.e.sender.user_id}_CMDCOUNT`, 1, { EX: 60 * 2 })
+        await redis.set(`AVOCADO_${this.e.sender.user_id}_REQUESTCOUNT`, 1, { EX: 60 * 2 })
       }
     } else {
       if (/算了|0/.test(this.e.msg)) {
