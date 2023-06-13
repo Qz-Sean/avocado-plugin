@@ -713,13 +713,11 @@ async function getGreetMsg (listId, greetType) {
       console.warn('未安装https-proxy-agent，请在插件目录下执行pnpm add https-proxy-agent')
     }
   }
-  const goodnightList = await getPlaylistById(listId)
+  const greetList = await getPlaylistById(listId)
   // logger.warn('goodnightList:', goodnightList)
-  const introSong = goodnightList ? goodnightList[Math.floor(Math.random() * goodnightList.length)] : ''
+  const introSong = greetList ? greetList[Math.floor(Math.random() * greetList.length)] : ''
   logger.warn('introSong:', introSong)
-  if (!introSong) {
-    return false
-  }
+  if (!introSong) return false
   const hour = ('0' + new Date().getHours()).slice(-2)
   const minute = ('0' + new Date().getMinutes()).slice(-2)
   let question
