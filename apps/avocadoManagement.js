@@ -41,7 +41,7 @@ export class AvocadoManagement extends plugin {
   }
 
   async checkSpells (e) {
-    await e.reply(inspiringWords[Math.floor(Math.random() * inspiringWords.length)] + '\n' + Object.keys(phantomTransformation).join('变身[！|#]\n！为全局设置，#为本群设置。优先级：# > ！'))
+    await e.reply(inspiringWords[Math.floor(Math.random() * inspiringWords.length)] + '\n' + Object.keys(phantomTransformation).join('变身！\n！'))
     return true
   }
 
