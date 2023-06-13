@@ -93,14 +93,20 @@ export class avocadoMusic extends plugin {
       if (query) {
         if (isRandom) {
           if (isSinger) {
-            const song = hotList[Math.floor(Math.random() * hotList.length)]
-            const songInfo = await findSong(e, { param: song.songName, isRandom: false, songId: song.songId, from: 'random' })
-            if (!songInfo) {
+            let song = hotList[Math.floor(Math.random() * hotList.length)]
+            const data = {
+              param: song.songName,
+              isRandom: false,
+              songId: song.songId,
+              from: 'random'
+            }
+            song = await findSong(data)
+            if (!song) {
               const img = await avocadoRender(`### 没有找到名为 ${query} 的歌曲呢...试试其他选择吧~\n${await getBonkersBabble({}, global.God, 'native')}`, { title: '', caption: '', footer: '' })
               if (img) await this.reply(img)
               return
             }
-            await sendMusic(e, songInfo)
+            await sendMusic(e, song)
             return true
           } else {
             if (/歌手|音乐人/.test(query)) {
@@ -119,13 +125,14 @@ export class avocadoMusic extends plugin {
               return true
             }
             // 随机歌名点歌
-            const songInfo = await findSong(e, { param: query, isRandom, songId: '', from: 'random' })
-            if (!songInfo) {
+            const data = { param: query, isRandom, songId: '', from: 'random' }
+            const song = await findSong(data)
+            if (!song) {
               const img = await avocadoRender(`### 没有找到名为${query}的歌曲呢...试试其他选择吧~\n${await getBonkersBabble({}, global.God, 'native')}`, { title: '', caption: '', footer: '' })
               if (img) await this.reply(img)
               return
             }
-            await sendMusic(e, songInfo)
+            await sendMusic(e, song)
             return true
           }
         }
@@ -164,13 +171,14 @@ export class avocadoMusic extends plugin {
       return true
     } else {
       // 正常点歌
-      const songInfo = await findSong(e, { param: query, isRandom: false, songId: '', from: '' })
-      if (!songInfo) {
+      const data = { param: query, isRandom: false, songId: '', from: '' }
+      const song = await findSong(data)
+      if (!song) {
         const img = await avocadoRender(`### 没有找到名为 ${query} 的歌曲呢...\n${await getBonkersBabble({}, global.God, 'native')}`, { title: '', caption: '', footer: '' })
         if (img) await this.reply(img)
         return true
       }
-      await sendMusic(e, songInfo)
+      await sendMusic(e, song)
       return true
     }
   }
@@ -295,22 +303,25 @@ export class avocadoMusic extends plugin {
       const songId = selectedMusic?.songId
       logger.warn('点歌: ', !!hotList, selectedMusic, songName, songId)
       if (!(songName && songId)) return false
-      const songInfo = await findSong(e, {
+      const data = {
         param: songName,
         isRandom: false,
         songId,
         from: 'hot'
-      })
-      if (songInfo) {
-        res = sendMusic(this.e, songInfo)
+      }
+      const song = await findSong(data)
+      if (song) {
+        res = sendMusic(this.e, song)
       } else {
+        const img = await avocadoRender(`### 没有找到名为${songName}的歌曲呢...\n${await getBonkersBabble({}, global.God, 'native')}`, { title: '', caption: '', footer: '' })
+        if (img) await this.e.reply(img)
         logger.info('finish selectMusic')
         this.finish('selectMusic')
       }
-    }
-    if (!res) {
-      logger.info('finish selectMusic')
-      this.finish('selectMusic')
+      if (!res) {
+        logger.info('finish selectMusic')
+        this.finish('selectMusic')
+      }
     }
   }
 
@@ -451,8 +462,15 @@ export class avocadoMusic extends plugin {
   }
 
   async sayGoodMorning () {
-    const [replyMsg, songId, songName] = await getGreetMsg(105402228, 1)
-    const song = await findSong({}, { param: songName, songId, isRandom: false, from: 'goodMorning' })
+    let [replyMsg, songId, songName] = await getGreetMsg(105402228, 1)
+    let data = { param: songName, songId, isRandom: false, from: 'goodMorning' }
+    let song = await findSong(data)
+    // 重试一次
+    if (!song) {
+      [replyMsg, songId, songName] = await getGreetMsg(105402228, 1)
+      data = { param: songName, songId, isRandom: false, from: 'goodMorning' }
+      song = await findSong(data)
+    }
     let toSend = Config.initiativeGroups || []
     let img
     if (replyMsg && song) {
@@ -485,8 +503,15 @@ export class avocadoMusic extends plugin {
   }
 
   async sayGoodAfternoon () {
-    const [replyMsg, songId, songName] = await getGreetMsg(2878202769, 2)
-    const song = await findSong({}, { param: songName, songId, isRandom: false, from: 'goodAfternoon' })
+    let [replyMsg, songId, songName] = await getGreetMsg(2878202769, 2)
+    let data = { param: songName, songId, isRandom: false, from: 'goodAfternoon' }
+    let song = await findSong(data)
+    // 重试一次
+    if (!song) {
+      [replyMsg, songId, songName] = await getGreetMsg(2878202769, 2)
+      data = { param: songName, songId, isRandom: false, from: 'goodAfternoon' }
+      song = await findSong(data)
+    }
     let toSend = Config.initiativeGroups || []
     let img
     if (replyMsg && song) {
@@ -519,8 +544,14 @@ export class avocadoMusic extends plugin {
   }
 
   async sayGoodnight () {
-    const [replyMsg, songId, songName] = await getGreetMsg(7350109521, 3)
-    const song = await findSong({}, { param: songName, songId, isRandom: false, from: 'goodnight' })
+    let [replyMsg, songId, songName] = await getGreetMsg(7350109521, 3)
+    let data = { param: songName, songId, isRandom: false, from: 'goodnight' }
+    let song = await findSong(data)
+    if (!song) {
+      [replyMsg, songId, songName] = await getGreetMsg(7350109521, 3)
+      data = { param: songName, songId, isRandom: false, from: 'goodnight' }
+      song = await findSong(data)
+    }
     let toSend = Config.initiativeGroups || []
     let img
     if (replyMsg && song) {
@@ -784,7 +815,6 @@ async function getMusicUrl (songId) {
 
 /**
  * 获取歌曲信息
- * @param {object} e
  * @param {object} data
  * - param：必填，不支持id搜歌，可以是歌曲名或歌曲名+歌手的组合
  * - songId：选填，使用该参数时需指定来源'from'
@@ -792,7 +822,7 @@ async function getMusicUrl (songId) {
  * - from： 选填，如果需要使用songId参数，则必须指定该参数，以便更好处理搜索结果。ps：现在来看，意义不大 emmm
  * @returns {Promise<{}|boolean>}
  */
-async function findSong (e, data = { param: '', songId: '', isRandom: false, from: '' }) {
+async function findSong (data = { param: '', songId: '', isRandom: false, from: '' }) {
   const url = `http://110.41.21.181:3000/cloudsearch?keywords=${data.param}&limit=60`
   try {
     const headers = generateRandomHeader()
@@ -839,8 +869,6 @@ async function findSong (e, data = { param: '', songId: '', isRandom: false, fro
       searchRes = result?.result?.songs?.[0]
     }
     if (!searchRes) {
-      const img = await avocadoRender(`### 没有找到名为 ${data.param} 的歌曲呢...试试其他选择吧~\n${await getBonkersBabble({}, global.God, 'native')}`, { title: '', caption: '', footer: '' })
-      if (img) await e.reply(img)
       return false
     } else {
       return await getMusicDetail(searchRes)
