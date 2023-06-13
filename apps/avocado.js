@@ -22,7 +22,7 @@ export class AvocadoRuleALL extends plugin {
       name: '鳄梨酱',
       dsc: '鳄梨酱！！！',
       event: 'message',
-      priority: 300,
+      priority: 200,
       rule: [
         {
           /** 命令正则匹配 */
@@ -349,22 +349,26 @@ export class AvocadoRuleALL extends plugin {
   }
 
   async avocadoMovie (e) {
-    let mainInfoList
+    let movieList
     if (await redis.get('AVOCADO:MOVIE_EXPIRE')) {
-      mainInfoList = JSON.parse(await redis.get('AVOCADO:MOVIE_DETAILS'))
+      movieList = JSON.parse(await redis.get('AVOCADO:MOVIE_DETAILS'))
     } else {
       await this.reply('更新数据中...此过程需要较长时间，请稍等...')
       try {
-        mainInfoList = await getMovieList(this)
-        await redis.set('AVOCADO:MOVIE_DETAILS', JSON.stringify(mainInfoList))
+        movieList = await getMovieList(this)
+        await redis.set('AVOCADO:MOVIE_DETAILS', JSON.stringify(movieList))
         await redis.set('AVOCADO:MOVIE_EXPIRE', 1, { EX: 60 * 60 * 24 * 3 })
       } catch (error) {
         this.reply(`啊哦!${error}`)
         return false
       }
     }
-    const mlistLength = mainInfoList.length
-    let scList = mainInfoList
+    if (!movieList.length) {
+      await this.reply('出错了！')
+      return false
+    }
+    // 我的评价！
+    let analyzedList = movieList
       .filter(item => item.id)
       .map(item => {
         let sc = item.sc
@@ -384,15 +388,18 @@ export class AvocadoRuleALL extends plugin {
         }
         return `${item.index}.${item.nm} -> ${n}`
       })
-    scList = splitArray(scList, 2)
-    const img = await avocadoRender(scList, {
+    analyzedList = splitArray(analyzedList, 2)
+    const img = await avocadoRender(analyzedList, {
       title: '热映电影',
-      caption: `最近上映的影片共有${mlistLength}部`,
-      footer: '你想了解哪一部影片呢~'
+      caption: '',
+      footer: `<strong><i>最近上映的影片共有${movieList.length}部，你想了解哪一部影片呢~</i></strong>`,
+      renderType: 2
     })
-    if (img) {
-      await this.reply(img)
+    if (!img) {
+      await this.reply('生成图片错误！')
+      return false
     }
+    await this.reply(img)
     this.setContext('pickMe', false, 180)
   }
 
@@ -401,7 +408,7 @@ export class AvocadoRuleALL extends plugin {
       return
     }
     let mainInfoList = JSON.parse(await redis.get('AVOCADO:MOVIE_DETAILS'))
-    const reg = new RegExp(`^((0)|(${mainInfoList.map(item => item.index).join('|')})|(${mainInfoList.map(item => item.nm).join('|').replace(/\*/g, ' fuck ')}))$`)
+    const reg = new RegExp(`^((0{1,2})|(${mainInfoList.map(item => item.index).join('|')})|(${mainInfoList.map(item => item.nm).join('|').replace(/\*/g, ' fuck ')}))$`)
     if (!reg.test(this.e.msg)) { return }
     if (this.e.msg === '0') {
       logger.info('finish pickMe')
@@ -409,50 +416,65 @@ export class AvocadoRuleALL extends plugin {
       this.finish('pickMe')
       return true
     }
-    let selectedMovie = mainInfoList.find(item => item.index === parseInt(this.e.msg) || item.nm === this.e.msg)
-    logger.warn(selectedMovie, this.e.msg, mainInfoList[2])
-    let transformedMoviesDetails = []
-    Object.keys(movieKeyMap).map(async key => {
-      // 空值不要
-      if (!selectedMovie[key] || key === 'index') return false
-      let img
-      if (key === 'img') {
-        img = segment.image(selectedMovie[key])
-        transformedMoviesDetails.push(img)
-        transformedMoviesDetails.push('\n')
-        return true
-      }
-      if (key === 'nm') {
-        transformedMoviesDetails.push(`${movieKeyMap[key]}: ${selectedMovie[key]}\n`)
-        return true
-      }
-      if (key === 'sc' && selectedMovie.sc !== 0) {
-        transformedMoviesDetails.push(`${movieKeyMap[key]}: ${selectedMovie[key]}\n`)
-        return true
-      }
-      if (key === 'videoName') {
-        transformedMoviesDetails.push(`${movieKeyMap[key]}: ${selectedMovie[key]}\n`)
-        return true
-      }
-      if (key === 'videourl') {
-        transformedMoviesDetails.push(`${selectedMovie[key]}`)
-        transformedMoviesDetails.push('\n')
-        return true
-      }
-      if (key === 'photos') {
-        let photo
-        transformedMoviesDetails.push(`${movieKeyMap[key]}: \n`)
-        for (const i of selectedMovie[key]) {
-          photo = segment.image(i)
-          transformedMoviesDetails.push(photo)
+    try {
+      const movieIndex = await redis.get(`AVOCADO:MOVIE_${this.e.sender.user_id}_PICKEDMOVIE`)
+      let selectedMovie = movieIndex
+        ? mainInfoList.find(item => item.index === parseInt(movieIndex))
+        : mainInfoList.find(item => item.index === parseInt(this.e.msg) || item.nm === this.e.msg)
+      let transformedMoviesDetails = {}
+      let others = []
+      Object.keys(movieKeyMap).map(async key => {
+        // 空值不要
+        if (!selectedMovie[key] || key === 'index') return false
+        if (key === 'videoName') {
+          others.push(`${movieKeyMap[key]}: ${selectedMovie[key]}\n`)
+          return false
         }
+        if (key === 'videourl') {
+          others.push(`${selectedMovie[key]}`)
+          others.push('\n')
+          return false
+        }
+        if (key === 'photos') {
+          let photo
+          others.push(`${movieKeyMap[key]}: \n`)
+          for (const i of selectedMovie[key]) {
+            photo = segment.image(i)
+            others.push(photo)
+          }
+          return false
+        }
+        transformedMoviesDetails[movieKeyMap[key]] = selectedMovie[key]
         return true
+      })
+      let str = Object.keys(transformedMoviesDetails).map(function (key) {
+        if (key === '封面') return null
+        return key + '：' + transformedMoviesDetails[key] + '\n'
+      }).join('')
+      if (this.e.msg === '00') {
+        await this.reply(await makeForwardMsg(e, [others], '鳄门🙏...'))
+        await this.reply('可继续选择影片~~\n回复 00 获取本片剧照及预告\n回复 0 结束此次操作\n¡¡¡( •̀ ᴗ •́ )و!!!')
+        return
       }
-      transformedMoviesDetails.push(`${movieKeyMap[key]}: ${selectedMovie[key]}\n`)
-      return true
-    })
-    await this.reply(await makeForwardMsg(e, [transformedMoviesDetails], '鳄门🙏...'))
-    await this.reply('可继续选择影片~~输入 0 结束此次操作¡¡¡( •̀ ᴗ •́ )و!!!')
+      const img = await avocadoRender(str, {
+        title: `![img](${transformedMoviesDetails['封面']})`,
+        caption: '',
+        footer: '<strong><i>可继续选择影片~~<br>回复 00 获取本片剧照及预告<br>回复 0 结束此次操作\n¡¡¡( •̀ ᴗ •́ )و!!!<i></strong>',
+        renderType: 3
+      })
+      if (img) {
+        await this.reply(img)
+        await redis.set(`AVOCADO:MOVIE_${this.e.sender.user_id}_PICKEDMOVIE`, selectedMovie.index, { EX: 60 * 1.5 })
+      } else {
+        await this.e.reply('图片生成出错了！')
+        logger.info('finish pickMe')
+        this.finish('pickMe')
+      }
+    } catch (error) {
+      await this.e.reply(error)
+      logger.info('finish pickMe')
+      this.finish('pickMe')
+    }
   }
 
   /**

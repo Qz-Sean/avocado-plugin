@@ -14,12 +14,12 @@
     "type": "git",
     "url": "git+https://github.com/Qz-Sean/avocado-plugin.git"
   },
-  "dependencies":{
-    "markdown-it": "^13.0.1",
-    "md5": "^2.3.0",
+  "dependencies": {
+    "art-template": "^4.13.2",
     "chatgpt": "^5.1.1",
     "eli-core": "^1.0.2",
-    "art-template": "^4.13.2"
+    "markdown-it": "^13.0.1",
+    "md5": "^2.3.0"
   },
   "keywords": [
     "云崽",

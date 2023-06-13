@@ -5,6 +5,7 @@ import fs from 'fs'
 import template from 'art-template'
 import { segment } from 'icqq'
 import MarkdownIt from 'markdown-it'
+import regexpPlugin from 'markdown-it-regexp'
 
 export async function getSource (e) {
   if (!e.source) return false
@@ -207,14 +208,27 @@ export function splitArray (arr, num) {
   return result
 }
 
-export async function avocadoRender (pendingText, otherInfo = { title: '', caption: '', footer: '' }) {
+export async function avocadoRender (pendingText, otherInfo = { title: '', caption: '', footer: '', renderType: 1 }) {
   let result, tplFile, data
   let title = otherInfo.title
   if (title === '') title = Math.random() > 0.5 ? ' Here is Avocado! ' : ' Avocado’s here! '
   try {
     await puppeteerManager.init()
     const page = await puppeteerManager.newPage()
-    if (Array.isArray(pendingText)) {
+    if (otherInfo.renderType === 1) {
+      tplFile = path.join(pluginRoot, 'resources', 'html', 'text.html')
+      // 接替md语法
+      const md = new MarkdownIt({
+        html: true,
+        breaks: true
+      })
+      const markdownHtml = md.render(pendingText)
+      data = {
+        title,
+        markdownHtml,
+        footer: otherInfo.footer
+      }
+    } else if (otherInfo.renderType === 2) {
       tplFile = path.join(pluginRoot, 'resources', 'html', 'table.html')
       data = {
         title,
@@ -222,14 +236,15 @@ export async function avocadoRender (pendingText, otherInfo = { title: '', capti
         columns: pendingText,
         footer: otherInfo.footer
       }
-    } else {
-      tplFile = path.join(pluginRoot, 'resources', 'html', 'markdown.html')
+    } else if (otherInfo.renderType === 3) {
+      tplFile = path.join(pluginRoot, 'resources', 'html', 'movie.html')
       // 接替md语法
       const md = new MarkdownIt({
         html: true,
         breaks: true
       })
       const markdownHtml = md.render(pendingText)
+      title = md.render(title)
       data = {
         title,
         markdownHtml,
@@ -247,7 +262,7 @@ export async function avocadoRender (pendingText, otherInfo = { title: '', capti
         while (elements.length > 0) {
           elements[0].remove()
         }
-        const regex = /\sby\s/gi
+        let regex = /\sby\s/gi
         elements = document.querySelectorAll('*')
         // 遍历所有元素
         for (let i = 0; i < elements.length; i++) {
@@ -305,15 +320,15 @@ export async function getMovieDetail (movieId) {
     return {
       img: movieDetailJson?.img || 0,
       id: movieId,
-      nm: movieDetailJson.nm,
-      enm: movieDetailJson.enm,
+      nm: movieDetailJson.nm.replace(',', '，'),
+      enm: movieDetailJson.enm.replace(',', '，'),
       filmAlias: movieDetailJson.filmAlias,
       rt: movieDetailJson.rt,
       viewable,
       diffDays,
       sc: movieDetailJson.sc,
-      cat: movieDetailJson.cat,
-      star: movieDetailJson.star,
+      cat: movieDetailJson.cat.replace(',', '，'),
+      star: movieDetailJson.star.replace(',', '，'),
       dra: movieDetailJson.dra.replace(/\s/g, ''),
       watched: movieDetailJson.watched,
       wish: movieDetailJson.wish,
@@ -352,7 +367,6 @@ export async function getMovieList (e) {
     // logger.warn('movieList:', movieList)
     const movieInfoList = []
     for (const [index, id] of movieIds.entries()) {
-      logger.warn(index, id)
       let movieDetail = {}
       movieDetail.index = index + 1
       movieDetail = Object.assign({}, movieDetail, await getMovieDetail(id))

@@ -55,7 +55,7 @@ export class avocadoPsycho extends plugin {
       await this.e.reply(replyMsg)
     } else {
       replyMsg = replyMsg.split('\n').map(item => '# ' + item + '\n').join('')
-      const img = await avocadoRender(replyMsg, { title: null, caption: '', footer: '' })
+      const img = await avocadoRender(replyMsg, { title: null, caption: '', footer: '' , renderType: 1})
       if (img) {
         await this.e.reply(img)
       }
@@ -86,7 +86,7 @@ export class avocadoPsycho extends plugin {
             await Bot.sendGroupMsg(groupId, replyMsg)
           } else {
             replyMsg = replyMsg.split('\n').map(item => '# ' + item + '\n').join('')
-            const img = await avocadoRender(replyMsg, { title: null, caption: '', footer: '' })
+            const img = await avocadoRender(replyMsg, { title: null, caption: '', footer: '', renderType: 1 })
             if (img) {
               await Bot.sendGroupMsg(groupId, img)
             }

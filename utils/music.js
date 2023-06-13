@@ -2,7 +2,6 @@ import { avocadoRender, generateRandomHeader, makeForwardMsg } from './common.js
 import fetch from 'node-fetch'
 import { Config } from './config.js'
 import { ChatGPTAPI } from 'chatgpt'
-import { query } from 'express'
 
 async function getRankingLists () {
   let list = await redis.get('AVOCADO_MUSICRANKINGLIST')
@@ -287,7 +286,7 @@ export async function findSong (data = { param: '', songId: '', isRandom: false,
             id: song.id,
             singer: song.ar.map(item => item.name)
           }))
-          await redis.set(`AVOCADO:MUSIC_${data.param}`, JSON.stringify(songList), {EX: 60 * 2})
+          await redis.set(`AVOCADO:MUSIC_${data.param}`, JSON.stringify(songList), { EX: 60 * 2 })
           return [1, songList]
         }
       } else {
@@ -606,15 +605,15 @@ export async function sendMusic (e, data, toUin = null) {
         // ['']
         if (data.lyrics.join('').length) {
           forwardMsg = [
-            await avocadoRender(comments, { title: `${data.name} - 精选评论`, caption: '', footer: '' }),
-            await avocadoRender(data.lyrics.join(''), { title: `${data.name}`, caption: '', footer: '' })
+            await avocadoRender(comments, { title: `${data.name} - 精选评论`, caption: '', footer: '', renderType: 1 }),
+            await avocadoRender(data.lyrics.join(''), { title: `${data.name}`, caption: '', footer: '', renderType: 1 })
           ]
         } else {
-          await avocadoRender(comments, { title: `${data.name} - 精选评论`, caption: '', footer: '' })
+          await avocadoRender(comments, { title: `${data.name} - 精选评论`, caption: '', footer: '', renderType: 1 })
         }
       } else if (data.lyrics.join('').length) {
         forwardMsg = [
-          await avocadoRender(data.lyrics.join(''), { title: `${data.name}`, caption: '', footer: '' })
+          await avocadoRender(data.lyrics.join(''), { title: `${data.name}`, caption: '', footer: '', renderType: 1 })
         ]
       }
       if (data?.autoSend === undefined) {
