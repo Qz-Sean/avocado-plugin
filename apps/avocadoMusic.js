@@ -390,7 +390,7 @@ export class avocadoMusic extends plugin {
       await this.reply('你还没有设置音乐ck呢~')
       return false
     }
-    let singer = e.msg.trim().replace(/^#?设置歌手/, '')
+    let singer = e.msg.trim().replace(/^#?设置歌手\s*/, '')
     const userSinger = await redis.get(`AVOCADO:MUSIC_${e.sender.user_id}_FAVSINGER`)
     let singerId
     if (userSinger) {
