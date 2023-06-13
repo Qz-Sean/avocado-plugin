@@ -2,6 +2,7 @@ import { avocadoRender, generateRandomHeader, makeForwardMsg } from './common.js
 import fetch from 'node-fetch'
 import { Config } from './config.js'
 import { ChatGPTAPI } from 'chatgpt'
+import { query } from 'express'
 
 async function getRankingLists () {
   let list = await redis.get('AVOCADO_MUSICRANKINGLIST')
@@ -244,30 +245,54 @@ export async function findSong (data = { param: '', songId: '', isRandom: false,
     let searchRes
     if (data.songId) {
       if (data.from === 'random') {
-        logger.warn('随机点歌')
+        logger.info('随机点歌')
+        searchRes = result?.result?.songs
+        // 处理搜id有概率搜不到的问题
+        searchRes = searchRes.find(song => song.id === data.songId)
+      }
+      // wrongFind
+      if (data.from === 'reChoose') {
+        logger.info('第二次点歌')
         searchRes = result?.result?.songs
         // 处理搜id有概率搜不到的问题
         searchRes = searchRes.find(song => song.id === data.songId)
       }
       if (data.from === 'hot') {
-        logger.warn('热门点歌')
+        logger.info('热门点歌')
         searchRes = result?.result?.songs
         // 处理搜id有概率搜不到的问题
         searchRes = searchRes.find(song => song.id === data.songId)
       }
       if (data.from === 'goodnight' || data.from === 'goodAfternoon' || data.from === 'goodMorning') {
-        logger.warn('问好点歌')
+        logger.info('问好点歌')
         searchRes = result?.result?.songs
         // 处理搜id有概率搜不到的问题
         searchRes = searchRes.find(song => song.id === data.songId)
       }
     } else if (!data.songId && data.isRandom) {
-      logger.warn('随机歌名点歌')
+      logger.info('随机歌名点歌')
       // 随机但没有传入songId ==> 即参数不是歌手
       searchRes = result?.result?.songs?.[Math.floor(Math.random() * result?.result?.songs.length)]
     } else {
-      logger.warn('普通点歌')
-      searchRes = result?.result?.songs?.[0]
+      logger.info('正常点歌')
+      if (data.param.includes(',')) {
+        const singer = data.param.split(',')[0]
+        const songName = data.param.split(',')[1]
+        searchRes = result?.result?.songs
+        searchRes = searchRes.find(song => song.ar.find(item => item.name.toLowerCase() === singer.toLowerCase() && song.name.toLowerCase() === songName.toLowerCase()))
+        if (!searchRes) {
+          const songList = result?.result?.songs.map((song, index) => ({
+            index: index + 1,
+            name: song.name,
+            id: song.id,
+            singer: song.ar.map(item => item.name)
+          }))
+          await redis.set(`AVOCADO:MUSIC_${data.param}`, JSON.stringify(songList), {EX: 60 * 2})
+          return [1, songList]
+        }
+      } else {
+        searchRes = result?.result?.songs?.[0]
+      }
     }
     if (!searchRes) {
       return false

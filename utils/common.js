@@ -5,6 +5,7 @@ import fs from 'fs'
 import template from 'art-template'
 import { segment } from 'icqq'
 import MarkdownIt from 'markdown-it'
+
 export async function getSource (e) {
   if (!e.source) return false
   let sourceReply
@@ -242,9 +243,21 @@ export async function avocadoRender (pendingText, otherInfo = { title: '', capti
     await page.setContent(htmlContent)
     if (title === null) {
       await page.evaluate(() => {
-        const elements = document.getElementsByClassName('title')
+        let elements = document.getElementsByClassName('title')
         while (elements.length > 0) {
           elements[0].remove()
+        }
+        const regex = /\sby\s/gi
+        elements = document.querySelectorAll('*')
+        // 遍历所有元素
+        for (let i = 0; i < elements.length; i++) {
+          const element = elements[i]
+          // 获取只包含一个文本节点的节点
+          if (element.childNodes.length === 1 && element.childNodes[0].nodeType === Node.TEXT_NODE) {
+            const text = element.childNodes[0].nodeValue
+            // 替换斜体
+            element.innerHTML = text.replace(regex, ' <em>by</em> ')
+          }
         }
       })
     }
