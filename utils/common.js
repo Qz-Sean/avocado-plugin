@@ -348,20 +348,22 @@ export async function getMovieList (e) {
     const resJson = await response.json()
     movieList = resJson.movieList
     movieIds = resJson.movieIds
-    logger.warn('resJson:', resJson)
-    logger.warn('movieList:', movieList)
+    // logger.warn('resJson:', resJson)
+    // logger.warn('movieList:', movieList)
+    const movieInfoList = []
+    for (const [index, id] of movieIds.entries()) {
+      logger.warn(index, id)
+      let movieDetail = {}
+      movieDetail.index = index + 1
+      movieDetail = Object.assign({}, movieDetail, await getMovieDetail(id))
+      movieInfoList.push(movieDetail)
+      await sleep(3000)
+    }
+    return movieInfoList
   } catch (error) {
     logger.error(error)
     return false
   }
-  const movieInfoList = []
-  for (const id of movieIds) {
-    let movieDetail
-    movieDetail = await getMovieDetail(id)
-    movieInfoList.push(movieDetail)
-    await sleep(3000)
-  }
-  return movieInfoList
 }
 export async function makeForwardMsg (e, msg = [], dec = '') {
   let nickname = Bot.nickname

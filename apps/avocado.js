@@ -47,7 +47,7 @@ export class AvocadoRuleALL extends plugin {
           fnc: 'avocadoWeather'
         },
         {
-          reg: `^#?(${global.God}0.0|来点好看的)$`,
+          reg: `^#?((${global.God}|鳄梨酱)#电影|来点好看的)$`,
           fnc: 'avocadoMovie'
         }
       ]
@@ -147,73 +147,6 @@ export class AvocadoRuleALL extends plugin {
       }
     }
   }
-
-  // async avocadoRender (e, param = '', title = '') {
-  //   let text, img
-  //   if (param.length) {
-  //     text = param
-  //   } else {
-  //     if (e.source) {
-  //       let msgType, msgInfo
-  //       const isImg = await getImg(e)
-  //       if (isImg.length) {
-  //         [msgType, msgInfo] = await getImageOcrText(e) || ['', []]
-  //       } else {
-  //         [msgType, msgInfo] = await getSourceMsg(e) || ['', []]
-  //       }
-  //       if (msgType === 'xml') {
-  //         await this.reply('xml信息目前还无能为力哦~')
-  //         return true
-  //       }
-  //       if (!msgType) {
-  //         await this.reply(`${global.God}！！！`)
-  //         const img = await avocadoRender(`# ${global.God}！！！`)
-  //         if (img) await e.reply(img)
-  //         return true
-  //       }
-  //       text = msgInfo
-  //       for (const item of text) {
-  //         const img = await avocadoRender(item)
-  //         if (img) await e.reply(img)
-  //       }
-  //     } else {
-  //       text = e.msg.trim().replace(new RegExp(`#?${global.God}[！!]\\s?`), '')
-  //     }
-  //   }
-  //   // 递归终止
-  //   if (Array.isArray(text)) return true
-  //   const tplFile = path.join(pluginRoot, 'resources', 'html', 'markdown.html')
-  //   if (title === '') {
-  //     title = Math.random() > 0.5 ? ' Here is Avocado! ' : ' Avocado’s here! '
-  //   }
-  //   // 接替md语法
-  //   const md = new MarkdownIt({
-  //     html: true,
-  //     breaks: true
-  //   })
-  //   const markdownHtml = md.render(text)
-  //   try {
-  //     await puppeteerManager.init()
-  //     const page = await puppeteerManager.newPage()
-  //     await page.goto(`file://${tplFile}`, { waitUntil: 'networkidle0' })
-  //     const templateContent = await page.content()
-  //     const render = template.compile(templateContent)
-  //     const data = { title, markdownHtml }
-  //     const htmlContent = render(data)
-  //     await page.setContent(htmlContent)
-  //     const body = await page.$('body')
-  //     img = segment.image(await body.screenshot({
-  //       type: 'jpeg',
-  //       quality: 100
-  //     }))
-  //     await puppeteerManager.closePage(page)
-  //     await puppeteerManager.close()
-  //   } catch (error) {
-  //     logger.error(`${e.msg}图片生成失败:${error}`)
-  //     return `${e.msg}图片生成失败:${error}`
-  //   }
-  //   return img
-  // }
 
   async avocadoPreview (e, param = '') {
     let url
@@ -433,11 +366,11 @@ export class AvocadoRuleALL extends plugin {
     const mlistLength = mainInfoList.length
     let scList = mainInfoList
       .filter(item => item.id)
-      .map((item, index) => {
+      .map(item => {
         let sc = item.sc
         let n
         if (sc !== 0) {
-          return `${index + 1}.${item.nm} -> 评分: ${sc}`
+          return `${item.index}.${item.nm} -> 评分: ${sc}`
         } else if (item.viewable === 1) {
           if (item.diffDays > 15) {
             n = '大概率烂片~'
@@ -449,7 +382,7 @@ export class AvocadoRuleALL extends plugin {
         } else {
           n = '还在预售哦~'
         }
-        return `${index + 1}.${item.nm} -> ${n}`
+        return `${item.index}.${item.nm} -> ${n}`
       })
     scList = splitArray(scList, 2)
     const img = await avocadoRender(scList, {
@@ -464,32 +397,24 @@ export class AvocadoRuleALL extends plugin {
   }
 
   async pickMe (e) {
-    const msg = this.e.msg
-    if (msg === `超！是${global.God}啊！` || parseInt(msg) === 0) {
+    if (typeof this.e.msg !== 'string') {
+      return
+    }
+    let mainInfoList = JSON.parse(await redis.get('AVOCADO:MOVIE_DETAILS'))
+    const reg = new RegExp(`^((0)|(${mainInfoList.map(item => item.index).join('|')})|(${mainInfoList.map(item => item.nm).join('|').replace(/\*/g, ' fuck ')}))$`)
+    if (!reg.test(this.e.msg)) { return }
+    if (this.e.msg === '0') {
+      logger.info('finish pickMe')
       await this.reply(`${global.God}！！！`)
       this.finish('pickMe')
       return true
     }
-    let mainInfoList = JSON.parse(await redis.get('AVOCADO:MOVIE_DETAILS'))
-    if (!/^\d+$/.test(msg)) {
-      if (!mainInfoList.some(item => item.nm === msg)) {
-        await this.reply('...')
-        return
-      }
-    } else {
-      if (!(msg < mainInfoList.length && msg > 0)) {
-        await this.reply('...')
-        return
-      }
-    }
-    let selectedMovie = !/^\d+$/.test(msg)
-      ? mainInfoList.filter(item => item.nm === msg)[0]
-      : mainInfoList[parseInt(msg) - 1]
-    logger.warn(selectedMovie)
+    let selectedMovie = mainInfoList.find(item => item.index === parseInt(this.e.msg) || item.nm === this.e.msg)
+    logger.warn(selectedMovie, this.e.msg, mainInfoList[2])
     let transformedMoviesDetails = []
     Object.keys(movieKeyMap).map(async key => {
       // 空值不要
-      if (!selectedMovie[key]) return false
+      if (!selectedMovie[key] || key === 'index') return false
       let img
       if (key === 'img') {
         img = segment.image(selectedMovie[key])
@@ -527,6 +452,66 @@ export class AvocadoRuleALL extends plugin {
       return true
     })
     await this.reply(await makeForwardMsg(e, [transformedMoviesDetails], '鳄门🙏...'))
-    await this.reply(`可继续选择影片~~输入 超！是${global.God}啊！ 结束此次操作¡¡¡( •̀ ᴗ •́ )و!!!`)
+    await this.reply('可继续选择影片~~输入 0 结束此次操作¡¡¡( •̀ ᴗ •́ )و!!!')
+  }
+
+  /**
+   * @param msg 发送的消息
+   * @param quote 是否引用回复
+   * @param data.recallMsg 群聊是否撤回消息，0-120秒，0不撤回
+   * @param data.at 是否at用户
+   */
+  reply (msg = '', quote = false, data = {}) {
+    if (!this.e.reply || !msg) return false
+    return this.e.reply(msg, quote, data)
+  }
+
+  conKey (isGroup = false) {
+    if (isGroup) {
+      return `${this.name}.${this.e.group_id}`
+    } else {
+      return `${this.name}.${this.userId || this.e.user_id}`
+    }
+  }
+
+  /**
+   * @param type 执行方法
+   * @param isGroup 是否群聊
+   * @param time 操作时间，默认120秒
+   */
+  setContext (type, isGroup = false, time = 120) {
+    let key = this.conKey(isGroup)
+    if (!stateArr[key]) stateArr[key] = {}
+    stateArr[key][type] = this.e
+    if (time) {
+      /** 操作时间 */
+      setTimeout(() => {
+        if (stateArr[key][type]) {
+          delete stateArr[key][type]
+          // this.e.reply('操作超时已取消', true)
+        }
+      }, time * 1000)
+    }
+  }
+
+  getContext () {
+    let key = this.conKey()
+    return stateArr[key]
+  }
+
+  getContextGroup () {
+    let key = this.conKey(true)
+    return stateArr[key]
+  }
+
+  /**
+   * @param type 执行方法
+   * @param isGroup 是否群聊
+   */
+  finish (type, isGroup = false) {
+    if (stateArr[this.conKey(isGroup)] && stateArr[this.conKey(isGroup)][type]) {
+      delete stateArr[this.conKey(isGroup)][type]
+    }
   }
 }
+let stateArr = []

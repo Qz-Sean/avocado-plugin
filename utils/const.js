@@ -69,6 +69,7 @@ export const singerMap = {
   mvSize: 'mv数目'
 }
 export const movieKeyMap = {
+  index: '',
   img: '封面',
   nm: '电影名称',
   enm: '外文名',
