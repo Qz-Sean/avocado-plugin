@@ -26,7 +26,7 @@ export class avocadoMusic extends plugin {
       priority: 300,
       rule: [
         {
-          reg: `^#?${global.God}#(随机|热门)?(华语|欧美|韩国|日本)?(.*)`,
+          reg: `^#?(鳄梨酱|${global.God})#(随机|热门)?(华语|欧美|韩国|日本)?(.*)`,
           fnc: 'pickMusic'
         },
         {
@@ -92,14 +92,14 @@ export class avocadoMusic extends plugin {
       await this.reply('你还没有设置音乐ck呢~')
       return false
     }
-    const regex = new RegExp(`^#?${global.God}#(随机|热门)?(华语|欧美|韩国|日本)?(.*)`)
+    const regex = new RegExp(`^#?(${global.God}|鳄梨酱)#(随机|热门)?(华语|欧美|韩国|日本)?(.*)`)
     const match = e.msg.trim().match(regex)
-    const selectType = match[1] ? match[1] : ''
-    const query = match[3] ? match[3].replace(/，/g, ',') : ''
+    const selectType = match[2] ? match[2] : ''
+    const query = match[4] ? match[4].replace(/，/g, ',') : ''
     const { isRandom, isHotList } = { isRandom: selectType === '随机', isHotList: selectType === '热门' }
     const isSinger = query ? !!(await getSingerId(query)) : false
 
-    let singerType = singerTypeMap[match[2]] || Math.ceil(Math.random() * 4)
+    let singerType = singerTypeMap[match[3]] || Math.ceil(Math.random() * 4)
     let hotList
     if (isSinger) hotList = await getSingerHotList(e.sender.user_id, query)
 

@@ -31,7 +31,7 @@ export class AvocadoRuleALL extends plugin {
           fnc: 'avocadoPreview'
         },
         {
-          reg: `^#?${global.God}[!！]{3}$`,
+          reg: `^#?(${global.God}|鳄梨酱)[!！]{3}$`,
           fnc: 'avocadoHelp'
         },
         {

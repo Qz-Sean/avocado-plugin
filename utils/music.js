@@ -592,13 +592,13 @@ export async function sendMusic (e, data, toUin = null) {
           await avocadoRender(data.lyrics.join(''), { title: `${data.name}`, caption: '', footer: '' })
         ]
       }
-      if (!data.autoSend) {
-        return forwardMsg
-      } else {
+      if (data?.autoSend === undefined) {
         if (forwardMsg) {
           const formattedMsg = await makeForwardMsg(e, forwardMsg, '鳄门🙏...')
           await e.reply(formattedMsg)
         }
+      } else {
+        return forwardMsg
       }
     }
     if (result[3] !== 0) {
