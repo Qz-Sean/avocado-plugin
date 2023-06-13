@@ -574,7 +574,7 @@ export async function sendMusic (e, data, toUin = null) {
   try {
     let payload = await Bot.sendOidb('OidbSvc.0xb77_9', core.pb.encode(body))
     let result = core.pb.decode(payload)
-    if (!data?.from && data?.from !== undefined) {
+    if (data?.from === undefined) {
       let comments = data.comments.map(item => [`点赞数：${item[0]}\n评论内容：${item[1]}`]).join('\n\n')
       let forwardMsg
       if (comments.length) {
