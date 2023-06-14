@@ -26,7 +26,7 @@ export class avocadoMusic extends plugin {
       priority: 300,
       rule: [
         {
-          reg: `^#?(鳄梨酱|${global.God})?#(随机|热门)?(华语|欧美|韩国|日本)?(.*)`,
+          reg: `^#?(鳄梨酱|${global.God}|点歌)#(随机|热门)?(华语|欧美|韩国|日本)?(.*)`,
           fnc: 'pickMusic'
         },
         {
@@ -92,7 +92,7 @@ export class avocadoMusic extends plugin {
       await this.reply('你还没有设置音乐ck呢~')
       return false
     }
-    const regex = new RegExp(`^#?(${global.God}|鳄梨酱)?#(随机|热门)?(华语|欧美|韩国|日本)?(.*)`)
+    const regex = new RegExp(`^#?(${global.God}|鳄梨酱|点歌)#(随机|热门)?(华语|欧美|韩国|日本)?(.*)`)
     const match = e.msg.trim().match(regex)
     const selectType = match[2] ? match[2] : ''
     const query = match[4] ? match[4].replace(/，/g, ',') : ''
