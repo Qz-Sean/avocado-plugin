@@ -1,5 +1,7 @@
 import puppeteer from 'puppeteer'
 import { Config } from './config.js'
+import fs from 'node:fs'
+import yaml from 'yaml'
 
 class PuppeteerManager {
   constructor () {
@@ -10,7 +12,7 @@ class PuppeteerManager {
       // puppeteer websocket 地址。连接单独存在的 chromium。
       // puppeteerWS: 'ws://browserless:3000'
       puppeteerWS: '',
-      headless: false,
+      headless: 'new',
       args: [
         '--disable-gpu',
         '--disable-setuid-sandbox',
@@ -31,6 +33,17 @@ class PuppeteerManager {
   }
 
   async init () {
+    let _puppeteer
+    try {
+      await this.browserInit()
+    } catch (e) {
+      logger.debug('未能加载puppeteer，尝试降级到Yunzai的puppeteer尝试')
+      _puppeteer = puppeteer
+      await _puppeteer.browserInit()
+    }
+  }
+
+  async browserInit () {
     if (this.browser) return this.browser
     if (this.lock) return false
     this.lock = true
