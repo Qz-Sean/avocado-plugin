@@ -1,14 +1,12 @@
 import puppeteer from 'puppeteer'
 import { Config } from './config.js'
-import fs from 'node:fs'
-import yaml from 'yaml'
 
 class PuppeteerManager {
   constructor () {
     this.screenshotCount = 1
     this.browser = null
     this.config = {
-      chromiumPath: Config.executablePath,
+      executablePath: Config.executablePath,
       // puppeteer websocket 地址。连接单独存在的 chromium。
       // puppeteerWS: 'ws://browserless:3000'
       puppeteerWS: '',
@@ -102,3 +100,4 @@ class PuppeteerManager {
 }
 
 export default new PuppeteerManager()
+
