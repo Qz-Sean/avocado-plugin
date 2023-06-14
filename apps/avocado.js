@@ -31,7 +31,7 @@ export class AvocadoRuleALL extends plugin {
           fnc: 'avocadoPreview'
         },
         {
-          reg: `^#?(${global.God}|鳄梨酱)[!！]{3}$`,
+          reg: `^#?((${global.God}|鳄梨酱)[!！]{3}|鳄梨酱?帮助)$`,
           fnc: 'avocadoHelp'
         },
         {
@@ -47,7 +47,7 @@ export class AvocadoRuleALL extends plugin {
           fnc: 'avocadoWeather'
         },
         {
-          reg: `^#?((${global.God}|鳄梨酱)#电影|来点好看的)$`,
+          reg: `^#?((${global.God}|鳄梨酱)?#电影|来点好看的)$`,
           fnc: 'avocadoMovie'
         }
       ]
@@ -413,7 +413,7 @@ export class AvocadoRuleALL extends plugin {
     if (!reg.test(this.e.msg)) { return }
     if (this.e.msg === '0') {
       await redis.del(`AVOCADO:MOVIE_${this.e.sender.user_id}_PICKEDMOVIE`)
-      logger.info('finish pickMe')
+      logger.mark('finish pickMe')
       await this.reply(`${global.God}！！！`)
       this.finish('pickMe')
       return true
@@ -477,12 +477,12 @@ export class AvocadoRuleALL extends plugin {
         await redis.set(`AVOCADO:MOVIE_${this.e.sender.user_id}_PICKEDMOVIE`, selectedMovie.index, { EX: 60 * 3 })
       } else {
         await this.e.reply('图片生成出错了！')
-        logger.info('finish pickMe')
+        logger.mark('finish pickMe')
         this.finish('pickMe')
       }
     } catch (error) {
       await this.e.reply(error)
-      logger.info('finish pickMe')
+      logger.mark('finish pickMe')
       this.finish('pickMe')
     }
   }

@@ -208,10 +208,11 @@ export function splitArray (arr, num) {
 }
 
 export async function avocadoRender (pendingText, otherInfo = { title: '', caption: '', footer: '', renderType: 1 }) {
-  let result, tplFile, data
+  let tplFile, data, buff
   let title = otherInfo.title
   if (title === '') title = Math.random() > 0.5 ? ' Here is Avocado! ' : ' Avocado’s here! '
   try {
+    const start = Date.now()
     await puppeteerManager.init()
     const page = await puppeteerManager.newPage()
     if (otherInfo.renderType === 1) {
@@ -263,9 +264,7 @@ export async function avocadoRender (pendingText, otherInfo = { title: '', capti
         }
         let regex = /\sby\s/gi
         elements = document.querySelectorAll('*')
-        // 遍历所有元素
-        for (let i = 0; i < elements.length; i++) {
-          const element = elements[i]
+        for (let element of elements) {
           // 获取只包含一个文本节点的节点
           if (element.childNodes.length === 1 && element.childNodes[0].nodeType === Node.TEXT_NODE) {
             const text = element.childNodes[0].nodeValue
@@ -275,18 +274,28 @@ export async function avocadoRender (pendingText, otherInfo = { title: '', capti
         }
       })
     }
+    const { width, height } = await page.$eval('body', (element) => {
+      const { width, height } = element.getBoundingClientRect()
+      return { width, height }
+    })
+    await page.setViewport({
+      width: Math.round(width),
+      height: Math.round(height),
+      deviceScaleFactor: 5
+    })
     const body = await page.$('body')
-    result = segment.image(await body.screenshot({
+    buff = await body.screenshot({
       type: 'jpeg',
-      quality: 100
-    }))
+      quality: 85
+    })
+    const kb = (buff.length / 1024).toFixed(2) + 'kb'
+    logger.mark(`[图片生成][${title?.length > 20 ? '图片' : title}][${puppeteerManager.screenshotCount}次]${kb} ${logger.green(`${Date.now() - start}ms`)}`)
     await puppeteerManager.closePage(page)
-    await puppeteerManager.close()
   } catch (error) {
     logger.error(`图片生成失败:${error}`)
     return `图片生成失败:${error}`
   }
-  return result
+  return segment.image(buff)
 }
 
 // 获取单部影片的详细信息

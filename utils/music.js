@@ -125,13 +125,13 @@ export async function getGreetMsg (listId, greetType) {
   let question
   switch (greetType) {
     case 1:
-      question = `我们现在在一个群聊中，现在是早上${hour}:${minute}点，将这首来自${introSong.singer.join('')}的${introSong.name}推荐给群友。这首歌的歌曲专辑信息是${await getAlbumDetail(introSong.albumId)}，可以简单为群友介绍一下哦。就让我们来开启大家美好的一天吧！不用说大家好，大家已经很熟悉了。`
+      question = `我们现在在一个群聊中，现在是早上${hour}:${minute}点，将这首来自${introSong.singer.join('')}的${introSong.name}推荐给群友。这首歌的歌曲专辑信息是${await getAlbumDetail(introSong.albumId)}，可以简单为群友介绍一下哦。就让我们来开启大家美好的一天吧！`
       break
     case 2:
-      question = `我们现在在一个群聊中，现在是中午${hour}:${minute}点，将这首来自${introSong.singer.join('')}的${introSong.name}推荐给群友。这首歌的歌曲专辑信息是${await getAlbumDetail(introSong.albumId)}，可以简单为群友介绍一下哦。大家下午也要干劲满满！可以给大家一点类似'中午小睡一会儿'这样的小建议。不用说大家好，大家已经很熟悉了。`
+      question = `我们现在在一个群聊中，现在是中午${hour}:${minute}点，将这首来自${introSong.singer.join('')}的${introSong.name}推荐给群友。这首歌的歌曲专辑信息是${await getAlbumDetail(introSong.albumId)}，可以简单为群友介绍一下哦。大家下午也要干劲满满！再给大家一点类似'中午小睡一会儿'这样的小建议。`
       break
     case 3:
-      question = `我们现在在一个群聊中，已经晚上${hour}:${minute}点了，写一段话告诉群友早点休息，并将这首来自${introSong.singer.join('')}的${introSong.name}推荐给群友。这首歌的歌曲专辑信息是${await getAlbumDetail(introSong.albumId)}，可以简单为群友介绍一下哦。不用说大家好，大家已经很熟悉了。`
+      question = `我们现在在一个群聊中，已经是晚上${hour}:${minute}点了，写一段话告诉群友早点休息，并将这首来自${introSong.singer.join('')}的${introSong.name}推荐给群友。这首歌的歌曲专辑信息是${await getAlbumDetail(introSong.albumId)}，可以简单为群友介绍一下哦。`
       break
   }
   const newFetch = (url, options = {}) => {
@@ -618,7 +618,7 @@ export async function sendMusic (e, data, toUin = null) {
       }
       if (data?.autoSend === undefined) {
         if (forwardMsg) {
-          const formattedMsg = await makeForwardMsg(e, forwardMsg, '鳄门🙏...')
+          const formattedMsg = await makeForwardMsg(e, forwardMsg, '热评+歌词 鳄门🙏...')
           await e.reply(formattedMsg)
         }
       } else {

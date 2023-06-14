@@ -3,103 +3,88 @@ import { Config } from './config.js'
 
 class PuppeteerManager {
   constructor () {
-    this.puppeteer = null
-    this.flag = 1
+    this.screenshotCount = 1
     this.browser = null
+    this.config = {
+      chromiumPath: Config.executablePath,
+      // puppeteer websocket 地址。连接单独存在的 chromium。
+      // puppeteerWS: 'ws://browserless:3000'
+      puppeteerWS: '',
+      headless: false,
+      args: [
+        '--disable-gpu',
+        '--disable-setuid-sandbox',
+        '--no-sandbox',
+        '--no-zygote',
+        '--font-render-hinting=medium',
+        '--disable-application-cache',
+        '--disable-dev-shm-usage', // 禁用/dev/shm使用
+        '--disable-extensions', // 禁用扩展
+        '--disable-infobars', // 禁用信息栏
+        '--disable-notifications', // 禁用通知
+        '--disable-offline-load-stale-cache', // 禁用离线加载过期缓存
+        '--dns-prefetch-disable', // 禁用DNS预取
+        '--enable-features=NetworkService', // 启用网络服务特性
+        '--enable-automation' // 启用自动化
+      ]
+    }
   }
 
   async init () {
-    this.puppeteer = puppeteer
+    if (this.browser) return this.browser
+    if (this.lock) return false
+    this.lock = true
+
+    logger.mark('avocado puppeteer 启动中...')
+    const browserURL = 'http://127.0.0.1:51777'
     try {
-      const Puppeteer = (await import('../../../renderers/puppeteer/lib/puppeteer.js')).default
-      let puppeteerCfg = {
-        chromiumPath: Config.executablePath,
-        // puppeteer websocket 地址。连接单独存在的 chromium。
-        // puppeteerWS: 'ws://browserless:3000'
-        puppeteerWS: '',
-        headless: 'new',
-        args: [
-          '--disable-gpu',
-          '--disable-setuid-sandbox',
-          '--no-sandbox',
-          '--no-zygote',
-          '--font-render-hinting=medium',
-          '--disable-application-cache'
-        ]
-      }
-      this.puppeteer = new Puppeteer(puppeteerCfg)
-      await this.puppeteer.browserInit()
+      this.browser = await puppeteer.connect({ browserURL })
     } catch (e) {
-      this.flag = 0
-      logger.error('未能加载puppeteer，尝试降级到Yunzai的puppeteer尝试', e)
-      logger.error('喵崽好用，建议换喵崽！')
-      let args = [
-        '--exclude-switches',
-        '--no-sandbox',
-        '--remote-debugging-port=51777',
-        '--disable-setuid-sandbox',
-        '--disable-infobars',
-        '--disable-dev-shm-usage',
-        '--disable-application-cache',
-        '--disable-blink-features=AutomationControlled',
-        '--ignore-certificate-errors',
-        '--no-first-run',
-        '--font-render-hinting=medium',
-        '--no-service-autorun',
-        '--password-store=basic',
-        '--system-developer-mode',
-        '--mute-audio',
-        '--disable-default-apps',
-        '--no-zygote',
-        '--disable-accelerated-2d-canvas',
-        '--disable-web-security'
-      ]
-      const executablePath = Config.executablePath
-      this.browser = await puppeteer.launch({
-        defaultViewport: { width: 1200, height: 300 },
-        headless: true,
-        executablePath,
-        args
+      /** 初始化puppeteer */
+      this.browser = await puppeteer.launch(this.config).catch((err) => {
+        logger.error(err.toString())
+        if (String(err).includes('correct Chromium')) {
+          logger.error('没有正确安装Chromium，可以尝试执行安装命令：node ./node_modules/puppeteer/install.js')
+        }
       })
     }
+    this.lock = false
+
+    if (!this.browser) {
+      logger.error('avocado puppeteer 启动失败')
+      return false
+    }
+
+    logger.mark('avocado puppeteer 启动成功')
+
+    /** 监听Chromium实例是否断开 */
+    this.browser.on('disconnected', (e) => {
+      logger.info('Chromium实例关闭或崩溃！')
+      this.browser = false
+    })
+    return this.browser
   }
 
   async newPage () {
-    if (!this.puppeteer) {
-      await this.init()
-    }
-    if (this.flag) {
-      return await this.puppeteer.browser.newPage()
-    } else {
-      return await this.browser.newPage()
-    }
+    if (!this.browser) await this.init()
+    return await this.browser.newPage().catch((err) => logger.error(err))
   }
 
   async closePage (page) {
-    try {
-      if (page) {
-        await page.close()
+    if (page) {
+      await page.close().catch((err) => logger.error('页面关闭出错：' + err))
+      this.screenshotCount += 1
+      if (this.screenshotCount === 100) {
+        await this.close()
       }
-    } catch (e) {
-      logger.error('关闭浏览器时出错', e)
     }
   }
 
   async close () {
-    try {
-      if (this.puppeteer) {
-        if (this.flag) {
-          await this.puppeteer.browser.close()
-        } else {
-          this.browser.close()
-        }
-      }
-    } catch (e) {
-      logger.error('关闭浏览器时出错', e)
-    } finally {
-      this.puppeteer = null
-      this.browser = null
+    if (this.browser) {
+      this.browser.close().catch((err) => logger.error('浏览器关闭出错：' + err))
     }
+    this.browser = null
   }
 }
 
