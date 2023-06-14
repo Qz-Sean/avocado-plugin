@@ -395,12 +395,13 @@ export class AvocadoRuleALL extends plugin {
       footer: `<strong><i>最近上映的影片共有${movieList.length}部，你想了解哪一部影片呢~</i></strong>`,
       renderType: 2
     })
+
     if (!img) {
       await this.reply('生成图片错误！')
       return false
     }
     await this.reply(img)
-    this.setContext('pickMe', false, 180)
+    this.setContext('pickMe', e.isGroup, 300)
   }
 
   async pickMe (e) {
@@ -411,16 +412,25 @@ export class AvocadoRuleALL extends plugin {
     const reg = new RegExp(`^((0{1,2})|(${mainInfoList.map(item => item.index).join('|')})|(${mainInfoList.map(item => item.nm).join('|').replace(/\*/g, ' fuck ')}))$`)
     if (!reg.test(this.e.msg)) { return }
     if (this.e.msg === '0') {
+      await redis.del(`AVOCADO:MOVIE_${this.e.sender.user_id}_PICKEDMOVIE`)
       logger.info('finish pickMe')
       await this.reply(`${global.God}！！！`)
       this.finish('pickMe')
       return true
     }
+    let selectedMovie
     try {
-      const movieIndex = await redis.get(`AVOCADO:MOVIE_${this.e.sender.user_id}_PICKEDMOVIE`)
-      let selectedMovie = movieIndex
-        ? mainInfoList.find(item => item.index === parseInt(movieIndex))
-        : mainInfoList.find(item => item.index === parseInt(this.e.msg) || item.nm === this.e.msg)
+      if (this.e.msg === '00') {
+        const movieIndex = await redis.get(`AVOCADO:MOVIE_${this.e.sender.user_id}_PICKEDMOVIE`)
+        if (movieIndex) {
+          selectedMovie = mainInfoList.find(item => item.index === parseInt(movieIndex))
+        } else {
+          await this.reply('先告诉我你想了解的电影吧！')
+          return
+        }
+      } else {
+        selectedMovie = mainInfoList.find(item => item.index === parseInt(this.e.msg) || item.nm === this.e.msg)
+      }
       let transformedMoviesDetails = {}
       let others = []
       Object.keys(movieKeyMap).map(async key => {
@@ -464,7 +474,7 @@ export class AvocadoRuleALL extends plugin {
       })
       if (img) {
         await this.reply(img)
-        await redis.set(`AVOCADO:MOVIE_${this.e.sender.user_id}_PICKEDMOVIE`, selectedMovie.index, { EX: 60 * 1.5 })
+        await redis.set(`AVOCADO:MOVIE_${this.e.sender.user_id}_PICKEDMOVIE`, selectedMovie.index, { EX: 60 * 3 })
       } else {
         await this.e.reply('图片生成出错了！')
         logger.info('finish pickMe')

@@ -55,7 +55,7 @@ export class avocadoPsycho extends plugin {
       await this.e.reply(replyMsg)
     } else {
       replyMsg = replyMsg.split('\n').map(item => '# ' + item + '\n').join('')
-      const img = await avocadoRender(replyMsg, { title: null, caption: '', footer: '' , renderType: 1})
+      const img = await avocadoRender(replyMsg, { title: null, caption: '', footer: '', renderType: 1 })
       if (img) {
         await this.e.reply(img)
       }
@@ -136,11 +136,7 @@ export async function getBonkersBabble (e = {}, GodName = '', dataSource = '', w
               logger.warn(`已存入：${json.data}`)
             }
           }
-          if (Math.random() > 0.8) {
-            replyMsg = e.msg + '！！！'
-          } else {
-            replyMsg = json.data
-          }
+          replyMsg = json.data
         } else {
           replyMsg = json.toString()
         }
