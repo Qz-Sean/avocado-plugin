@@ -5,7 +5,6 @@ import fs from 'fs'
 import template from 'art-template'
 import { segment } from 'icqq'
 import MarkdownIt from 'markdown-it'
-import regexpPlugin from 'markdown-it-regexp'
 
 export async function getSource (e) {
   if (!e.source) return false
