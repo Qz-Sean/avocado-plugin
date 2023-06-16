@@ -7,7 +7,7 @@ global.God = Config.OHMYGOD === '' ? '鳄梨酱' : Config.OHMYGOD
 export const _path = process.cwd().replace(/\\/g, '/')
 export const pluginName = path.basename(path.join(import.meta.url, '../../'))
 export const pluginRoot = path.join(_path, 'plugins', pluginName)
-export const urlRegex = /(?:(?:https?|ftp):\/\/)(?:\S+(?::\S*)?@)?(?:((?:(?:[a-z0-9\u00a1-\uffff][a-z0-9\u00a1-\uffff_-]{0,62})?[a-z0-9\u00a1-\uffff]\.)+(?:[a-z\u00a1-\uffff]{2,}\.?))(?::\d{2,5})?)(?:\/[\w\u00a1-\uffff$-_.+!*'(),%]+)*(?:\?(?:[\w\u00a1-\uffff$-_.+!*(),%:@&=]|(?:[\[\]])|(?:[\u00a1-\uffff]))*)?(?:#(?:[\w\u00a1-\uffff$-_.+!*'(),;:@&=]|(?:[\[\]]))*)?\/?/i
+export const urlRegex = /(?:(?:https?|ftp):\/\/)?(?:\S+(?::\S*)?@)?(?:((?:(?:[a-z0-9\u00a1-\uffff][a-z0-9\u00a1-\uffff_-]{0,62})?[a-z0-9\u00a1-\uffff]\.)+(?:[a-z\u00a1-\uffff]{2,}\.?))(?::\d{2,5})?)(?:\/[\w\u00a1-\uffff$-_.+!*'(),%]+)*(?:\?(?:[\w\u00a1-\uffff$-_.+!*(),%:@&=]|(?:[\[\]])|(?:[\u00a1-\uffff]))*)?(?:#(?:[\w\u00a1-\uffff$-_.+!*'(),;:@&=]|(?:[\[\]]))*)?\/?/i
 // 欢迎补充
 export const phantomTransformation = {
   '黑夜之力，赐予我力量！': '黑暗的力量已经注入你的身体，从此你将成为黑夜的主宰！\n黑夜啊，听从我的召唤，降临于这片大地吧！',

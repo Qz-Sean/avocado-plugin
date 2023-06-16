@@ -25,8 +25,8 @@ export class AvocadoRuleALL extends plugin {
       priority: 200,
       rule: [
         {
-          /** 命令正则匹配 */
-          reg: new RegExp(`^${urlRegex.toString().slice(1, -2)}$`, 'i'),
+          // 私聊使用在指令开头添加#
+          reg: new RegExp(`^#?${urlRegex.toString().slice(1, -2)}$`, 'i'),
           /** 执行方法 */
           fnc: 'avocadoPreview'
         },
@@ -35,15 +35,15 @@ export class AvocadoRuleALL extends plugin {
           fnc: 'avocadoHelp'
         },
         {
-          reg: `^#?(.*)${global.God}[！!]`,
+          reg: `^#?(.*)(${global.God}|鳄梨酱)[！!]`,
           fnc: 'avocadoImg'
         },
         {
-          reg: `^#?(.*)${global.God}[?？]([?？]*)`,
+          reg: `^#?(.*)(${global.God}|鳄梨酱)[?？]([?？]*)`,
           fnc: 'avocadoTranslate'
         },
         {
-          reg: `^#?(.*)${global.God}[.。]([.。]*)$`,
+          reg: `^#?(.*)(${global.God}|鳄梨酱)[.。]([.。]*)$`,
           fnc: 'avocadoWeather'
         },
         {
@@ -110,11 +110,11 @@ export class AvocadoRuleALL extends plugin {
     } else {
       let msg
       // msg = e.msg.trim().replace(/#?鳄梨酱([！!]+)\s?/, '')
-      const regex = new RegExp(`#?${global.God}([!！]+)([?？]+)\\s?(.*)`)
+      const regex = new RegExp(`#?(${global.God}|鳄梨酱)([!！]+)([?？]+)\\s?(.*)`)
       msg = e.msg.trim().match(regex)
       if (!msg) { return false }
       // 当为鳄梨酱！！！！时获取其ocr结果
-      if (msg[1].length === 4) {
+      if (msg[2].length === 4) {
         let [, ocrRes] = await getImageOcrText(e) || ''
         if (ocrRes) {
           let replyMsg = await makeForwardMsg(e, ocrRes, `${global.God}！`)
@@ -122,12 +122,12 @@ export class AvocadoRuleALL extends plugin {
         }
         return true
       }
-      if (!msg[3].length) {
+      if (!msg[4].length) {
         await this.reply(`${global.God}！！！`)
         return true
       }
-      if (msg[1].length === 1 && msg[2].length === 1) {
-        const img = await avocadoRender(msg[3])
+      if (msg[2].length === 1 && msg[3].length === 1) {
+        const img = await avocadoRender(msg[4])
         if (img) await e.reply(img)
         return true
       }
@@ -138,10 +138,9 @@ export class AvocadoRuleALL extends plugin {
           .replace(/[\n\r，。、！？；：“”‘’（）【】`·《》〈〉「」『』﹃﹄〔〕]/g, ' ')
           .match(new RegExp(`(${urlRegex.toString().slice(1, -2)})`, 'ig'))
         logger.warn('urlList:', urlList)
-        for (let item of urlList) {
-          logger.warn('item: ', item)
-          item = item.startsWith('http') ? item : 'http://' + item
-          await this.avocadoPreview(this, item)
+        for (let url of urlList) {
+          logger.warn('item: ', url)
+          await this.avocadoPreview(this, url.startsWith('http') ? url : 'http://' + url)
         }
         return true
       }
@@ -149,73 +148,87 @@ export class AvocadoRuleALL extends plugin {
   }
 
   async avocadoPreview (e, param = '') {
+    if (e.isPrivate && !param && !e.msg.startsWith('#')) return false
     let url
     if (param.length) {
       url = param
     } else {
-      if (e.source) {
-        let msgType, msgInfo
-        const isImg = await getImg(e)
-        if (isImg.length) {
-          [msgType, msgInfo] = await getImageOcrText(e) || ['', []]
-        } else {
-          [msgType, msgInfo] = await getSourceMsg(e) || ['', []]
-        }
-        if (msgType === 'xml') {
-          await this.reply('xml信息目前还无能为力哦~')
-          return true
-        }
-        if (!url || msgType === 'text') {
-          await this.reply(`${global.God}`)
-          return false
-        }
-        if (msgType === 'url') {
-          for (const item of msgInfo) {
-            await this.avocadoPreview(this, item)
-          }
-        } else if (msgType === 'ocr') {
-          let i
-          for (const item of url) {
-            i = item.replace('\n', '').trim()
-            if (urlRegex.test(i)) {
-              i = i.startsWith('http') ? i : 'http://' + i
-            }
-            await this.avocadoPreview(this, i)
-          }
-        }
-      } else {
-        let msg = e.msg.trim().replace(new RegExp(`#?${global.God}[！!]\\s?`, 'g'), '')
-        url = msg.match(urlRegex)[0]
-        url = url.startsWith('http') ? url : 'http://' + url
-      }
+      // if (e.source) {
+      //   const reg = new RegExp(`(${global.God}\\|\\| 鳄梨酱)[！!]{2}`)
+      //   if (!reg.test(e.msg)) return false
+      //   let msgType, msgInfo
+      //   const isImg = await getImg(e)
+      //   if (isImg.length) {
+      //     [msgType, msgInfo] = await getImageOcrText(e) || ['', []]
+      //   } else {
+      //     [msgType, msgInfo] = await getSourceMsg(e) || ['', []]
+      //   }
+      //   logger.info('isImg: ', isImg)
+      //   logger.info('msgInfo: ', msgInfo)
+      //   logger.info('msgType: ', msgType)
+      //   if (msgType === 'xml') {
+      //     await this.reply('xml信息目前还无能为力哦~')
+      //     return true
+      //   }
+      //   if (msgType === 'url') {
+      //     for (const item of msgInfo) {
+      //       await this.avocadoPreview(this, '#' + item)
+      //     }
+      //   } else if (msgType === 'ocr') {
+      //     let i
+      //     for (const item of url) {
+      //       i = item.replace('\n', '').trim()
+      //       if (urlRegex.test(i)) {
+      //         i = i.startsWith('http') ? i : 'http://' + i
+      //       }
+      //       await this.avocadoPreview(this, i)
+      //     }
+      //   }
+      //   if (!url || msgType === 'text') {
+      //     await this.reply(`${global.God}！！！`)
+      //     return false
+      //   }
+      // } else {
+      url = e.msg.trim().replace(/^#?/, '')
+      // }
     }
     // 递归终止
     if (Array.isArray(url)) return true
+    const start = Date.now()
     await puppeteerManager.init()
     const page = await puppeteerManager.newPage()
     try {
+      url = url.trim().replace(/^#?/, '')
+      url = url.startsWith('http') ? url : 'http://' + url
+      logger.warn(url)
       await page.goto(url, { timeout: 120000 })
-      await page.setViewport({
-        width: 1920,
-        height: 1080
+      await page.waitForTimeout(1000 * 5)
+      const { width, height } = await page.$eval('body', (element) => {
+        const { width, height } = element.getBoundingClientRect()
+        return { width, height }
       })
-      await page.waitForTimeout(1000 * 10)
-      // await page.waitForNavigation({ timeout: 10000 })
-      await this.reply(segment.image(await page.screenshot({
-        fullPage: true,
+      await page.setViewport({
+        width: Math.round(width),
+        height: Math.round(height),
+        deviceScaleFactor: 3
+      })
+      const buff = await page.screenshot({
         type: 'jpeg',
-        quality: 100
-      })))
+        quality: 85,
+        fullPage: true
+      })
+      const kb = (buff.length / 1024).toFixed(2) + 'kb'
+      logger.mark(`[图片生成][网页预览][${puppeteerManager.screenshotCount}次]${kb} ${logger.green(`${Date.now() - start}ms`)}`)
       await puppeteerManager.closePage(page)
-      await puppeteerManager.close()
+      await this.reply(segment.image(buff))
+      return true
     } catch (error) {
-      logger.error(`${e.msg}图片生成失败:${error}`)
-      await puppeteerManager.close()
       await this.reply(`图片生成失败:${error}`)
     }
   }
 
   async avocadoHelp (e) {
+    const start = Date.now()
     await puppeteerManager.init()
     const page = await puppeteerManager.newPage()
     try {
@@ -233,14 +246,15 @@ export class AvocadoRuleALL extends plugin {
       })
       const body = await page.$('body')
       // await page.waitForNavigation({ timeout: 10000 })
-      await this.reply(segment.image(await body.screenshot({ type: 'jpeg', quality: 100 })))
+      const buff = await body.screenshot({ type: 'jpeg', quality: 100 })
+      const kb = (buff.length / 1024).toFixed(2) + 'kb'
+      logger.mark(`[图片生成][帮助][${puppeteerManager.screenshotCount}次]${kb} ${logger.green(`${Date.now() - start}ms`)}`)
+      await this.reply(segment.image(buff))
       await sleep(1300)
       await this.reply('更多可前往：https://github.com/Qz-Sean/avocado-plugin')
       await puppeteerManager.closePage(page)
-      await puppeteerManager.close()
     } catch (error) {
       logger.error(`${e.msg}图片生成失败:${error}`)
-      await puppeteerManager.close()
       await this.reply(`图片生成失败:${error}`)
     }
     return true
@@ -280,7 +294,7 @@ export class AvocadoRuleALL extends plugin {
     let pendingText, langCode
     const codeConfig = Config.translateLang
     // [?？]([?？]+) => 使match[2]结果和配置数组的索引保持一致
-    const translateRegex = new RegExp(`^#?(.*)${global.God}[?？]([?？]*)`)
+    const translateRegex = new RegExp(`^#?(.*)(${global.God}|鳄梨酱)[?？]([?？]*)`)
     const match = this.e.msg.trim().match(translateRegex)
     if (match[1]) {
       // 支持传入语言code或全称
@@ -289,8 +303,8 @@ export class AvocadoRuleALL extends plugin {
         await this.reply(`还不支持${match[1]}鳄梨酱哦！`)
         return false
       }
-    } else if (match[2]) {
-      const langIndex = match[2].length - 1
+    } else if (match[3]) {
+      const langIndex = match[3].length - 1
       langCode = codeConfig.length > langIndex
         ? codeConfig[langIndex]
         : 'auto'
