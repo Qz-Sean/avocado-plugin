@@ -207,6 +207,13 @@ export function splitArray (arr, num) {
   return result
 }
 
+/**
+ *
+ * @param pendingText
+ * @param otherInfo
+ * - renderType： 渲染类型 1. 普通文本渲染 2. 以表格样式渲染 3. 渲染电影信息
+ * @returns {Promise<ImageElem|string>}
+ */
 export async function avocadoRender (pendingText, otherInfo = { title: '', caption: '', footer: '', renderType: 1 }) {
   let tplFile, data, buff
   let title = otherInfo.title
@@ -288,11 +295,11 @@ export async function avocadoRender (pendingText, otherInfo = { title: '', capti
       type: 'jpeg',
       quality: 85
     })
+    if (title === null && otherInfo.renderType === 1) { title = '发癫' }
     const kb = (buff.length / 1024).toFixed(2) + 'kb'
     logger.mark(`[图片生成][${title?.length > 20 ? '图片' : title}][${puppeteerManager.screenshotCount}次]${kb} ${logger.green(`${Date.now() - start}ms`)}`)
     await puppeteerManager.closePage(page)
   } catch (error) {
-    logger.error(`图片生成失败:${error}`)
     return `图片生成失败:${error}`
   }
   return segment.image(buff)
