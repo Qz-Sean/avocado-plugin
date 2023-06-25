@@ -26,7 +26,7 @@ export class AvocadoRuleALL extends plugin {
       rule: [
         {
           // 私聊使用在指令开头添加#
-          reg: new RegExp(`^#?${urlRegex.toString().slice(1, -2)}$`, 'i'),
+          reg: new RegExp(`#?${urlRegex.toString().slice(1, -2)}`, 'i'),
           /** 执行方法 */
           fnc: 'avocadoPreview'
         },
@@ -189,7 +189,10 @@ export class AvocadoRuleALL extends plugin {
       //     return false
       //   }
       // } else {
-      url = e.msg.trim().replace(/^#?/, '')
+      const regex = new RegExp(urlRegex.toString().slice(1, -2), 'i')
+      logger.warn(regex)
+      url = e.msg.trim().replace(/^#?/, '').replace(/[,，。]/g, '').match(regex)[0]
+      if (!url) { return false }
       // }
     }
     // 递归终止
@@ -203,6 +206,7 @@ export class AvocadoRuleALL extends plugin {
       logger.warn(url)
       await page.goto(url, { timeout: 120000 })
       await page.waitForTimeout(1000 * 5)
+      // await page.waitForNavigation({ waitUntil: 'networkidle2' })
       const { width, height } = await page.$eval('body', (element) => {
         const { width, height } = element.getBoundingClientRect()
         return { width, height }
@@ -221,7 +225,7 @@ export class AvocadoRuleALL extends plugin {
       logger.mark(`[图片生成][网页预览][${puppeteerManager.screenshotCount}次]${kb} ${logger.green(`${Date.now() - start}ms`)}`)
       await puppeteerManager.closePage(page)
       await this.reply(segment.image(buff))
-      return true
+      return false
     } catch (error) {
       await this.reply(`图片生成失败:${error}`)
     }
