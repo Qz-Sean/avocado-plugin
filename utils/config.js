@@ -14,7 +14,8 @@ const defaultConfig = {
   apiBaseUrl: '',
   proxy: '',
   favlist: '',
-  version: 'v1.2.4'
+  psychoKey: '',
+  version: 'v1.3.0'
 }
 const _path = process.cwd()
 let config = {}

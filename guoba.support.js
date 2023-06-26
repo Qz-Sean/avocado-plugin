@@ -43,6 +43,12 @@ export function supportGuoba () {
           component: 'Input'
         },
         {
+          field: 'psychoKey',
+          label: '发电Key',
+          bottomHelpMessage: '前往 https://api.caonm.net 申请。',
+          component: 'Input'
+        },
+        {
           field: 'isAutoOnset',
           label: '主动发电',
           bottomHelpMessage: '鳄梨酱，我吃过重庆面、陕西面、天津面、北京面，就是没吃过宁夏面🤤🤤。',

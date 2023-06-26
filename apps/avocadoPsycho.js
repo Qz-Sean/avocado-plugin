@@ -28,27 +28,39 @@ export class avocadoPsycho extends plugin {
 
   async avocadoPsycho (e) {
     if (e.msg.includes('#')) return true
-    const isApiErrorStr = await redis.get('AVOCADO_PSYCHO_APIERROR')
-    const isApiError = isApiErrorStr ? parseInt(isApiErrorStr) : 0
-    let replyMsg
-    if (isApiError) {
-      replyMsg = false
-    } else {
-      replyMsg = await getBonkersBabble(e, global.God, 'api')
-      if (!replyMsg) {
-        await this.e.reply('发电失败(ノへ￣、)该提醒作者更换API啦...将使用本地发电¡¡¡( •̀ ᴗ •́ )و!!!')
-        await redis.set('AVOCADO_PSYCHO_APIERROR', 1, { EX: 60 * 90 })
-        await sleep(1500)
+    const isApiErrorStr = await redis.get('AVOCADO_PSYCHO_ERROR')
+    const apiErrorCode = isApiErrorStr ? parseInt(isApiErrorStr) : 0
+    let replyMsg = ''
+    if (apiErrorCode) {
+      switch (apiErrorCode) {
+        case 1: {
+          replyMsg = await getBonkersBabble(e, global.God, 'native')
+          if (!replyMsg) {
+            await this.e.reply('Σ( ° △ °|||)︴ 震惊！本地发电失败！')
+            await redis.set('AVOCADO_PSYCHO_ERROR', 2, { EX: 60 * 5 })
+            return false
+          }
+          break
+        }
+        // 本地发电失败！没得玩了！
+        case 2: {
+          return false
+        }
       }
-    }
-    if (isApiError === 2) {
-      return false
     } else {
-      replyMsg = !replyMsg ? await getBonkersBabble(e, global.God, 'native') : replyMsg
-      if (!replyMsg) {
-        await this.e.reply('Σ( ° △ °|||)︴ 震惊！本地发电失败！')
-        await redis.set('AVOCADO_PSYCHO_APIERROR', 2, { EX: 60 * 90 })
-        return false
+      const psychoRes = await getBonkersBabble(e, global.God, 'api')
+      if (!psychoRes || psychoRes === 403) {
+        await this.e.reply(`发电失败(ノへ￣、)${!Config.psychoKey ? '\n((*・∀・）ゞ→→没有填写发电Key哦!' : psychoRes === 403 ? '请检查发电key是否填写正确哦！' : '\n该提醒作者更换API啦...'}\n将尝试本地发电¡¡¡( •̀ ᴗ •́ )و!!!`)
+        await redis.set('AVOCADO_PSYCHO_ERROR', 1, { EX: 60 * 5 })
+        await sleep(1500)
+        replyMsg = await getBonkersBabble(e, global.God, 'native')
+        if (!replyMsg) {
+          await this.e.reply('Σ( ° △ °|||)︴ 震惊！本地发电失败！')
+          await redis.set('AVOCADO_PSYCHO_ERROR', 2, { EX: 60 * 5 })
+          return false
+        }
+      } else {
+        replyMsg = psychoRes
       }
     }
     if (Math.random() < 0.5) {
@@ -115,7 +127,7 @@ export async function getBonkersBabble (e = {}, GodName = '', dataSource = '', w
   const psychoData = await redis.lRange('AVOCADO:PSYCHODATA', 0, -1)
   if (dataSource === 'api' || dataSource === '') {
     // let url = `https://xiaobapi.top/api/xb/api/onset.php?name=${GOD}`
-    let url = `http://api.caonm.net/api/fab/f.php?msg=${GodName}`
+    let url = `https://api.caonm.net/api/fab/f?msg=${GodName}&key=${Config.psychoKey}`
     try {
       const headers = generateRandomHeader()
       const options = {
@@ -129,16 +141,16 @@ export async function getBonkersBabble (e = {}, GodName = '', dataSource = '', w
           let filteredData = json.data.replace(new RegExp(GodName, 'g'), '<name>')
           // 判断是否存在重复元素
           if (psychoData && psychoData.includes(filteredData)) {
-            logger.warn('存在重复数据，不进行插入操作')
+            logger.mark('存在重复发癫数据，不进行插入操作')
           } else {
             let status = await redis.lPush('AVOCADO:PSYCHODATA', filteredData)
             if (status) {
-              logger.warn(`已存入：${json.data}`)
+              logger.mark(`已存入发癫数据：${json.data}`)
             }
           }
           replyMsg = json.data
-        } else {
-          replyMsg = json.toString()
+        } else if (json.code === 403) {
+          return 403
         }
       }
     } catch (err) {
@@ -146,7 +158,6 @@ export async function getBonkersBabble (e = {}, GodName = '', dataSource = '', w
       return false
     }
   }
-  if (replyMsg !== '') return replyMsg
   if (dataSource === 'native' || dataSource === '') {
     if (!psychoData.length) {
       return false

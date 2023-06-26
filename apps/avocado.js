@@ -27,7 +27,6 @@ export class AvocadoRuleALL extends plugin {
         {
           // 私聊使用在指令开头添加#
           reg: new RegExp(`#?${urlRegex.toString().slice(1, -2)}`, 'i'),
-          /** 执行方法 */
           fnc: 'avocadoPreview'
         },
         {
