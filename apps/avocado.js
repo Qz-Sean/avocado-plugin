@@ -190,7 +190,6 @@ export class AvocadoRuleALL extends plugin {
       //   }
       // } else {
       const regex = new RegExp(urlRegex.toString().slice(1, -2), 'i')
-      logger.warn(regex)
       url = e.msg.trim().replace(/^#?/, '').replace(/[,，。]/g, '').match(regex)[0]
       if (!url) { return false }
       // }
@@ -203,7 +202,7 @@ export class AvocadoRuleALL extends plugin {
     try {
       url = url.trim().replace(/^#?/, '')
       url = url.startsWith('http') ? url : 'http://' + url
-      logger.warn(url)
+      logger.info('avocadoPreviewUrl: ', url)
       await page.goto(url, { timeout: 120000 })
       await page.waitForTimeout(1000 * 5)
       // await page.waitForNavigation({ waitUntil: 'networkidle2' })
