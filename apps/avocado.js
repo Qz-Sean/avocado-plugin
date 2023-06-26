@@ -211,7 +211,7 @@ export class AvocadoRuleALL extends plugin {
         return { width, height }
       })
       await page.setViewport({
-        width: Math.round(width),
+        width: Math.round(width + 300),
         height: Math.round(height),
         deviceScaleFactor: 3
       })
