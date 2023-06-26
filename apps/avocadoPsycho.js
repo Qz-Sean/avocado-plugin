@@ -3,7 +3,7 @@ import fetch from 'node-fetch'
 import { avocadoRender, generateRandomHeader, sleep } from '../utils/common.js'
 import { Config } from '../utils/config.js'
 
-export class avocadoPsycho extends plugin {
+export class AvocadoPsycho extends plugin {
   constructor (e) {
     super({
       name: '鳄梨酱！！！ => 发癫',
@@ -28,15 +28,22 @@ export class avocadoPsycho extends plugin {
 
   async avocadoPsycho (e) {
     if (e.msg.includes('#')) return true
+    let godName
+    // 内部调用
+    if (!e.msg.includes(global.God)) {
+      godName = e.msg
+    } else {
+      godName = global.God
+    }
     const isApiErrorStr = await redis.get('AVOCADO_PSYCHO_ERROR')
     const apiErrorCode = isApiErrorStr ? parseInt(isApiErrorStr) : 0
     let replyMsg = ''
     if (apiErrorCode) {
       switch (apiErrorCode) {
         case 1: {
-          replyMsg = await getBonkersBabble(e, global.God, 'native')
+          replyMsg = await getBonkersBabble(e, godName, 'native')
           if (!replyMsg) {
-            await this.e.reply('Σ( ° △ °|||)︴ 震惊！本地发电失败！')
+            await e.reply('Σ( ° △ °|||)︴ 震惊！本地发电失败！')
             await redis.set('AVOCADO_PSYCHO_ERROR', 2, { EX: 60 * 5 })
             return false
           }
@@ -48,28 +55,28 @@ export class avocadoPsycho extends plugin {
         }
       }
     } else {
-      const psychoRes = await getBonkersBabble(e, global.God, 'api')
-      if (!psychoRes || psychoRes === 403) {
-        await this.e.reply(`发电失败(ノへ￣、)${!Config.psychoKey ? '\n((*・∀・）ゞ→→没有填写发电Key哦!' : psychoRes === 403 ? '请检查发电key是否填写正确哦！' : '\n该提醒作者更换API啦...'}\n将尝试本地发电¡¡¡( •̀ ᴗ •́ )و!!!`)
+      const res = await getBonkersBabble(e, godName, 'api')
+      if (!res || res === 403) {
+        await e.reply(`发电失败(ノへ￣、)${!Config.psychoKey ? '\n((*・∀・）ゞ→→没有填写发电Key哦!' : res === 403 ? '请检查发电key是否填写正确哦！' : '\n该提醒作者更换API啦...'}\n将尝试本地发电¡¡¡( •̀ ᴗ •́ )و!!!`)
         await redis.set('AVOCADO_PSYCHO_ERROR', 1, { EX: 60 * 5 })
         await sleep(1500)
-        replyMsg = await getBonkersBabble(e, global.God, 'native')
+        replyMsg = await getBonkersBabble(e, godName, 'native')
         if (!replyMsg) {
-          await this.e.reply('Σ( ° △ °|||)︴ 震惊！本地发电失败！')
+          await e.reply('Σ( ° △ °|||)︴ 震惊！本地发电失败！')
           await redis.set('AVOCADO_PSYCHO_ERROR', 2, { EX: 60 * 5 })
           return false
         }
       } else {
-        replyMsg = psychoRes
+        replyMsg = res
       }
     }
     if (Math.random() < 0.5) {
-      await this.e.reply(replyMsg)
+      await e.reply(replyMsg)
     } else {
       replyMsg = replyMsg.split('\n').map(item => '# ' + item + '\n').join('')
       const img = await avocadoRender(replyMsg, { title: null, caption: '', footer: '', renderType: 1 })
       if (img) {
-        await this.e.reply(img)
+        await e.reply(img)
       }
     }
     return true

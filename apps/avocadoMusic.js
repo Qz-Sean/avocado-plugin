@@ -17,7 +17,7 @@ import {
   sendMusic
 } from '../utils/music.js'
 
-export class avocadoMusic extends plugin {
+export class AvocadoMusic extends plugin {
   constructor () {
     super({
       name: '鳄梨酱！！！ => Dance',

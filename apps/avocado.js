@@ -15,6 +15,7 @@ import {
 import { getAreaInfo, weather } from '../utils/weather.js'
 import { cities, movieKeyMap, pluginRoot, translateLangSupports, urlRegex } from '../utils/const.js'
 import puppeteerManager from '../utils/puppeteer.js'
+import { AvocadoPsycho } from './avocadoPsycho.js'
 
 export class AvocadoRuleALL extends plugin {
   constructor (e) {
@@ -48,9 +49,19 @@ export class AvocadoRuleALL extends plugin {
         {
           reg: `^#?((${global.God}|鳄梨酱)?#电影|来点好看的)$`,
           fnc: 'avocadoMovie'
+        },
+        {
+          reg: `^#?((${global.God}|鳄梨酱)?#发[癫|电|疯](.+))`,
+          fnc: 'avocadoPsycho'
         }
       ]
     })
+  }
+
+  async avocadoPsycho (e) {
+    const regex = /^#?((${global.God}|鳄梨酱)?#发[癫|电|疯](.+))/
+    e.msg = e.msg.match(regex)[3]
+    await new AvocadoPsycho().avocadoPsycho(e)
   }
 
   async avocadoImg (e) {
