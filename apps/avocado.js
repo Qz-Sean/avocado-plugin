@@ -35,8 +35,8 @@ export class AvocadoRuleALL extends plugin {
           fnc: 'avocadoHelp'
         },
         {
-          reg: `^#?(.*)(${global.God}|鳄梨酱)[！!]`,
-          fnc: 'avocadoImg'
+          reg: `#?(${global.God}|鳄梨酱)([!！]+)([?？]*)\\s?(.*)`,
+          fnc: 'avocado'
         },
         {
           reg: `^#?(.*)(${global.God}|鳄梨酱)[?？]([?？]*)`,
@@ -59,12 +59,12 @@ export class AvocadoRuleALL extends plugin {
   }
 
   async avocadoPsycho (e) {
-    const regex = /^#?((${global.God}|鳄梨酱)?#发[癫|电|疯](.+))/
+    const regex = /^#?((${global.God}|鳄梨酱)?#发[癫电疯](.+))/
     e.msg = e.msg.match(regex)[3]
     await new AvocadoPsycho().avocadoPsycho(e)
   }
 
-  async avocadoImg (e) {
+  async avocado (e) {
     if (e.source) {
       let msgType, msgInfo
       const isImg = await getImg(e)
@@ -119,11 +119,10 @@ export class AvocadoRuleALL extends plugin {
       }
     } else {
       let msg
-      // msg = e.msg.trim().replace(/#?鳄梨酱([！!]+)\s?/, '')
-      const regex = new RegExp(`#?(${global.God}|鳄梨酱)([!！]+)([?？]+)\\s?(.*)`)
+      const regex = new RegExp(`#?(${global.God}|鳄梨酱)([!！]+)([?？]*)\\s?(.*)`)
       msg = e.msg.trim().match(regex)
       if (!msg) { return false }
-      // 当为鳄梨酱！！！！时获取其ocr结果
+      // 鳄梨酱！！！！ + img =》 获取其ocr结果
       if (msg[2].length === 4) {
         let [, ocrRes] = await getImageOcrText(e) || ''
         if (ocrRes) {
@@ -132,10 +131,12 @@ export class AvocadoRuleALL extends plugin {
         }
         return true
       }
+      // text参数不存在
       if (!msg[4].length) {
         await this.reply(`${global.God}！！！`)
         return true
       }
+      // 鳄梨酱！？ + text =》 转图片
       if (msg[2].length === 1 && msg[3].length === 1) {
         const img = await avocadoRender(msg[4])
         if (img) await e.reply(img)
