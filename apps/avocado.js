@@ -13,7 +13,15 @@ import {
   sleep, splitArray
 } from '../utils/common.js'
 import { getAreaInfo, weather } from '../utils/weather.js'
-import { cities, movieKeyMap, pluginRoot, translateLangSupports, urlRegex } from '../utils/const.js'
+import {
+  cities,
+  movieKeyMap,
+  pluginRoot,
+  pluginVersion,
+  translateLangSupports,
+  urlRegex,
+  yunZaiVersion
+} from '../utils/const.js'
 import puppeteerManager from '../utils/puppeteer.js'
 import { AvocadoPsycho } from './avocadoPsycho.js'
 
@@ -159,7 +167,8 @@ export class AvocadoRuleALL extends plugin {
   }
 
   async avocadoPreview (e, param = '') {
-    if (e.isPrivate && !param && !e.msg.startsWith('#')) return false
+    if (e.isGroup && e.msg.startsWith('#')) return false
+    if (e.isPrivate && !e.msg.startsWith('#')) return false
     let url
     if (param.length) {
       url = param
@@ -234,7 +243,7 @@ export class AvocadoRuleALL extends plugin {
       const kb = (buff.length / 1024).toFixed(2) + 'kb'
       logger.mark(`[图片生成][网页预览][${puppeteerManager.screenshotCount}次]${kb} ${logger.green(`${Date.now() - start}ms`)}`)
       await puppeteerManager.closePage(page)
-      await this.reply(segment.image(buff))
+      await this.reply([url + '\n', segment.image(buff)])
       return false
     } catch (error) {
       await this.reply(`图片生成失败:${error}`)
@@ -249,15 +258,15 @@ export class AvocadoRuleALL extends plugin {
       const filePath = path.join(pluginRoot, 'resources', 'html', 'README.html')
       await page.goto(`file://${filePath}`, { timeout: 120000, waitUntil: 'networkidle0' })
       await page.waitForTimeout(1000)
-      await page.evaluate(() => {
+      await page.evaluate((pluginVersion, yunZaiVersion) => {
         const p = document.createElement('p')
         p.style.textAlign = 'center'
         p.style.fontSize = '18px'
         p.style.marginTop = '-5px'
         p.style.fontWeight = 'bold'
-        p.textContent = 'Created By Yunzai-Bot & Avocado-Plugin'
+        p.textContent = `Created By Yunzai-Bot ${yunZaiVersion} & Avocado-Plugin ${pluginVersion}`
         document.querySelector('#write').appendChild(p)
-      })
+      }, pluginVersion, yunZaiVersion) // 将外部变量作为参数传入
       const body = await page.$('body')
       // await page.waitForNavigation({ timeout: 10000 })
       const buff = await body.screenshot({ type: 'jpeg', quality: 100 })
@@ -425,11 +434,11 @@ export class AvocadoRuleALL extends plugin {
     })
 
     if (!img) {
-      await this.reply('生成图片错误！')
+      await e.reply('生成图片错误！')
       return false
     }
-    await this.reply(img)
-    this.setContext('pickMe', e.isGroup, 300)
+    await e.reply(img)
+    this.setContext('pickMe', e.isGroup, 300, e)
   }
 
   async pickMe (e) {
@@ -443,12 +452,13 @@ export class AvocadoRuleALL extends plugin {
       await redis.del(`AVOCADO:MOVIE_${this.e.sender.user_id}_PICKEDMOVIE`)
       logger.mark('finish pickMe')
       await this.reply(`${global.God}！！！`)
-      this.finish('pickMe')
+      this.finish('pickMe', this.e.isGroup, this.e)
       return true
     }
     let selectedMovie
     try {
       if (this.e.msg === '00') {
+        // 获取本次查看的影片
         const movieIndex = await redis.get(`AVOCADO:MOVIE_${this.e.sender.user_id}_PICKEDMOVIE`)
         if (movieIndex) {
           selectedMovie = mainInfoList.find(item => item.index === parseInt(movieIndex))
@@ -490,7 +500,7 @@ export class AvocadoRuleALL extends plugin {
         return key + '：' + transformedMoviesDetails[key] + '\n'
       }).join('')
       if (this.e.msg === '00') {
-        await this.reply(await makeForwardMsg(e, [others], '鳄门🙏...'))
+        await this.reply(await makeForwardMsg(this.e, [others], '鳄门🙏...'))
         await this.reply('可继续选择影片~~\n回复 00 获取本片剧照及预告\n回复 0 结束此次操作\n¡¡¡( •̀ ᴗ •́ )و!!!')
         return
       }
@@ -506,12 +516,12 @@ export class AvocadoRuleALL extends plugin {
       } else {
         await this.e.reply('图片生成出错了！')
         logger.mark('finish pickMe')
-        this.finish('pickMe')
+        this.finish('pickMe', this.e.isGroup, this.e)
       }
     } catch (error) {
       await this.e.reply(error)
       logger.mark('finish pickMe')
-      this.finish('pickMe')
+      this.finish('pickMe', this.e.isGroup, this.e)
     }
   }
 
@@ -526,23 +536,42 @@ export class AvocadoRuleALL extends plugin {
     return this.e.reply(msg, quote, data)
   }
 
-  conKey (isGroup = false) {
-    if (isGroup) {
-      return `${this.name}.${this.e.group_id}`
-    } else {
-      return `${this.name}.${this.userId || this.e.user_id}`
+  /**
+   * @param {boolean} isGroup
+   * @param {Object} e
+   * @returns {string}
+   */
+  conKey (isGroup = false, e = {}) {
+    try {
+      const groupId = this.e?.group_id || e.group_id
+      const userId = this?.userId || this.e?.user_id || e.user_id
+      if (isGroup) {
+        return `${this.name}.${groupId}`
+      } else {
+        return `${this.name}.${userId}`
+      }
+    } catch (err) {
+      logger.error(err)
     }
   }
 
   /**
-   * @param type 执行方法
-   * @param isGroup 是否群聊
-   * @param time 操作时间，默认120秒
+   * @param {string} type 执行方法
+   * @param {boolean} isGroup 是否群聊
+   * @param {number} time 操作时间，默认120秒
+   * @param {Object} e
    */
-  setContext (type, isGroup = false, time = 120) {
-    let key = this.conKey(isGroup)
-    if (!stateArr[key]) stateArr[key] = {}
-    stateArr[key][type] = this.e
+  setContext (type, isGroup = false, time = 120, e = {}) {
+    let key = this.conKey(isGroup, e)
+    // logger.warn('key:', key)
+    if (!stateArr[key]) {
+      stateArr[key] = {}
+    }
+    // this.e ->  this.e || e
+    // bug fixed, 不知道第一次为什么没有拿到this.e
+    stateArr[key][type] = this.e || e
+    // setContext: pickHotSinger undefined
+    // logger.warn('setContext:',type, stateArr[key][type])
     if (time) {
       /** 操作时间 */
       setTimeout(() => {
@@ -567,10 +596,11 @@ export class AvocadoRuleALL extends plugin {
   /**
    * @param type 执行方法
    * @param isGroup 是否群聊
+   * @param {Object} e
    */
-  finish (type, isGroup = false) {
-    if (stateArr[this.conKey(isGroup)] && stateArr[this.conKey(isGroup)][type]) {
-      delete stateArr[this.conKey(isGroup)][type]
+  finish (type, isGroup = false, e = {}) {
+    if (stateArr[this.conKey(isGroup, e)] && stateArr[this.conKey(isGroup, e)][type]) {
+      delete stateArr[this.conKey(isGroup, e)][type]
     }
   }
 }

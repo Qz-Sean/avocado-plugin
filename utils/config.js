@@ -13,9 +13,9 @@ const defaultConfig = {
   apiKey: '',
   apiBaseUrl: '',
   proxy: '',
-  favlist: '',
   psychoKey: '',
-  version: 'v1.3.1'
+  deviceScaleFactor: '1',
+  version: 'v1.4.0'
 }
 const _path = process.cwd()
 let config = {}

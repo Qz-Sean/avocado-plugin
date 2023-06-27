@@ -76,6 +76,16 @@ export function supportGuoba () {
           label: '网易云音乐登录ck',
           bottomHelpMessage: 'https://music.163.com 登录 => 下载 https://chrome.google.com/webstore/detail/cookie-editor/hlkenndednhfkekhgcdicdfddnkalmdm => 刷新页面，点击拓展获取"MUSIC_U"字段的值填入此处。',
           component: 'Input'
+        },
+        {
+          field: 'deviceScaleFactor',
+          label: '图片渲染精度',
+          bottomHelpMessage: '根据自己设备实际情况选择。默认1',
+          component: 'InputNumber',
+          componentProps: {
+            min: 1,
+            max: 10
+          }
         }
       ],
       // 获取配置数据方法（用于前端填充显示数据）
@@ -88,6 +98,9 @@ export function supportGuoba () {
           if (keyPath === 'translateLang' || keyPath === 'targetArea' || keyPath === 'initiativeGroups') { value = value.toString().split(/[,，;；|]/) }
           if (keyPath === 'onsetLatentPeriod') {
             value = /^\d{1,2}$/.test(value) ? value : 3
+          }
+          if (keyPath === 'deviceScaleFactor') {
+            value = value >= 1 && value <= 10 ? value : 1
           }
           if (Config[keyPath] !== value) { Config[keyPath] = value }
         }

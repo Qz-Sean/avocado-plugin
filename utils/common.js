@@ -1,11 +1,11 @@
-import { pluginRoot, urlRegex } from './const.js'
+import {pluginRoot, pluginVersion, urlRegex, yunZaiVersion} from './const.js'
 import path from 'path'
 import puppeteerManager from './puppeteer.js'
 import fs from 'fs'
 import template from 'art-template'
 import { segment } from 'icqq'
 import MarkdownIt from 'markdown-it'
-
+import {Config} from "./config.js";
 export async function getSource (e) {
   if (!e.source) return false
   let sourceReply
@@ -218,6 +218,7 @@ export async function avocadoRender (pendingText, otherInfo = { title: '', capti
   let tplFile, data, buff
   let title = otherInfo.title
   if (title === '') title = Math.random() > 0.5 ? ' Here is Avocado! ' : ' Avocado’s here! '
+  const version = Config.version
   try {
     const start = Date.now()
     await puppeteerManager.init()
@@ -233,7 +234,9 @@ export async function avocadoRender (pendingText, otherInfo = { title: '', capti
       data = {
         title,
         markdownHtml,
-        footer: otherInfo.footer
+        footer: otherInfo.footer,
+        pluginVersion,
+        yunZaiVersion
       }
     } else if (otherInfo.renderType === 2) {
       tplFile = path.join(pluginRoot, 'resources', 'html', 'table.html')
@@ -241,7 +244,9 @@ export async function avocadoRender (pendingText, otherInfo = { title: '', capti
         title,
         caption: otherInfo.caption,
         columns: pendingText,
-        footer: otherInfo.footer
+        footer: otherInfo.footer,
+        pluginVersion,
+        yunZaiVersion
       }
     } else if (otherInfo.renderType === 3) {
       tplFile = path.join(pluginRoot, 'resources', 'html', 'movie.html')
@@ -255,7 +260,9 @@ export async function avocadoRender (pendingText, otherInfo = { title: '', capti
       data = {
         title,
         markdownHtml,
-        footer: otherInfo.footer
+        footer: otherInfo.footer,
+        pluginVersion,
+        yunZaiVersion
       }
     }
     await page.goto(`file://${tplFile}`, { waitUntil: 'networkidle0' })
@@ -288,7 +295,7 @@ export async function avocadoRender (pendingText, otherInfo = { title: '', capti
     await page.setViewport({
       width: Math.round(width),
       height: Math.round(height),
-      deviceScaleFactor: 5
+      deviceScaleFactor: Config.deviceScaleFactor
     })
     const body = await page.$('body')
     buff = await body.screenshot({

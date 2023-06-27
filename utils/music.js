@@ -279,6 +279,7 @@ export async function findSong (data = { param: '', songId: '', isRandom: false,
         const songName = data.param.split(',')[1]
         searchRes = result?.result?.songs
         searchRes = searchRes.find(song => song.ar.find(item => item.name.toLowerCase() === singer.toLowerCase() && song.name.toLowerCase() === songName.toLowerCase()))
+        // 没有找到符合的结果，保存此次搜索结果，二次选择 =》 Context : wrongFind
         if (!searchRes) {
           const songList = result?.result?.songs.map((song, index) => ({
             index: index + 1,
@@ -287,7 +288,7 @@ export async function findSong (data = { param: '', songId: '', isRandom: false,
             singer: song.ar.map(item => item.name)
           }))
           await redis.set(`AVOCADO:MUSIC_${data.param}`, JSON.stringify(songList), { EX: 60 * 2 })
-          return [1, songList]
+          return songList
         }
       } else {
         searchRes = result?.result?.songs?.[0]
@@ -402,6 +403,12 @@ export async function getSingerId (singer) {
   return singerId || false
 }
 
+/**
+ * 各地区歌手榜 -> {华语: 1, 欧美: 2,韩国: 3, 日本: 4}
+ * @param {string} userId
+ * @param {number} singerType
+ * @returns {Promise<*|boolean>}
+ */
 export async function getSingerRankingList (userId = '', singerType) {
   let url = `http://110.41.21.181:3000/toplist/artist?type=${singerType}`
   try {
@@ -424,7 +431,7 @@ export async function getSingerRankingList (userId = '', singerType) {
     }))
     //  保存用户的选择
     if (userId) {
-      await redis.set(`AVOCADO:MUSIC_${userId}_SINGERTYPE`, singerType, { EX: 60 * 10 })
+      await redis.set(`AVOCADO:MUSIC_${userId}_SINGERTYPE`, singerType, {EX: 60 * 60 * 24 * 7})
     }
     return list
   } catch (err) {
@@ -433,6 +440,10 @@ export async function getSingerRankingList (userId = '', singerType) {
   }
 }
 
+/**
+ * 获取热门歌手,不限制地区
+ * @returns {Promise<*|boolean>}
+ */
 export async function getHotSingers () {
   let url = 'http://110.41.21.181:3000/top/artists?offset=0&limit=50'
   try {
