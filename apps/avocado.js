@@ -43,7 +43,7 @@ export class AvocadoRuleALL extends plugin {
           fnc: 'avocadoHelp'
         },
         {
-          reg: `#?(${global.God}|鳄梨酱)([!！]+)([?？]*)\\s?(.*)`,
+          reg: `^#?(${global.God}|鳄梨酱)([!！]+)([?？]*)\\s?(.*)`,
           fnc: 'avocado'
         },
         {
@@ -438,11 +438,21 @@ export class AvocadoRuleALL extends plugin {
       return false
     }
     await e.reply(img)
-    this.setContext('pickMe', e.isGroup, 300, e)
+    e.startTime = new Date()
+    e.contextDuration = 120
+    this.setContext('pickMe', e.isGroup, e.contextDuration, e)
+    logger.mark('start pickMe context')
   }
 
   async pickMe (e) {
     if (typeof this.e.msg !== 'string') {
+      return
+    }
+    const senderFromChatGpt = e.senderFromChatGpt || this.e.senderFromChatGpt
+    const startTime = e.startTime || this.e.startTime
+    const contextDuration = e.contextDuration || this.e.contextDuration
+    if (senderFromChatGpt !== this.e.sender.user_id) {
+      logger.warn('当前正处于连续上下文对话中，非发起人不予回复！距离本次对话结束还剩 ' + Math.floor((contextDuration - (new Date() - startTime) / 1000)) + ' 秒！')
       return
     }
     let mainInfoList = JSON.parse(await redis.get('AVOCADO:MOVIE_DETAILS'))

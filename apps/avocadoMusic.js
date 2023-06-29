@@ -137,7 +137,9 @@ export class AvocadoMusic extends plugin {
               if (img) await e.reply(img)
               await getSingerHotList(e.sender.user_id, singerInfo.name)
               await redis.set(`AVOCADO:MUSIC_${e.sender.user_id}_FROM`, 'randomSinger', { EX: 60 * 10 })
-              this.setContext('isContinue', e.isGroup, 180, e)
+              e.startTime = new Date()
+              e.contextDuration = 180
+              this.setContext('isContinue', e.isGroup, e.contextDuration, e)
               return true
             }
             // 随机歌名点歌
@@ -163,8 +165,12 @@ export class AvocadoMusic extends plugin {
                 footer: '有没有你感兴趣的歌手呢~你想了解谁呢~',
                 renderType: 2
               })
+              logger.mark('start pickHotSinger context')
               await e.reply(img)
-              this.setContext('pickHotSinger', e.isGroup, 180, e)
+              e.startTime = new Date()
+              e.contextDuration = 120
+              this.setContext('pickHotSinger', e.isGroup, e.contextDuration, e)
+              logger.mark('start pickHotSinger context')
               return true
             }
           }
@@ -172,7 +178,10 @@ export class AvocadoMusic extends plugin {
             const text = splitArray(hotList.map(obj => `${obj.index}: ${obj.songName}\n`), 2)
             const img = await avocadoRender(text, { title: `${query}-热门播放50`, caption: '', footer: '可通过发送对应序号获取音乐~', renderType: 2 })
             if (img) await e.reply(img)
-            this.setContext('selectHotListMusic', e.isGroup, 180, e)
+            e.startTime = new Date()
+            e.contextDuration = 120
+            this.setContext('selectHotListMusic', e.isGroup, e.contextDuration, e)
+            logger.mark('start selectHotListMusic context')
             return true
           }
           // const img = await avocadoRender(`### 没有找到名为 ${query} 的歌手呢...\n### 当前指令只支持 \`热门[歌手(名称)|音乐人]\` 哦！试试其他选择吧~\n- 鳄梨酱#热门李健\n- 鳄梨酱#热门歌手\n- 鳄梨酱#热门音乐人\n\n${await getBonkersBabble({}, global.God, 'native')}`, { title: '', caption: '', footer: '', renderType: 1 })
@@ -194,7 +203,10 @@ export class AvocadoMusic extends plugin {
         const text = splitArray(hotList.map(obj => `${obj.index}: ${obj.songName}\n`), 2)
         const img = await avocadoRender(text, { title: `${query}-热门播放50`, caption: '', footer: '可通过发送对应序号获取音乐~', renderType: 2 })
         if (img) await e.reply(img)
-        this.setContext('selectHotListMusic', e.isGroup, 180, e)
+        e.startTime = new Date()
+        e.contextDuration = 120
+        this.setContext('selectHotListMusic', e.isGroup, e.contextDuration, e)
+        logger.mark('start selectHotListMusic context')
         return true
       }
       // 正常点歌
@@ -206,7 +218,10 @@ export class AvocadoMusic extends plugin {
         const img = await avocadoRender(text, { title: null, caption: '', footer: '', renderType: 2 })
         if (img) await e.reply(img)
         e.songName = query
-        this.setContext('wrongFind', e.isGroup, 180, e)
+        e.startTime = new Date()
+        e.contextDuration = 120
+        this.setContext('wrongFind', e.isGroup, e.contextDuration, e)
+        logger.mark('start wrongFind context')
         return true
       }
       if (!song) {
@@ -223,7 +238,15 @@ export class AvocadoMusic extends plugin {
   }
 
   async wrongFind (e) {
+    const senderFromChatGpt = e.senderFromChatGpt || this.e.senderFromChatGpt
+    const startTime = e.startTime || this.e.startTime
+    const contextDuration = e.contextDuration || this.e.contextDuration
+    if (senderFromChatGpt !== this.e.sender.user_id) {
+      logger.warn('当前正处于连续上下文对话中，非发起人不予回复！距离本次对话结束还剩 ' + Math.floor((contextDuration - (new Date() - startTime) / 1000)) + ' 秒！')
+      return
+    }
     if (typeof this.e.msg !== 'string') { return }
+    logger.mark('wrongFind:', this.e.msg)
     // 从上次对话中获取歌名
     const songList = JSON.parse(await redis.get(`AVOCADO:MUSIC_${e.songName}`))
     const reg = new RegExp(`^((0)|(${songList.map(item => item.index).join('|')})|(${songList.map(item => item.name).join('|').replace(/\*/g, ' fuckWords ').replace(/\(/g, '（').replace(/\)/g, '）').replace(/\./g, ' ')}))$`)
@@ -270,6 +293,13 @@ export class AvocadoMusic extends plugin {
   }
 
   async pickHotSinger (e) {
+    const senderFromChatGpt = e.senderFromChatGpt || this.e.senderFromChatGpt
+    const startTime = e.startTime || this.e.startTime
+    const contextDuration = e.contextDuration || this.e.contextDuration
+    if (senderFromChatGpt !== this.e.sender.user_id) {
+      logger.warn('当前正处于连续上下文对话中，非发起人不予回复！距离本次对话结束还剩 ' + Math.floor((contextDuration - (new Date() - startTime) / 1000)) + ' 秒！')
+      return
+    }
     if (typeof this.e.msg !== 'string') { return }
     logger.mark('pickHotSinger:', this.e.msg)
     const hotSingers = await getSingerRankingList(this.e.sender.user_id, await redis.get(`AVOCADO:MUSIC_${this.e.sender.user_id}_SINGERTYPE`))
@@ -303,7 +333,11 @@ export class AvocadoMusic extends plugin {
       await getSingerHotList(this.e.sender.user_id, singerName)
       logger.mark('finish pickHotSinger')
       this.finish('pickHotSinger', this.e.isGroup, this.e)
-      this.setContext('isContinue', this.e.isGroup, 180, this.e)
+      this.e.startTime = Date.now()
+      this.e.contextDuration = 180
+      this.e.senderFromChatGpt = e.senderFromChatGpt
+      this.setContext('isContinue', this.e.isGroup, this.e.contextDuration, this.e)
+      logger.mark('start isContinue context')
       return true
     }
   }
@@ -329,10 +363,18 @@ export class AvocadoMusic extends plugin {
       await this.reply(img)
     }
     this.setContext('isContinue', this.e.isGroup, 180, this.e)
+    logger.mark('start isContinue context')
     return true
   }
 
   async isContinue (e) {
+    const senderFromChatGpt = e.senderFromChatGpt || this.e.senderFromChatGpt
+    const startTime = e.startTime || this.e.startTime
+    const contextDuration = e.contextDuration || this.e.contextDuration
+    if (senderFromChatGpt !== this.e.sender.user_id) {
+      logger.warn('当前正处于连续上下文对话中，非发起人不予回复！距离本次对话结束还剩 ' + Math.floor((contextDuration - (new Date() - startTime) / 1000)) + ' 秒！')
+      return
+    }
     if (typeof this.e.msg !== 'string') { return }
     logger.mark('isContinue: ', this.e.msg)
     const reg = /算了|0|想|1|换/
@@ -365,7 +407,9 @@ export class AvocadoMusic extends plugin {
           if (img) await this.reply(img)
           await getSingerHotList(this.e.sender.user_id, singerInfo.name)
           this.finish('isContinue', this.e.isGroup, this.e)
+          logger.mark('finish isContinue context')
           this.setContext('isContinue', this.e.isGroup, 180, this.e)
+          logger.mark('start isContinue context')
           return true
         }
       }
@@ -375,12 +419,20 @@ export class AvocadoMusic extends plugin {
       const img = await avocadoRender(text, { title: `${singer}-热门播放50`, caption: '', footer: '', renderType: 2 })
       if (img) await this.reply(img)
       this.finish('isContinue', this.e.isGroup, this.e)
-      this.setContext('selectHotListMusic', this.e.isGroup, 300, this.e)
+      this.setContext('selectHotListMusic', this.e.isGroup, 180, this.e)
+      logger.mark('start selectHotListMusic context')
       return true
     }
   }
 
   async selectHotListMusic (e) {
+    const senderFromChatGpt = e.senderFromChatGpt || this.e.senderFromChatGpt
+    const startTime = e.startTime || this.e.startTime
+    const contextDuration = e.contextDuration || this.e.contextDuration
+    if (senderFromChatGpt !== this.e.sender.user_id) {
+      logger.warn('当前正处于连续上下文对话中，非发起人不予回复！距离本次对话结束还剩 ' + Math.floor((contextDuration - (new Date() - startTime) / 1000)) + ' 秒！')
+      return
+    }
     logger.mark('selectHotListMusic: ', this.e.msg)
     if (typeof this.e.msg !== 'string') { return }
     const hotList = JSON.parse(await redis.get(`AVOCADO:MUSIC_${this.e.sender.user_id}_HOTLIST`))
@@ -525,7 +577,8 @@ export class AvocadoMusic extends plugin {
     const text = splitArray(singerRankingList.map(item => `${item.index}: ${item.name}${item.transName ? '(' + item.transName + ')' : ''}`), 2)
     const img = await avocadoRender(text, { title: `${singerType}歌手榜`, caption: '', footer: '有没有你感兴趣的歌手呢~告诉我你想听谁的歌吧~', renderType: 2 })
     await this.reply(img)
-    this.setContext('pickRankingSinger', e.isGroup, 180, e)
+    this.setContext('pickRankingSinger', e.isGroup, 120, e)
+    logger.mark('start pickRankingSinger context')
     return true
   }
 
@@ -555,8 +608,10 @@ export class AvocadoMusic extends plugin {
       if (img) {
         await this.reply(img)
       }
-      this.setContext('isContinue', this.e.isGroup, 180, this.e)
       this.finish('pickRankingSinger', this.e.isGroup, this.e)
+      logger.mark('finish pickRankingSinger context')
+      this.setContext('isContinue', this.e.isGroup, 180, this.e)
+      logger.mark('start isContinue context')
       return true
     }
   }
