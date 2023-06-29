@@ -247,6 +247,7 @@ export class AvocadoRuleALL extends plugin {
       return false
     } catch (error) {
       await this.reply(`图片生成失败:${error}`)
+      await puppeteerManager.close()
     }
   }
 
@@ -277,8 +278,8 @@ export class AvocadoRuleALL extends plugin {
       await this.reply('更多可前往：https://github.com/Qz-Sean/avocado-plugin')
       await puppeteerManager.closePage(page)
     } catch (error) {
-      logger.error(`${e.msg}图片生成失败:${error}`)
       await this.reply(`图片生成失败:${error}`)
+      await puppeteerManager.close()
     }
     return true
   }

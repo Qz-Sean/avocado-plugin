@@ -307,6 +307,7 @@ export async function avocadoRender (pendingText, otherInfo = { title: '', capti
     logger.mark(`[图片生成][${title?.length > 20 ? '图片' : title}][${puppeteerManager.screenshotCount}次]${kb} ${logger.green(`${Date.now() - start}ms`)}`)
     await puppeteerManager.closePage(page)
   } catch (error) {
+    await puppeteerManager.close()
     return `图片生成失败:${error}`
   }
   return segment.image(buff)
