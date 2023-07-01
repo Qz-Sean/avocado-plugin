@@ -218,7 +218,6 @@ export async function avocadoRender (pendingText, otherInfo = { title: '', capti
   let tplFile, data, buff
   let title = otherInfo.title
   if (title === '') title = Math.random() > 0.5 ? ' Here is Avocado! ' : ' Avocado’s here! '
-  const version = Config.version
   try {
     const start = Date.now()
     await puppeteerManager.init()
@@ -293,9 +292,9 @@ export async function avocadoRender (pendingText, otherInfo = { title: '', capti
       return { width, height }
     })
     await page.setViewport({
-      width: Math.round(width),
-      height: Math.round(height),
-      deviceScaleFactor: Config.deviceScaleFactor
+      width: Math.round(width) || 1920,
+      height: Math.round(height) || 1080,
+      deviceScaleFactor: Number(Config.deviceScaleFactor) || 1
     })
     const body = await page.$('body')
     buff = await body.screenshot({

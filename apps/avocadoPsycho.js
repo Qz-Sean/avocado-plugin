@@ -44,7 +44,7 @@ export class AvocadoPsycho extends plugin {
           replyMsg = await getBonkersBabble(e, godName, 'native')
           if (!replyMsg) {
             await e.reply('Σ( ° △ °|||)︴ 震惊！本地发电失败！')
-            await redis.set('AVOCADO_PSYCHO_ERROR', 2, { EX: 60 * 5 })
+            await redis.set('AVOCADO_PSYCHO_ERROR', 2, { EX: 60 * 30 })
             return false
           }
           break
@@ -58,12 +58,12 @@ export class AvocadoPsycho extends plugin {
       const res = await getBonkersBabble(e, godName, 'api')
       if (!res || res === 403) {
         await e.reply(`发电失败(ノへ￣、)${!Config.psychoKey ? '\n((*・∀・）ゞ→→没有填写发电Key哦!' : res === 403 ? '请检查发电key是否填写正确哦！' : '\n该提醒作者更换API啦...'}\n将尝试本地发电¡¡¡( •̀ ᴗ •́ )و!!!`)
-        await redis.set('AVOCADO_PSYCHO_ERROR', 1, { EX: 60 * 5 })
+        await redis.set('AVOCADO_PSYCHO_ERROR', 1, { EX: 60 * 30 })
         await sleep(1500)
         replyMsg = await getBonkersBabble(e, godName, 'native')
         if (!replyMsg) {
           await e.reply('Σ( ° △ °|||)︴ 震惊！本地发电失败！')
-          await redis.set('AVOCADO_PSYCHO_ERROR', 2, { EX: 60 * 5 })
+          await redis.set('AVOCADO_PSYCHO_ERROR', 2, { EX: 60 * 30 })
           return false
         }
       } else {

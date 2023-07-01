@@ -56,6 +56,16 @@ export const incantationResult = [
 ]
 export const singerTypeMap = {
   华语: 1,
+  中国: 1,
+  美国: 2,
+  英国: 2,
+  法国: 2,
+  德国: 2,
+  意大利: 2,
+  西班牙: 2,
+  加拿大: 2,
+  巴西: 2,
+  墨西哥: 2,
   欧美: 2,
   韩国: 3,
   日本: 4

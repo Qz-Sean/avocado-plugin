@@ -67,7 +67,7 @@ export class AvocadoRuleALL extends plugin {
   }
 
   async avocadoPsycho (e) {
-    const regex = /^#?((${global.God}|鳄梨酱)?#发[癫电疯](.+))/
+    const regex = new RegExp(`^#?((${global.God}|鳄梨酱)?#发[癫电疯](.+))`)
     e.msg = e.msg.match(regex)[3]
     await new AvocadoPsycho().avocadoPsycho(e)
   }
@@ -248,6 +248,7 @@ export class AvocadoRuleALL extends plugin {
     } catch (error) {
       await this.reply(`图片生成失败:${error}`)
       await puppeteerManager.close()
+      return false
     }
   }
 

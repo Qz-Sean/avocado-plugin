@@ -51,7 +51,7 @@ export class AvocadoMusic extends plugin {
           fnc: 'getSinger'
         },
         {
-          reg: '^#?(华语|欧美|韩国|日本)歌手榜',
+          reg: '^#?(华语|中国|欧美|韩国|日本)歌手榜',
           fnc: 'getSingerRankingList'
         }
         // {
@@ -572,7 +572,7 @@ export class AvocadoMusic extends plugin {
   }
 
   async getSingerRankingList (e) {
-    const singerType = e.msg.match(/^#?(华语|欧美|韩国|日本)歌手榜/)[1]
+    const singerType = e.msg.match(/^#?(华语|中国|欧美|韩国|日本)歌手榜/)[1]
     const singerRankingList = await getSingerRankingList(e.sender.user_id, singerTypeMap[singerType])
     const text = splitArray(singerRankingList.map(item => `${item.index}: ${item.name}${item.transName ? '(' + item.transName + ')' : ''}`), 2)
     const img = await avocadoRender(text, { title: `${singerType}歌手榜`, caption: '', footer: '有没有你感兴趣的歌手呢~告诉我你想听谁的歌吧~', renderType: 2 })
