@@ -1,7 +1,10 @@
 import plugin from '../../../lib/plugins/plugin.js'
 import fetch from 'node-fetch'
-import { avocadoRender, generateRandomHeader, sleep } from '../utils/common.js'
+import { avocadoRender, generateArray, generateRandomHeader, sleep, syncPath } from '../utils/common.js'
 import { Config } from '../utils/config.js'
+import fs from 'fs'
+import path from 'path'
+import { pluginRoot } from '../utils/const.js'
 
 export class AvocadoPsycho extends plugin {
   constructor (e) {
@@ -14,6 +17,10 @@ export class AvocadoPsycho extends plugin {
         {
           reg: `${global.God}`,
           fnc: 'avocadoPsycho'
+        },
+        {
+          reg: '^#(关闭|打开)主动发[癫电疯]&',
+          fnc: 'avocadoPsychoSwitch'
         }
       ]
     })
@@ -26,8 +33,19 @@ export class AvocadoPsycho extends plugin {
     ]
   }
 
+  async avocadoPsychoSwitch (e) {
+    if (e.msg.includes('关闭')) {
+      Config.isAutoOnset = false
+      await e.reply('ok')
+    } else {
+      Config.isAutoOnset = true
+      await e.reply('ok')
+    }
+    return true
+  }
+
   async avocadoPsycho (e) {
-    if (e.msg.includes('#')) return true
+    if (e.msg.includes('#') || Config.isPeriodicOnset) return true
     let godName
     // 内部调用
     if (!e.msg.includes(global.God)) {
@@ -70,7 +88,7 @@ export class AvocadoPsycho extends plugin {
         replyMsg = res
       }
     }
-    if (Math.random() < 0.5) {
+    if (Math.random() < 2) {
       await e.reply(replyMsg)
     } else {
       replyMsg = replyMsg.split('\n').map(item => '# ' + item + '\n').join('')
@@ -83,7 +101,7 @@ export class AvocadoPsycho extends plugin {
   }
 
   async sendBonkerBabble () {
-    if (!Config.isAutoOnset) return false
+    if (!Config.isPeriodicOnset) return false
     logger.warn('开始发癫...')
     let toSend = Config.initiativeGroups || []
     let prob
@@ -129,9 +147,12 @@ export class AvocadoPsycho extends plugin {
 export async function getBonkersBabble (e = {}, GodName = '', dataSource = '', wordLimit = 0) {
   let replyMsg = ''
   let isExist
-  isExist = await redis.EXISTS('AVOCADO:PSYCHOSEND')
+  const fullPath = path.join(pluginRoot, 'resources', 'json', 'psycho.json')
+  syncPath(fullPath, '[]')
+  let psychoData = JSON.parse(fs.readFileSync(fullPath))
+  if (!psychoData || !Array.isArray(psychoData)) psychoData = []
+  isExist = !!global.hasSend.length
   // 不存在则返回[], psychoData 存在 则 isExit === true
-  const psychoData = await redis.lRange('AVOCADO:PSYCHODATA', 0, -1)
   if (dataSource === 'api' || dataSource === '') {
     // let url = `https://xiaobapi.top/api/xb/api/onset.php?name=${GOD}`
     let url = `https://api.caonm.net/api/fab/f?msg=${GodName}&key=${Config.psychoKey}`
@@ -147,13 +168,16 @@ export async function getBonkersBabble (e = {}, GodName = '', dataSource = '', w
         if (json.code === 1 && json.data) {
           let filteredData = json.data.replace(new RegExp(GodName, 'g'), '<name>')
           // 判断是否存在重复元素
-          if (psychoData && psychoData.includes(filteredData)) {
-            logger.mark('存在重复发癫数据，不进行插入操作')
+          if (psychoData.length && psychoData.includes(filteredData)) {
+            logger.mark('存在重复发癫数据，跳过。')
           } else {
-            let status = await redis.lPush('AVOCADO:PSYCHODATA', filteredData)
-            if (status) {
-              logger.mark(`已存入发癫数据：${json.data}`)
+            try {
+              psychoData.push(filteredData)
+              fs.writeFileSync(fullPath, JSON.stringify(psychoData, null, 2), { flag: 'w' })
+            } catch (err) {
+              logger.error(err)
             }
+            logger.mark(`已存入发癫数据：${json.data}`)
           }
           replyMsg = json.data
         } else if (json.code === 403) {
@@ -166,35 +190,37 @@ export async function getBonkersBabble (e = {}, GodName = '', dataSource = '', w
     }
   }
   if (dataSource === 'native' || dataSource === '') {
-    if (!psychoData.length) {
-      return false
+    if (!psychoData.length) return false
+    const indices = generateArray(psychoData.length)
+    let n = indices.length
+    let index
+    while (n > 0) {
+      const r = Math.floor(Math.random() * n)
+      index = indices[r]
+      indices[r] = indices[n - 1]
+      indices[n - 1] = index
+      if (!global.hasSend.includes(index)) break
+      n--
     }
-    let r = Math.floor(Math.random() * psychoData.length)
-    // logger.warn(global.randomArray)
-    while (global.randomArray.includes(r)) {
-      r = Math.floor(Math.random() * psychoData.length)
+    global.hasSend.push(index)
+    if (global.hasSend.length >= psychoData.length) {
+      global.hasSend = []
     }
-    global.randomArray.push(r)
-    if (global.randomArray.length === psychoData.length) {
-      global.randomArray = []
-      await redis.DEL('AVOCADO:PSYCHOSEND')
-    }
-    // logger.warn(r, global.randomArray)
-    let flag = true
+    let flag = false
     if (wordLimit) {
-      while (flag) {
-        replyMsg = psychoData[r].replace(/<name>/g, GodName)
-        flag = replyMsg.length > wordLimit
+      n = indices.length
+      while (n > 0) {
+        const r = Math.floor(Math.random() * n)
+        index = indices[r]
+        indices[r] = indices[n - 1]
+        indices[n - 1] = index
+        replyMsg = psychoData[index].replace(/<name>/g, GodName)
+        flag = replyMsg.length < wordLimit
+        if (flag) break
+        n--
       }
     } else {
-      replyMsg = psychoData[r].replace(/<name>/g, GodName)
-    }
-
-    if (isExist) {
-      await redis.lPush('AVOCADO:PSYCHOSEND', replyMsg)
-    } else {
-      await redis.lPush('AVOCADO:PSYCHOSEND', replyMsg)
-      await redis.EXPIRE('AVOCADO:PSYCHOSEND', 24 * 60 * 60)
+      replyMsg = psychoData[index].replace(/<name>/g, GodName)
     }
   }
   return replyMsg

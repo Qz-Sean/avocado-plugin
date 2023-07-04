@@ -4,6 +4,7 @@ const defaultConfig = {
   translateLang: ['日语', '韩语', '阿拉伯语', '法语'],
   targetArea: ['南昌', '上海', '南京'],
   OHMYGOD: '鳄梨酱',
+  isPeriodicOnset: false,
   isAutoOnset: false,
   onsetLatentPeriod: 3,
   initiativeGroups: '',

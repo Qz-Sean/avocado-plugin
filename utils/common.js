@@ -1,11 +1,11 @@
-import {pluginRoot, pluginVersion, urlRegex, yunZaiVersion} from './const.js'
+import { pluginRoot, pluginVersion, urlRegex, yunZaiVersion } from './const.js'
 import path from 'path'
 import puppeteerManager from './puppeteer.js'
 import fs from 'fs'
 import template from 'art-template'
 import { segment } from 'icqq'
 import MarkdownIt from 'markdown-it'
-import {Config} from "./config.js";
+import { Config } from './config.js'
 export async function getSource (e) {
   if (!e.source) return false
   let sourceReply
@@ -311,7 +311,11 @@ export async function avocadoRender (pendingText, otherInfo = { title: '', capti
   }
   return segment.image(buff)
 }
-
+export function generateArray (length) {
+  const array = []
+  for (let i = 0; i < length; i++) { array.push(i) }
+  return array
+}
 // 获取单部影片的详细信息
 export async function getMovieDetail (movieId) {
   try {
@@ -438,6 +442,21 @@ export async function makeForwardMsg (e, msg = [], dec = '') {
   }
 
   return forwardMsg
+}
+export function syncPath (fullPath, dataType) {
+  try {
+    if (!fs.existsSync(fullPath)) {
+      const directoryPath = path.dirname(fullPath)
+      if (!fs.existsSync(directoryPath)) {
+        fs.mkdirSync(directoryPath, { recursive: true })
+      }
+      fs.writeFileSync(fullPath, dataType)
+    }
+  } catch (err) {
+    logger.error(err)
+    return false
+  }
+  return true
 }
 export function sleep (ms = 1000) {
   return new Promise(resolve => setTimeout(resolve, ms))

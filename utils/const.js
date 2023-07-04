@@ -2,7 +2,8 @@ import path from 'path'
 import { Config } from './config.js'
 import cfg from '../../../lib/config/config.js'
 
-global.randomArray = []
+global.guoba = []
+global.hasSend = []
 global.God = Config.OHMYGOD === '' ? '鳄梨酱' : Config.OHMYGOD
 // from 3399280843@qq.com@SmallK111407
 export const _path = process.cwd().replace(/\\/g, '/')
