@@ -378,7 +378,7 @@ export class AvocadoMusic extends plugin {
     }
     if (typeof this.e.msg !== 'string') { return }
     logger.mark('isContinue: ', this.e.msg)
-    const reg = /算了|0|想|1|换/
+    const reg = /不想|算了|不要|no|0|想|1|换|切/i
     if (!reg.test(this.e.msg)) {
       const count = await redis.get('AVOCADO_REQUESTCOUNT')
       if (!count) {
@@ -388,13 +388,13 @@ export class AvocadoMusic extends plugin {
       }
       return true
     } else {
-      if (/算了|0/.test(this.e.msg)) {
+      if (/不想|算了|不要|no|0/i.test(this.e.msg)) {
         await this.e.reply(`${global.God}！！！`)
         logger.mark('finish isContinue')
         this.finish('isContinue', this.e.isGroup, this.e)
         return true
       }
-      if (/换/.test(this.e.msg)) {
+      if (/[换切]/.test(this.e.msg)) {
         const from = await redis.get(`AVOCADO:MUSIC_${this.e.sender.user_id}_FROM`)
         if (from === 'randomSinger') {
           const singerRankingList = await getSingerRankingList(this.e.sender.user_id, Math.ceil(Math.random() * 4))
