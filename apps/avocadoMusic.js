@@ -9,7 +9,6 @@ import {
   getFavList,
   getGreetMsg,
   getSingerHotList,
-  getHotSingers,
   getMusicDetail,
   getSingerDetail,
   getSingerId,
@@ -30,7 +29,7 @@ export class AvocadoMusic extends plugin {
           fnc: 'pickMusic'
         },
         {
-          reg: `^(来点好听的|${global.God}[!！]|下一首|切歌|听歌|换歌|下一曲)$`,
+          reg: `^(来点好听的|${global.God}[~～]|下一首|切歌|听歌|换歌|下一曲)$`,
           fnc: 'randomMusic'
         },
         {
@@ -362,7 +361,9 @@ export class AvocadoMusic extends plugin {
     if (img) {
       await this.reply(img)
     }
-    this.setContext('isContinue', this.e.isGroup, 180, this.e)
+    e.startTime = new Date()
+    e.contextDuration = 120
+    this.setContext('isContinue', e.isGroup, e.contextDuration, e)
     logger.mark('start isContinue context')
     return true
   }
@@ -408,7 +409,9 @@ export class AvocadoMusic extends plugin {
           await getSingerHotList(this.e.sender.user_id, singerInfo.name)
           this.finish('isContinue', this.e.isGroup, this.e)
           logger.mark('finish isContinue context')
-          this.setContext('isContinue', this.e.isGroup, 180, this.e)
+          this.e.startTime = new Date()
+          this.e.contextDuration = 180
+          this.setContext('isContinue', this.e.isGroup, this.e.contextDuration, this.e)
           logger.mark('start isContinue context')
           return true
         }
@@ -419,7 +422,10 @@ export class AvocadoMusic extends plugin {
       const img = await avocadoRender(text, { title: `${singer}-热门播放50`, caption: '', footer: '', renderType: 2 })
       if (img) await this.reply(img)
       this.finish('isContinue', this.e.isGroup, this.e)
-      this.setContext('selectHotListMusic', this.e.isGroup, 180, this.e)
+      logger.mark('finish isContinue context')
+      this.e.startTime = new Date()
+      this.e.contextDuration = 180
+      this.setContext('selectHotListMusic', this.e.isGroup, this.e.contextDuration, this.e)
       logger.mark('start selectHotListMusic context')
       return true
     }
@@ -617,6 +623,10 @@ export class AvocadoMusic extends plugin {
   }
 
   async sayGoodMorning () {
+    if (!Config.apiKey && !Config.apiBaseUrl) {
+      logger.warn('未配置apiKey或apiBaseUrl')
+      return false
+    }
     let [replyMsg, songId, songName] = await getGreetMsg(105402228, 1)
     let data = { param: songName, songId, isRandom: false, from: 'goodMorning' }
     let song = await findSong(data)
@@ -661,6 +671,10 @@ export class AvocadoMusic extends plugin {
   }
 
   async sayGoodAfternoon () {
+    if (!Config.apiKey && !Config.apiBaseUrl) {
+      logger.warn('未配置apiKey或apiBaseUrl')
+      return false
+    }
     let [replyMsg, songId, songName] = await getGreetMsg(2878202769, 2)
     let data = { param: songName, songId, isRandom: false, from: 'goodAfternoon' }
     let song = await findSong(data)
@@ -705,6 +719,10 @@ export class AvocadoMusic extends plugin {
   }
 
   async sayGoodnight () {
+    if (!Config.apiKey && !Config.apiBaseUrl) {
+      logger.warn('未配置apiKey或apiBaseUrl')
+      return false
+    }
     try {
       let [replyMsg, songId, songName] = await getGreetMsg(7350109521, 3)
       let data = { param: songName, songId, isRandom: false, from: 'goodnight' }
