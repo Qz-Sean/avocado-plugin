@@ -41,7 +41,8 @@ export class AvocadoManagement extends plugin {
   }
 
   async checkSpells (e) {
-    await e.reply(inspiringWords[Math.floor(Math.random() * inspiringWords.length)] + '\n' + Object.keys(phantomTransformation).join('变身！\n！'))
+    await e.reply(inspiringWords[Math.floor(Math.random() * inspiringWords.length)] + '\n' + Object.keys(phantomTransformation).join('变身！'))
+    await e.reply('示例：黑夜之力，赐予我力量！变身！憨憨酱！\n-> 注意此处将不会匹配标点符号，所以全局关键词将被替换为"憨憨酱"')
     return true
   }
 

@@ -1,6 +1,6 @@
 import fs from 'node:fs'
-import { Config } from './utils/config.js'
 import chalk from 'chalk'
+import { pluginVersion } from './utils/const.js'
 
 if (!global.segment) {
   global.segment = (await import('oicq')).segment
@@ -43,8 +43,8 @@ logger.info(chalk.green.bold('   /    \\\\'))
 logger.info(chalk.green.bold('  /      \\\\'))
 logger.info(chalk.green.bold(' /        \\\\'))
 logger.info(chalk.green.bold('/__________\\\\'))
-logger.info(chalk.green.bold('🥑avocado-plugin🥑加载成功'))
-logger.info(`当前版本${Config.version}`)
-logger.info('仓库地址 https://github.com/Qz-Sean/avocado-plugin')
+logger.info(chalk.green.bold('🥑avocado-plugin加载成功'))
+logger.info(`🥑当前版本 ${chalk.blue(pluginVersion)}`)
+logger.info('🥑仓库地址 https://github.com/Qz-Sean/avocado-plugin')
 console.log('-------------\\ \\ \\ ٩(๑˃̵ᴗ˂̵)و / / /-------------')
 export { apps }

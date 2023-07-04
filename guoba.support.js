@@ -1,8 +1,8 @@
 import { Config } from './utils/config.js'
-import { pluginRoot, translateLangSupports } from './utils/const.js'
+import { initialPsychoData, pluginRoot, translateLangSupports } from './utils/const.js'
 import path from 'path'
 import fs from 'fs'
-import { generateArray } from './utils/common.js'
+import { generateArray, syncPath } from './utils/common.js'
 
 const panel = {
   // 插件信息，将会显示在前端页面
@@ -119,26 +119,27 @@ const panel = {
     }
   }
 }
-let psychoData = []
-let text, arr
 const fullPath = path.join(pluginRoot, 'resources', 'json', 'psycho.json')
-const data = fs.readFileSync(fullPath)
-if (data.length) {
-  try {
-    psychoData = JSON.parse(data)
-    arr = generateArray(psychoData.length)
-  } catch (err) {
-    logger.error(err)
-  }
+syncPath(fullPath, '[]')
+let psychoData = JSON.parse(fs.readFileSync(fullPath))
+if (!psychoData.length || !Array.isArray(psychoData)) {
+  psychoData = initialPsychoData
 }
+
+const indices = generateArray(psychoData.length)
+let n = indices.length
+let index, text
 for (const schema of panel.configInfo.schemas) {
   let flag = false
-  for (let i = 0; i < psychoData.length; i++) {
-    let r = Math.floor(Math.random() * arr.length)
-    arr.splice(r, 1)
-    text = psychoData[r].replace(/<name>/g, global.God)
+  while (n > 0) {
+    const r = Math.floor(Math.random() * n)
+    index = indices[r]
+    indices[r] = indices[n - 1]
+    indices[n - 1] = index
+    text = psychoData[index].replace(/(<name>|avocado)/g, global.God)
     flag = text.length < 70
     if (flag) break
+    n--
   }
   if (!text) {
     text = '和鳄梨酱赛跑，他从后面狠狠地把我超了。🥵🥵🥵'

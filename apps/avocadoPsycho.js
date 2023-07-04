@@ -4,7 +4,7 @@ import { avocadoRender, generateArray, generateRandomHeader, sleep, syncPath } f
 import { Config } from '../utils/config.js'
 import fs from 'fs'
 import path from 'path'
-import { pluginRoot } from '../utils/const.js'
+import { initialPsychoData, pluginRoot } from '../utils/const.js'
 
 export class AvocadoPsycho extends plugin {
   constructor (e) {
@@ -146,12 +146,12 @@ export class AvocadoPsycho extends plugin {
  */
 export async function getBonkersBabble (e = {}, GodName = '', dataSource = '', wordLimit = 0) {
   let replyMsg = ''
-  let isExist
   const fullPath = path.join(pluginRoot, 'resources', 'json', 'psycho.json')
   syncPath(fullPath, '[]')
   let psychoData = JSON.parse(fs.readFileSync(fullPath))
-  if (!psychoData || !Array.isArray(psychoData)) psychoData = []
-  isExist = !!global.hasSend.length
+  if (!psychoData.length || !Array.isArray(psychoData)) {
+    psychoData = initialPsychoData
+  }
   // 不存在则返回[], psychoData 存在 则 isExit === true
   if (dataSource === 'api' || dataSource === '') {
     // let url = `https://xiaobapi.top/api/xb/api/onset.php?name=${GOD}`
@@ -166,7 +166,7 @@ export async function getBonkersBabble (e = {}, GodName = '', dataSource = '', w
       if (response.status === 200) {
         let json = await response.json()
         if (json.code === 1 && json.data) {
-          let filteredData = json.data.replace(new RegExp(GodName, 'g'), '<name>')
+          let filteredData = json.data.replace(new RegExp(GodName, 'g'), 'avocado')
           // 判断是否存在重复元素
           if (psychoData.length && psychoData.includes(filteredData)) {
             logger.mark('存在重复发癫数据，跳过。')
@@ -214,13 +214,13 @@ export async function getBonkersBabble (e = {}, GodName = '', dataSource = '', w
         index = indices[r]
         indices[r] = indices[n - 1]
         indices[n - 1] = index
-        replyMsg = psychoData[index].replace(/<name>/g, GodName)
+        replyMsg = psychoData[index].replace(/(<name>|avocado)/g, GodName)
         flag = replyMsg.length < wordLimit
         if (flag) break
         n--
       }
     } else {
-      replyMsg = psychoData[index].replace(/<name>/g, GodName)
+      replyMsg = psychoData[index].replace(/(<name>|avocado)/g, GodName)
     }
   }
   return replyMsg

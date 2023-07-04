@@ -39,7 +39,7 @@ export class AvocadoRuleALL extends plugin {
           fnc: 'avocadoPreview'
         },
         {
-          reg: `^#?((${global.God}|鳄梨酱)[!！]{3}|鳄梨酱?帮助)$`,
+          reg: `^#?(${global.God}|鳄梨酱?)([!！]{3}|帮助)$`,
           fnc: 'avocadoHelp'
         },
         {
@@ -94,8 +94,8 @@ export class AvocadoRuleALL extends plugin {
       if (!msgInfo) {
         [msgType, msgInfo] = await getImageOcrText(e)
       }
-      logger.warn('msgInfo: ', msgInfo)
-      logger.warn('msgType: ', msgType)
+      logger.mark('msgInfo: ', msgInfo)
+      logger.mark('msgType: ', msgType)
       if (msgType === 'text') {
         for (const item of msgInfo) {
           const img = await avocadoRender(item)
@@ -288,7 +288,7 @@ export class AvocadoRuleALL extends plugin {
   async avocadoWeather (e) {
     let targetArea
     const areaConfig = Config.targetArea || []
-    let match = e.msg.trim().match(new RegExp(`^#?(.*)${global.God}[.。]([.。]*)`))
+    let match = e.msg.trim().match(new RegExp(`^#?(.*)${global.God}|鳄梨酱[.。]([.。]*)`))
     if (match[1]) {
       targetArea = match[1]
       if (!(await getAreaInfo(this, targetArea))) {
@@ -344,14 +344,14 @@ export class AvocadoRuleALL extends plugin {
       if (e.source) {
         let msgType, msgInfo
         const isImg = await getImg(e)
-        logger.warn('isImg:', isImg)
+        logger.mark('isImg:', isImg)
         if (isImg.length) {
           [msgType, msgInfo] = await getImageOcrText(e) || ['', []]
         } else {
           [msgType, msgInfo] = await getSourceMsg(e) || ['', []]
         }
-        logger.warn('msgType:', msgType)
-        logger.warn('msgInfo:', msgInfo)
+        logger.mark('msgType:', msgType)
+        logger.mark('msgInfo:', msgInfo)
         if (msgType === 'xml') {
           await this.reply('xml信息目前还无能为力哦~')
           return true
@@ -378,8 +378,8 @@ export class AvocadoRuleALL extends plugin {
         pendingText = this.e.msg.trim().replace(translateRegex, '')
       }
     }
-    logger.warn('pendingText:', pendingText)
-    logger.warn('langCode:', langCode)
+    logger.mark('pendingText:', pendingText)
+    logger.mark('langCode:', langCode)
     // 递归终止
     if (pendingText === undefined || langCode === undefined) return true
     let result = await translate(pendingText, langCode)

@@ -15,7 +15,7 @@ export async function getSource (e) {
     // bug：多张图片时有概率不能正常读取信息，应该是拿信息的时候拿错了
     sourceReply = (await e.friend.getChatHistory(e.source.time, 1)).pop()?.message
   }
-  logger.warn('sourceReply: ', sourceReply)
+  // logger.warn('sourceReply: ', sourceReply)
   if (sourceReply.filter(item => item.type === 'xml').length) {
     return 'xml'
   }
