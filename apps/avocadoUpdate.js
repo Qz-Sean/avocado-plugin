@@ -21,7 +21,7 @@ export class AvocadoUpdate extends plugin {
       priority: 1000,
       rule: [
         {
-          reg: `^#?(${global.God}|鳄梨酱)(插件)?(强制)?(更新|~~~)$`,
+          reg: `^#?(${global.God}|鳄梨酱?)(插件)?(强制)?(更新|~~~)$`,
           fnc: 'update'
         }
       ]
@@ -74,7 +74,7 @@ export class AvocadoUpdate extends plugin {
     } else {
       this.e.reply('\\ \\ \\٩(๑˃̵ᴗ˂̵)و/ / /up up up updating~')
     }
-    let match = this.e.msg.match(new RegExp(`^#?(${global.God}|鳄梨酱)(插件)?(强制)?(更新|~~~)$`))
+    let match = this.e.msg.match(new RegExp(`^#?(${global.God}|鳄梨酱?)(插件)?(强制)?(更新|~~~)$`))
     const isAvocado = match[1] === '鳄梨酱'
     const GodName = isAvocado ? '鳄梨酱' : match[1]
     /** 获取上次提交的commitId，用于获取日志时判断新增的更新日志 */

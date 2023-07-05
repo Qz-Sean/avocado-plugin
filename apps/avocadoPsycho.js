@@ -19,7 +19,7 @@ export class AvocadoPsycho extends plugin {
           fnc: 'avocadoPsycho'
         },
         {
-          reg: '^#(关闭|打开)主动发[癫电疯]&',
+          reg: '^#(关闭|打开)主动发[癫电疯]$',
           fnc: 'avocadoPsychoSwitch'
         }
       ]
@@ -88,7 +88,7 @@ export class AvocadoPsycho extends plugin {
         replyMsg = res
       }
     }
-    if (Math.random() < 2) {
+    if (Math.random() < 0.8) {
       await e.reply(replyMsg)
     } else {
       replyMsg = replyMsg.split('\n').map(item => '# ' + item + '\n').join('')

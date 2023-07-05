@@ -16,7 +16,7 @@ const defaultConfig = {
   proxy: '',
   psychoKey: '',
   deviceScaleFactor: '1',
-  version: 'v1.5.0'
+  version: 'v1.5.1'
 }
 const _path = process.cwd()
 let config = {}
