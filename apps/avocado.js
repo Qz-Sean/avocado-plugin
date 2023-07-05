@@ -389,21 +389,22 @@ export class AvocadoRuleALL extends plugin {
 
   async avocadoMovie (e) {
     let movieList
+    this.e = e
     if (await redis.get('AVOCADO:MOVIE_EXPIRE')) {
       movieList = JSON.parse(await redis.get('AVOCADO:MOVIE_DETAILS'))
     } else {
-      await this.reply('更新数据中...此过程需要较长时间，请稍等...')
+      await this.e.reply('更新数据中...此过程需要较长时间，请稍等...')
       try {
         movieList = await getMovieList()
         await redis.set('AVOCADO:MOVIE_DETAILS', JSON.stringify(movieList))
         await redis.set('AVOCADO:MOVIE_EXPIRE', 1, { EX: 60 * 60 * 24 * 7 })
       } catch (error) {
-        this.reply(`啊哦!${error}`)
+        this.e.reply(`啊哦!${error}`)
         return false
       }
     }
     if (!movieList.length) {
-      await this.reply('出错了！')
+      await this.e.reply('出错了！')
       return false
     }
     // 我的评价！
@@ -436,16 +437,16 @@ export class AvocadoRuleALL extends plugin {
     })
 
     if (!img) {
-      await e.reply('生成图片错误！')
+      await this.e.reply('生成图片错误！')
       return false
     }
-    await e.reply(img)
-    this.e = e
+    await this.e.reply(img)
     this.setContext('pickMe')
   }
 
   async pickMe (e) {
     if (typeof this.e.msg !== 'string') return
+    logger.mark('pickMe: ' + this.e.msg)
     let mainInfoList = JSON.parse(await redis.get('AVOCADO:MOVIE_DETAILS'))
     const reg = new RegExp(`^((0{1,2})|(${mainInfoList.map(item => item.index).join('|')})|(${mainInfoList.map(item => item.nm).join('|').replace(/\*/g, ' fuck ')}))$`)
     if (!reg.test(this.e.msg)) { return }
@@ -453,7 +454,6 @@ export class AvocadoRuleALL extends plugin {
       await redis.del(`AVOCADO:MOVIE_${this.e.sender.user_id}_PICKEDMOVIE`)
       await this.reply(`${global.God}！！！`)
       this.finish('pickMe')
-      logger.mark('finish pickMe context')
       return true
     }
     let selectedMovie
