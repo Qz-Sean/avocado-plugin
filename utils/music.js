@@ -215,6 +215,61 @@ async function getMusicUrl (songId) {
 }
 
 /**
+ * 获取正常点歌的搜索结果
+ * @param userId
+ * @param order
+ * @param limit
+ * @returns {Promise<boolean>}
+ */
+export async function getOrderSongList (userId, order, limit) {
+  const url = `http://110.41.21.181:3000/cloudsearch?keywords=${order}&limit=${limit}`
+  try {
+    const headers = generateRandomHeader()
+    const options = {
+      method: 'GET',
+      headers
+    }
+    const response = await fetch(url, options)
+    const result = await response.json()
+    if (result.code !== 200) {
+      if (result.code === 400) logger.error('limit参数设置过大')
+      return false
+    }
+    if (result.result.songCount === 0) {
+      logger.error('没有获取到有效歌单')
+      return false
+    }
+    if (order.includes(',')) {
+      const singer = order.split(',')[0]
+      const songName = order.split(',')[1]
+      const song = result?.result?.songs.find(song => song.ar.find(item => item.name.toLowerCase() === singer.toLowerCase() && song.name.toLowerCase() === songName.toLowerCase()))
+      // 没有找到符合的结果，保存此次搜索结果，二次选择 =》 Context : wrongFind
+      return song
+        ? {
+            songId: song.id,
+            songName: song.name,
+            singer: song?.ar.map(singer => singer.name),
+            album: song?.al.name,
+            albumPicUrl: song?.al.picUrl
+          }
+        : false
+    }
+    const songList = result?.result?.songs.map((item, index) => ({
+      index: index + 1,
+      songId: item.id,
+      songName: item.name,
+      singer: item?.ar.map(singer => singer.name),
+      album: item?.al.name,
+      albumPicUrl: item?.al.picUrl
+    }))
+    const res = await redis.set(`AVOCADO:MUSIC_${userId}_ORDERLIST`, JSON.stringify(songList), { EX: 60 * 3 })
+    return res === 'OK' ? songList : false
+  } catch (err) {
+    logger.error(err)
+    return false
+  }
+}
+/**
  * 获取歌曲信息
  * @param {object} data
  * - param：必填，不支持id搜歌，可以是歌曲名或歌曲名+歌手的组合
@@ -431,7 +486,7 @@ export async function getSingerRankingList (userId = '', singerType) {
     }))
     //  保存用户的选择
     if (userId) {
-      await redis.set(`AVOCADO:MUSIC_${userId}_SINGERTYPE`, singerType, {EX: 60 * 60 * 24 * 7})
+      await redis.set(`AVOCADO:MUSIC_${userId}_SINGERTYPE`, singerType, { EX: 60 * 60 * 24 * 7 })
     }
     return list
   } catch (err) {

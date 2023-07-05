@@ -394,9 +394,9 @@ export class AvocadoRuleALL extends plugin {
     } else {
       await this.reply('更新数据中...此过程需要较长时间，请稍等...')
       try {
-        movieList = await getMovieList(this)
+        movieList = await getMovieList()
         await redis.set('AVOCADO:MOVIE_DETAILS', JSON.stringify(movieList))
-        await redis.set('AVOCADO:MOVIE_EXPIRE', 1, { EX: 60 * 60 * 24 * 3 })
+        await redis.set('AVOCADO:MOVIE_EXPIRE', 1, { EX: 60 * 60 * 24 * 7 })
       } catch (error) {
         this.reply(`啊哦!${error}`)
         return false
@@ -440,31 +440,20 @@ export class AvocadoRuleALL extends plugin {
       return false
     }
     await e.reply(img)
-    e.startTime = new Date()
-    e.contextDuration = 120
-    this.setContext('pickMe', e.isGroup, e.contextDuration, e)
-    logger.mark('start pickMe context')
+    this.e = e
+    this.setContext('pickMe')
   }
 
   async pickMe (e) {
-    if (typeof this.e.msg !== 'string') {
-      return
-    }
-    const senderFromChatGpt = e.senderFromChatGpt || this.e.senderFromChatGpt
-    const startTime = e.startTime || this.e.startTime
-    const contextDuration = e.contextDuration || this.e.contextDuration
-    if (senderFromChatGpt !== this.e.sender.user_id) {
-      logger.warn('当前正处于连续上下文对话中，非发起人不予回复！距离本次对话结束还剩 ' + Math.floor((contextDuration - (new Date() - startTime) / 1000)) + ' 秒！')
-      return
-    }
+    if (typeof this.e.msg !== 'string') return
     let mainInfoList = JSON.parse(await redis.get('AVOCADO:MOVIE_DETAILS'))
     const reg = new RegExp(`^((0{1,2})|(${mainInfoList.map(item => item.index).join('|')})|(${mainInfoList.map(item => item.nm).join('|').replace(/\*/g, ' fuck ')}))$`)
     if (!reg.test(this.e.msg)) { return }
     if (this.e.msg === '0') {
       await redis.del(`AVOCADO:MOVIE_${this.e.sender.user_id}_PICKEDMOVIE`)
-      logger.mark('finish pickMe')
       await this.reply(`${global.God}！！！`)
-      this.finish('pickMe', this.e.isGroup, this.e)
+      this.finish('pickMe')
+      logger.mark('finish pickMe context')
       return true
     }
     let selectedMovie
@@ -527,63 +516,32 @@ export class AvocadoRuleALL extends plugin {
         await redis.set(`AVOCADO:MOVIE_${this.e.sender.user_id}_PICKEDMOVIE`, selectedMovie.index, { EX: 60 * 3 })
       } else {
         await this.e.reply('图片生成出错了！')
-        logger.mark('finish pickMe')
-        this.finish('pickMe', this.e.isGroup, this.e)
+        this.finish('pickMe')
       }
     } catch (error) {
       await this.e.reply(error)
-      logger.mark('finish pickMe')
-      this.finish('pickMe', this.e.isGroup, this.e)
+      this.finish('pickMe')
+    }
+  }
+
+  conKey (isGroup = false) {
+    if (isGroup) {
+      return `${this.name}.${this.e.group_id}`
+    } else {
+      return `${this.name}.${this.userId || this.e.user_id}`
     }
   }
 
   /**
-   * @param msg 发送的消息
-   * @param quote 是否引用回复
-   * @param data.recallMsg 群聊是否撤回消息，0-120秒，0不撤回
-   * @param data.at 是否at用户
+   * @param type 执行方法
+   * @param isGroup 是否群聊
+   * @param time 操作时间，默认120秒
    */
-  reply (msg = '', quote = false, data = {}) {
-    if (!this.e.reply || !msg) return false
-    return this.e.reply(msg, quote, data)
-  }
-
-  /**
-   * @param {boolean} isGroup
-   * @param {Object} e
-   * @returns {string}
-   */
-  conKey (isGroup = false, e = {}) {
-    try {
-      const groupId = this.e?.group_id || e.group_id
-      const userId = this?.userId || this.e?.user_id || e.user_id
-      if (isGroup) {
-        return `${this.name}.${groupId}`
-      } else {
-        return `${this.name}.${userId}`
-      }
-    } catch (err) {
-      logger.error(err)
-    }
-  }
-
-  /**
-   * @param {string} type 执行方法
-   * @param {boolean} isGroup 是否群聊
-   * @param {number} time 操作时间，默认120秒
-   * @param {Object} e
-   */
-  setContext (type, isGroup = false, time = 120, e = {}) {
-    let key = this.conKey(isGroup, e)
-    // logger.warn('key:', key)
-    if (!stateArr[key]) {
-      stateArr[key] = {}
-    }
-    // this.e ->  this.e || e
-    // bug fixed, 不知道第一次为什么没有拿到this.e
-    stateArr[key][type] = this.e || e
-    // setContext: pickHotSinger undefined
-    // logger.warn('setContext:',type, stateArr[key][type])
+  setContext (type, isGroup = false, time = 120) {
+    logger.mark('start ' + type + ' context')
+    let key = this.conKey(isGroup)
+    if (!stateArr[key]) stateArr[key] = {}
+    stateArr[key][type] = this.e
     if (time) {
       /** 操作时间 */
       setTimeout(() => {
@@ -608,12 +566,12 @@ export class AvocadoRuleALL extends plugin {
   /**
    * @param type 执行方法
    * @param isGroup 是否群聊
-   * @param {Object} e
    */
-  finish (type, isGroup = false, e = {}) {
-    if (stateArr[this.conKey(isGroup, e)] && stateArr[this.conKey(isGroup, e)][type]) {
-      delete stateArr[this.conKey(isGroup, e)][type]
+  finish (type, isGroup = false) {
+    logger.mark('finish ' + type + ' context')
+    if (stateArr[this.conKey(isGroup)] && stateArr[this.conKey(isGroup)][type]) {
+      delete stateArr[this.conKey(isGroup)][type]
     }
   }
 }
-let stateArr = []
+let stateArr = {}

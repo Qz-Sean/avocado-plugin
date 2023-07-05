@@ -7,6 +7,7 @@ import {
   phantomTransformation,
   translateLangSupports
 } from '../utils/const.js'
+import { getMovieList } from '../utils/common.js'
 
 export class AvocadoManagement extends plugin {
   constructor (e) {
@@ -35,9 +36,33 @@ export class AvocadoManagement extends plugin {
           reg: '^#?(我要变身！|查看咒语)$',
           fnc: 'checkSpells',
           permission: 'master'
+        },
+        {
+          reg: '^#(刷新|重新获取)(电影|影片)信息$',
+          fnc: 'reloadMovieList',
+          permission: 'master'
         }
       ]
     })
+  }
+
+  async reloadMovieList (e) {
+    await this.reply('更新数据中...此过程需要较长时间，请稍等...')
+    try {
+      const movieList = await getMovieList()
+      await redis.set('AVOCADO:MOVIE_DETAILS', JSON.stringify(movieList))
+      await redis.set('AVOCADO:MOVIE_EXPIRE', 1, { EX: 60 * 60 * 24 * 3 })
+      if (movieList.length) {
+        await this.reply('获取成功!本次共获取到' + movieList.length + '部影片信息!')
+        return true
+      } else {
+        await this.reply('获取失败!返回的数据为空!')
+        return false
+      }
+    } catch (error) {
+      this.reply(`啊哦!${error}`)
+      return false
+    }
   }
 
   async checkSpells (e) {

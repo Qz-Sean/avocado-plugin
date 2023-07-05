@@ -372,7 +372,7 @@ export async function getMovieDetail (movieId) {
     return false
   }
 }
-export async function getMovieList (e) {
+export async function getMovieList () {
   let movieList, movieIds
   try {
     const url = 'https://m.maoyan.com/ajax/movieOnInfoList'
