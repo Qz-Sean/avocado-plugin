@@ -202,10 +202,10 @@ async function getMusicUrl (songId) {
     // 播放链接
     let response = await fetch('https://music.163.com/api/song/enhance/player/url/v1', options)
     let res = await response.json()
-    logger.warn('MusicUrl: ', res)
     if (res.code === 200) {
       musicUrl = res.data[0]?.url
       musicUrl = musicUrl || ''
+      logger.mark('MusicUrl: ', musicUrl)
     }
   } catch (err) {
     logger.error(err)
@@ -299,36 +299,36 @@ export async function findSong (data = { param: '', songId: '', isRandom: false,
     let searchRes
     if (data.songId) {
       if (data.from === 'random') {
-        logger.info('随机点歌')
+        logger.mark('avocadoMusic -> 随机点歌')
         searchRes = result?.result?.songs
         // 处理搜id有概率搜不到的问题
         searchRes = searchRes.find(song => song.id === data.songId)
       }
       // wrongFind
       if (data.from === 'reChoose') {
-        logger.info('第二次点歌')
+        logger.mark('avocadoMusic -> 第二次点歌')
         searchRes = result?.result?.songs
         // 处理搜id有概率搜不到的问题
         searchRes = searchRes.find(song => song.id === data.songId)
       }
-      if (data.from === 'hot') {
-        logger.info('热门点歌')
+      if (data.from === 'image') {
+        logger.mark('avocadoMusic -> 图片点歌')
         searchRes = result?.result?.songs
         // 处理搜id有概率搜不到的问题
         searchRes = searchRes.find(song => song.id === data.songId)
       }
       if (data.from === 'goodnight' || data.from === 'goodAfternoon' || data.from === 'goodMorning') {
-        logger.info('问好点歌')
+        logger.mark('avocadoMusic -> 问好点歌')
         searchRes = result?.result?.songs
         // 处理搜id有概率搜不到的问题
         searchRes = searchRes.find(song => song.id === data.songId)
       }
     } else if (!data.songId && data.isRandom) {
-      logger.info('随机歌名点歌')
+      logger.mark('avocadoMusic -> 随机歌名点歌')
       // 随机但没有传入songId ==> 即参数不是歌手
       searchRes = result?.result?.songs?.[Math.floor(Math.random() * result?.result?.songs.length)]
     } else {
-      logger.info('正常点歌')
+      logger.mark('avocadoMusic -> 正常点歌')
       if (data.param.includes(',')) {
         const singer = data.param.split(',')[0]
         const songName = data.param.split(',')[1]
