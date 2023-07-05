@@ -27,19 +27,18 @@ pnpm i
 
 ##### 替换指令关键词
 
-*  指令： <font style="background-color:#8bc34a">咒语+关键词</font>
+* 指令： <font style="background-color:#8bc34a">咒语+关键词</font>
 
-<details>
-    <summary style="font-weight:bold;">咒语：可通过指令 <code>^#?(我要变身！|查看咒语)$</code> 获取</summary>
-    黑夜之力，赐予我力量！变身！<br>
-	万象之力，汇聚我身！变身！<br>
-	火焰之力，燃烧我的灵魂！变身！<br>
-	风暴之力，撕裂天际！变身！
-</details>
-<blockquote>
-<p><b>可前往 <code>utils/const.js</code> 自行更换咒语。</b></p>
-<p><b>注意！！！默认指令关键词为 <code>鳄梨酱</code> ， 使用此指令后，可通过新关键词触发插件功能，同时保留默认关键词。</b></p>
-</blockquote>
+  <details>
+      <summary style="font-weight:bold;">咒语：可通过指令 <code>^#?(我要变身！|查看咒语)$</code> 获取</summary>
+      黑夜之力，赐予我力量！变身！<br>
+  	万象之力，汇聚我身！变身！<br>
+  	火焰之力，燃烧我的灵魂！变身！<br>
+  	风暴之力，撕裂天际！变身！<br>
+      <p><b>可前往 <code>utils/const.js</code> 自行配置。</b></p>
+  </details>
+
+**注意！！！默认指令关键词为 <code>鳄梨酱</code> ， 使用此指令后，可通过新关键词触发插件功能，同时保留默认关键词。**
 
 ##### 自定义点歌
 
