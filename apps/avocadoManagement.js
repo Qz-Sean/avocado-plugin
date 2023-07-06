@@ -7,7 +7,7 @@ import {
   phantomTransformation,
   translateLangSupports
 } from '../utils/const.js'
-import { getMovieList } from '../utils/common.js'
+import {getHotMovieList} from "../utils/movie.js";
 
 export class AvocadoManagement extends plugin {
   constructor (e) {
@@ -49,7 +49,7 @@ export class AvocadoManagement extends plugin {
   async reloadMovieList (e) {
     await this.reply('更新数据中...此过程需要较长时间，请稍等...')
     try {
-      const movieList = await getMovieList()
+      const movieList = await getHotMovieList()
       await redis.set('AVOCADO:MOVIE_DETAILS', JSON.stringify(movieList))
       await redis.set('AVOCADO:MOVIE_EXPIRE', 1, { EX: 60 * 60 * 24 * 3 })
       if (movieList.length) {

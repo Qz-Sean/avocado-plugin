@@ -100,4 +100,3 @@ class PuppeteerManager {
 }
 
 export default new PuppeteerManager()
-

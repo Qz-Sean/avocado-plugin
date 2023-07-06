@@ -13,7 +13,7 @@ import {
   getSingerDetail,
   getSingerId,
   getSingerRankingList,
-  sendMusic, getOrderSongList
+  sendMusic, getOrderSongList, shareMusicToGroup
 } from '../utils/music.js'
 
 export class AvocadoMusic extends plugin {
@@ -52,6 +52,10 @@ export class AvocadoMusic extends plugin {
         {
           reg: '^#?(华语|中国|欧美|韩国|日本)歌手榜',
           fnc: 'getSingerRankingList'
+        },
+        {
+          reg: '歌词|热评|评论',
+          fnc: 'getCommentsOrLyrics'
         }
         // {
         //   reg: '^#?(华语|欧美|韩国|日本)歌手榜',
@@ -113,9 +117,9 @@ export class AvocadoMusic extends plugin {
           if (isSinger) {
             let song = hotList[Math.floor(Math.random() * hotList.length)]
             const data = {
-              param: song.songName,
+              param: song.name,
               isRandom: false,
-              songId: song.songId,
+              id: song.id,
               from: 'random'
             }
             song = await findSong(data)
@@ -124,7 +128,9 @@ export class AvocadoMusic extends plugin {
               if (img) await this.e.reply(img)
               return
             }
-            await sendMusic(this.e, song)
+            await redis.set(`AVOCADO:MUSIC_${this.e.sender.user_id}_PICKED`, JSON.stringify(song), { EX: 60 * 3 })
+            // await sendMusic(this.e, song)
+            await this.e.shareMusic('163', song.id)
             return true
           } else {
             if (/歌手|音乐人/.test(query)) {
@@ -143,13 +149,14 @@ export class AvocadoMusic extends plugin {
               return true
             }
             // 随机歌名点歌
-            const data = { param: query, isRandom, songId: '', from: 'random' }
+            const data = { param: query, isRandom, id: '', from: 'random' }
             const song = await findSong(data)
             if (!song) {
               const img = await avocadoRender(`### 没有找到名为${query}的歌曲呢...试试其他选择吧~\n${await getBonkersBabble({}, global.God, 'native')}`, { title: '', caption: '', footer: '', renderType: 1 })
               if (img) await this.e.reply(img)
               return
             }
+            await redis.set(`AVOCADO:MUSIC_${this.e.sender.user_id}_PICKED`, JSON.stringify(song), { EX: 60 * 3 })
             await sendMusic(this.e, song)
             return true
           }
@@ -209,7 +216,7 @@ export class AvocadoMusic extends plugin {
         this.setContext('selectSongFromImage')
         return true
       } else {
-        const data = { param: query, isRandom: false, songId: '', from: '' }
+        const data = { param: query, isRandom: false, id: '', from: '' }
         const song = await findSong(data)
         if (Array.isArray(song)) {
           const text = splitArray(song.map(obj => `${obj.index}: ${obj.name} by ${obj.singer}`), 2)
@@ -225,6 +232,7 @@ export class AvocadoMusic extends plugin {
           if (img) await this.e.reply(img)
           return true
         }
+        await redis.set(`AVOCADO:MUSIC_${this.e.sender.user_id}_PICKED`, JSON.stringify(song), { EX: 60 * 3 })
         await sendMusic(this.e, song)
         return true
       }
@@ -260,12 +268,13 @@ export class AvocadoMusic extends plugin {
       const data = {
         param: songName,
         isRandom: false,
-        songId,
+        id: songId,
         from: 'reChoose'
       }
       const song = await findSong(data)
       let res
       if (song) {
+        await redis.set(`AVOCADO:MUSIC_${this.e.sender.user_id}_PICKED`, JSON.stringify(song), { EX: 60 * 3 })
         res = sendMusic(this.e, song)
       } else {
         const img = await avocadoRender(`### 没有找到名为${songName}的歌曲呢...\n${await getBonkersBabble({}, global.God, 'native')}`, { title: '', caption: '', footer: '', renderType: 1 })
@@ -273,7 +282,7 @@ export class AvocadoMusic extends plugin {
         this.finish('wrongFind')
       }
       if (!res) {
-        logger.error('res:', res)
+        logger.error('sendMusic:', res)
       }
       this.finish('wrongFind')
     }
@@ -413,11 +422,12 @@ export class AvocadoMusic extends plugin {
     const data = {
       param: songName,
       isRandom: false,
-      songId,
+      id: songId,
       from: 'image'
     }
     const song = await findSong(data)
     if (song) {
+      await redis.set(`AVOCADO:MUSIC_${this.e.sender.user_id}_PICKED`, JSON.stringify(song), { EX: 60 * 3 })
       res = sendMusic(this.e, song)
     } else {
       const img = await avocadoRender(`### 没有找到名为${songName}的歌曲呢...\n${await getBonkersBabble({}, global.God, 'native')}`, { title: '', caption: '', footer: '', renderType: 1 })
@@ -425,7 +435,7 @@ export class AvocadoMusic extends plugin {
       this.finish('selectSongFromImage')
     }
     if (!res) {
-      logger.error('res:', res)
+      logger.error('sendMusic:', res)
     }
   }
 
@@ -470,8 +480,11 @@ export class AvocadoMusic extends plugin {
       return false
     }
     const selectedMusic = songList[Math.floor(songList.length * Math.random())]
-    const musicDetail = await getMusicDetail(selectedMusic)
-    await sendMusic(this.e, musicDetail)
+    const song = await getMusicDetail(selectedMusic.id)
+    if (song) {
+      await redis.set(`AVOCADO:MUSIC_${this.e.sender.user_id}_PICKED`, JSON.stringify(song), { EX: 60 * 3 })
+      await sendMusic(this.e, song)
+    }
     return true
   }
 
@@ -582,51 +595,66 @@ export class AvocadoMusic extends plugin {
     }
   }
 
+  async getCommentsOrLyrics (e) {
+    const userPicked = await redis.get(`AVOCADO:MUSIC_${e.sender.user_id}_PICKED`)
+    if (!userPicked) {
+      await e.reply('你还没有点歌呢~')
+      return false
+    }
+    const musicElem = JSON.parse(userPicked)
+    const obj = { hasComments: false, hasLyrics: false }
+    // 判断是否有歌词或者评论
+    if (musicElem?.comments) { obj.hasComments = true }
+    if (musicElem?.lyrics) { obj.hasLyrics = true }
+    let [a, b] = [e.msg.includes('评论') + e.msg.includes('热评'), +e.msg.includes('歌词')]
+    let comments, lyrics
+    if (a) {
+      if (obj.hasComments) {
+        comments = musicElem.comments.map(item => [`点赞数：${item[0]}\n评论内容：${item[1]}`]).join('\n\n')
+        comments = await avocadoRender(comments, {
+          title: `${musicElem.name} - 精选评论`,
+          caption: '',
+          footer: '',
+          renderType: 1
+        })
+        await e.reply(comments)
+      } else {
+        await e.reply('该歌曲没有热门评论噢')
+      }
+    }
+    if (b) {
+      if (obj.hasLyrics) {
+        lyrics = await avocadoRender(musicElem.lyrics.join(''), { title: `${musicElem.name}`, caption: '', footer: '', renderType: 1 })
+        await e.reply(lyrics)
+      } else {
+        await e.reply('该歌曲没有歌词噢')
+      }
+    }
+    return true
+  }
+
   async sayGoodMorning () {
     if (!Config.apiKey && !Config.apiBaseUrl) {
       logger.mark('avocadoSayGoodMorning -> 未配置apiKey或apiBaseUrl, 取消本次操作')
       return false
     }
-    let [replyMsg, songId, songName] = await getGreetMsg(105402228, 1)
-    let data = { param: songName, songId, isRandom: false, from: 'goodMorning' }
+    let [greetMsg, songId, songName] = await getGreetMsg(105402228, 1)
+    let data = { param: songName, id: songId, isRandom: false, from: 'goodMorning' }
     let song = await findSong(data)
     // 重试一次
     if (!song) {
-      [replyMsg, songId, songName] = await getGreetMsg(105402228, 1)
-      data = { param: songName, songId, isRandom: false, from: 'goodMorning' }
+      [greetMsg, songId, songName] = await getGreetMsg(105402228, 1)
+      data = { param: songName, id: songId, isRandom: false, from: 'goodMorning' }
       song = await findSong(data)
     }
     let toSend = Config.initiativeGroups || []
     let img
-    if (replyMsg && song) {
+    if (greetMsg && song) {
       let comments = song?.comments.map(item => [`🌻${item[1]}`]).join('\n\n')
       if (comments.length) {
         img = await avocadoRender(comments, { title: '🌻早上好呀🌻', caption: '', footer: '', renderType: 1 })
       }
-      for (const element of toSend) {
-        if (!element) {
-          continue
-        }
-        let groupId = parseInt(element)
-        if (Bot.getGroupList().get(groupId)) {
-          await Bot.sendGroupMsg(groupId, replyMsg)
-          const e = {}
-          e.group = {}
-          e.groupId = groupId
-          e.group.gid = groupId
-          e.isGroup = true
-          song.autoSend = true
-          song.from = 'greet'
-          await sendMusic(e, song)
-          await sleep(2000)
-          if (img) {
-            await Bot.sendGroupMsg(groupId, img)
-            await sleep(2000)
-          }
-        } else {
-          logger.mark('avocadoSayGoodMorning -> 找不到群聊: ' + groupId)
-        }
-      }
+      await shareMusicToGroup(toSend, song.id, img, greetMsg)
     }
   }
 
@@ -635,46 +663,23 @@ export class AvocadoMusic extends plugin {
       logger.mark('avocadoSayGoodAfternoon -> 未配置apiKey或apiBaseUrl, 取消本次操作')
       return false
     }
-    let [replyMsg, songId, songName] = await getGreetMsg(2878202769, 2)
-    let data = { param: songName, songId, isRandom: false, from: 'goodAfternoon' }
+    let [greetMsg, songId, songName] = await getGreetMsg(2878202769, 2)
+    let data = { param: songName, id: songId, isRandom: false, from: 'goodAfternoon' }
     let song = await findSong(data)
     // 重试一次
     if (!song) {
-      [replyMsg, songId, songName] = await getGreetMsg(2878202769, 2)
-      data = { param: songName, songId, isRandom: false, from: 'goodAfternoon' }
+      [greetMsg, songId, songName] = await getGreetMsg(2878202769, 2)
+      data = { param: songName, id: songId, isRandom: false, from: 'goodAfternoon' }
       song = await findSong(data)
     }
     let toSend = Config.initiativeGroups || []
     let img
-    if (replyMsg && song) {
+    if (greetMsg && song) {
       let comments = song?.comments.map(item => [`🌊${item[1]}`]).join('\n\n')
       if (comments.length) {
         img = await avocadoRender(comments, { title: '🍴大家中午好呀！！', caption: '', footer: '', renderType: 1 })
       }
-      for (const element of toSend) {
-        if (!element) {
-          continue
-        }
-        let groupId = parseInt(element)
-        if (Bot.getGroupList().get(groupId)) {
-          await Bot.sendGroupMsg(groupId, replyMsg)
-          const e = {}
-          e.group = {}
-          e.groupId = groupId
-          e.group.gid = groupId
-          e.isGroup = true
-          song.autoSend = true
-          song.from = 'greet'
-          await sendMusic(e, song)
-          await sleep(2000)
-          if (img) {
-            await Bot.sendGroupMsg(groupId, img)
-            await sleep(2000)
-          }
-        } else {
-          logger.mark('avocadoSayGoodAfternoon -> 找不到群聊: ' + groupId)
-        }
-      }
+      await shareMusicToGroup(toSend, song.id, img, greetMsg)
     }
   }
 
@@ -684,45 +689,22 @@ export class AvocadoMusic extends plugin {
       return false
     }
     try {
-      let [replyMsg, songId, songName] = await getGreetMsg(7350109521, 3)
-      let data = { param: songName, songId, isRandom: false, from: 'goodnight' }
+      let [greetMsg, songId, songName] = await getGreetMsg(7350109521, 3)
+      let data = { param: songName, id: songId, isRandom: false, from: 'goodnight' }
       let song = await findSong(data)
       if (!song) {
-        [replyMsg, songId, songName] = await getGreetMsg(7350109521, 3)
-        data = { param: songName, songId, isRandom: false, from: 'goodnight' }
+        [greetMsg, songId, songName] = await getGreetMsg(7350109521, 3)
+        data = { param: songName, id: songId, isRandom: false, from: 'goodnight' }
         song = await findSong(data)
       }
       let toSend = Config.initiativeGroups || []
       let img
-      if (replyMsg && song) {
+      if (greetMsg && song) {
         let comments = song?.comments.map(item => [`🌛${item[1]}`]).join('\n\n')
         if (comments.length) {
           img = await avocadoRender(comments, { title: '晚安😴', caption: '', footer: '', renderType: 1 })
         }
-        for (const element of toSend) {
-          if (!element) {
-            continue
-          }
-          let groupId = parseInt(element)
-          if (Bot.getGroupList().get(groupId)) {
-            await Bot.sendGroupMsg(groupId, replyMsg)
-            const e = {}
-            e.group = {}
-            e.groupId = groupId
-            e.group.gid = groupId
-            e.isGroup = true
-            song.autoSend = true
-            song.from = 'greet'
-            await sendMusic(e, song)
-            await sleep(2000)
-            if (img) {
-              await Bot.sendGroupMsg(groupId, img)
-              await sleep(2000)
-            }
-          } else {
-            logger.mark('avocadoSayGoodnight -> 找不到群聊: ' + groupId)
-          }
-        }
+        await shareMusicToGroup(toSend, song.id, img, greetMsg)
       }
     } catch (error) {
       logger.error(error)

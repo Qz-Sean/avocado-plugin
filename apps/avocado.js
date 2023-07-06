@@ -7,15 +7,13 @@ import {
   avocadoRender,
   getImageOcrText,
   getImg,
-  getMovieList,
   getSourceMsg,
   makeForwardMsg,
-  sleep, splitArray
+  sleep
 } from '../utils/common.js'
 import { getAreaInfo, weather } from '../utils/weather.js'
 import {
   cities,
-  movieKeyMap,
   pluginRoot,
   pluginVersion,
   translateLangSupports,
@@ -53,10 +51,6 @@ export class AvocadoRuleALL extends plugin {
         {
           reg: `^#?(.*)(${global.God}|鳄梨酱)[.。]([.。]*)$`,
           fnc: 'avocadoWeather'
-        },
-        {
-          reg: `^#?((${global.God}|鳄梨酱)?#电影|来点好看的)$`,
-          fnc: 'avocadoMovie'
         },
         {
           reg: `^#?((${global.God}|鳄梨酱)?#发[癫|电|疯](.+))`,
@@ -386,192 +380,4 @@ export class AvocadoRuleALL extends plugin {
     await this.reply(result)
     return true
   }
-
-  async avocadoMovie (e) {
-    let movieList
-    this.e = e
-    if (await redis.get('AVOCADO:MOVIE_EXPIRE')) {
-      movieList = JSON.parse(await redis.get('AVOCADO:MOVIE_DETAILS'))
-    } else {
-      await this.e.reply('更新数据中...此过程需要较长时间，请稍等...')
-      try {
-        movieList = await getMovieList()
-        await redis.set('AVOCADO:MOVIE_DETAILS', JSON.stringify(movieList))
-        await redis.set('AVOCADO:MOVIE_EXPIRE', 1, { EX: 60 * 60 * 24 * 7 })
-      } catch (error) {
-        this.e.reply(`啊哦!${error}`)
-        return false
-      }
-    }
-    if (!movieList.length) {
-      await this.e.reply('出错了！')
-      return false
-    }
-    // 我的评价！
-    let analyzedList = movieList
-      .filter(item => item.id)
-      .map(item => {
-        let sc = item.sc
-        let n
-        if (sc !== 0) {
-          return `${item.index}.${item.nm} -> 评分: ${sc}`
-        } else if (item.viewable === 1) {
-          if (item.diffDays > 15) {
-            n = '大概率烂片~'
-          } else if (item.diffDays > 7) {
-            n = '成分复杂...'
-          } else {
-            n = '是新片哦~'
-          }
-        } else {
-          n = '还在预售哦~'
-        }
-        return `${item.index}.${item.nm} -> ${n}`
-      })
-    analyzedList = splitArray(analyzedList, 2)
-    const img = await avocadoRender(analyzedList, {
-      title: '热映电影',
-      caption: '',
-      footer: `<strong><i>最近上映的影片共有${movieList.length}部，你想了解哪一部影片呢~</i></strong>`,
-      renderType: 2
-    })
-
-    if (!img) {
-      await this.e.reply('生成图片错误！')
-      return false
-    }
-    await this.e.reply(img)
-    this.setContext('pickMe')
-  }
-
-  async pickMe (e) {
-    if (typeof this.e.msg !== 'string') return
-    logger.mark('pickMe: ' + this.e.msg)
-    let mainInfoList = JSON.parse(await redis.get('AVOCADO:MOVIE_DETAILS'))
-    const reg = new RegExp(`^((0{1,2})|(${mainInfoList.map(item => item.index).join('|')})|(${mainInfoList.map(item => item.nm).join('|').replace(/\*/g, ' fuck ')}))$`)
-    if (!reg.test(this.e.msg)) { return }
-    if (this.e.msg === '0') {
-      await redis.del(`AVOCADO:MOVIE_${this.e.sender.user_id}_PICKEDMOVIE`)
-      await this.reply(`${global.God}！！！`)
-      this.finish('pickMe')
-      return true
-    }
-    let selectedMovie
-    try {
-      if (this.e.msg === '00') {
-        // 获取本次查看的影片
-        const movieIndex = await redis.get(`AVOCADO:MOVIE_${this.e.sender.user_id}_PICKEDMOVIE`)
-        if (movieIndex) {
-          selectedMovie = mainInfoList.find(item => item.index === parseInt(movieIndex))
-        } else {
-          await this.reply('先告诉我你想了解的电影吧！')
-          return
-        }
-      } else {
-        selectedMovie = mainInfoList.find(item => item.index === parseInt(this.e.msg) || item.nm === this.e.msg)
-      }
-      let transformedMoviesDetails = {}
-      let others = []
-      Object.keys(movieKeyMap).map(async key => {
-        // 空值不要
-        if (!selectedMovie[key] || key === 'index') return false
-        if (key === 'videoName') {
-          others.push(`${movieKeyMap[key]}: ${selectedMovie[key]}\n`)
-          return false
-        }
-        if (key === 'videourl') {
-          others.push(`${selectedMovie[key]}`)
-          others.push('\n')
-          return false
-        }
-        if (key === 'photos') {
-          let photo
-          others.push(`${movieKeyMap[key]}: \n`)
-          for (const i of selectedMovie[key]) {
-            photo = segment.image(i)
-            others.push(photo)
-          }
-          return false
-        }
-        transformedMoviesDetails[movieKeyMap[key]] = selectedMovie[key]
-        return true
-      })
-      let str = Object.keys(transformedMoviesDetails).map(function (key) {
-        if (key === '封面') return null
-        return key + '：' + transformedMoviesDetails[key] + '\n'
-      }).join('')
-      if (this.e.msg === '00') {
-        await this.reply(await makeForwardMsg(this.e, [others], '鳄门🙏...'))
-        await this.reply('可继续选择影片~~\n回复 00 获取本片剧照及预告\n回复 0 结束此次操作\n¡¡¡( •̀ ᴗ •́ )و!!!')
-        return
-      }
-      const img = await avocadoRender(str, {
-        title: `![img](${transformedMoviesDetails['封面']})`,
-        caption: '',
-        footer: '<strong><i>可继续选择影片~~<br>回复 00 获取本片剧照及预告<br>回复 0 结束此次操作\n¡¡¡( •̀ ᴗ •́ )و!!!<i></strong>',
-        renderType: 3
-      })
-      if (img) {
-        await this.reply(img)
-        await redis.set(`AVOCADO:MOVIE_${this.e.sender.user_id}_PICKEDMOVIE`, selectedMovie.index, { EX: 60 * 3 })
-      } else {
-        await this.e.reply('图片生成出错了！')
-        this.finish('pickMe')
-      }
-    } catch (error) {
-      await this.e.reply(error)
-      this.finish('pickMe')
-    }
-  }
-
-  conKey (isGroup = false) {
-    if (isGroup) {
-      return `${this.name}.${this.e.group_id}`
-    } else {
-      return `${this.name}.${this.userId || this.e.user_id}`
-    }
-  }
-
-  /**
-   * @param type 执行方法
-   * @param isGroup 是否群聊
-   * @param time 操作时间，默认120秒
-   */
-  setContext (type, isGroup = false, time = 120) {
-    logger.mark('start ' + type + ' context')
-    let key = this.conKey(isGroup)
-    if (!stateArr[key]) stateArr[key] = {}
-    stateArr[key][type] = this.e
-    if (time) {
-      /** 操作时间 */
-      setTimeout(() => {
-        if (stateArr[key][type]) {
-          delete stateArr[key][type]
-          // this.e.reply('操作超时已取消', true)
-        }
-      }, time * 1000)
-    }
-  }
-
-  getContext () {
-    let key = this.conKey()
-    return stateArr[key]
-  }
-
-  getContextGroup () {
-    let key = this.conKey(true)
-    return stateArr[key]
-  }
-
-  /**
-   * @param type 执行方法
-   * @param isGroup 是否群聊
-   */
-  finish (type, isGroup = false) {
-    logger.mark('finish ' + type + ' context')
-    if (stateArr[this.conKey(isGroup)] && stateArr[this.conKey(isGroup)][type]) {
-      delete stateArr[this.conKey(isGroup)][type]
-    }
-  }
 }
-let stateArr = {}

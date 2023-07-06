@@ -1,4 +1,4 @@
-import { avocadoRender, generateRandomHeader, makeForwardMsg } from './common.js'
+import { avocadoRender, generateRandomHeader, makeForwardMsg, sleep } from './common.js'
 import fetch from 'node-fetch'
 import { Config } from './config.js'
 import { ChatGPTAPI } from 'chatgpt'
@@ -278,7 +278,7 @@ export async function getOrderSongList (userId, order, limit) {
  * - from： 选填，如果需要使用songId参数，则必须指定该参数，以便更好处理搜索结果。ps：现在来看，意义不大 emmm
  * @returns {Promise<{}|boolean>}
  */
-export async function findSong (data = { param: '', songId: '', isRandom: false, from: '' }) {
+export async function findSong (data = { param: '', id: '', isRandom: false, from: '' }) {
   const url = `http://110.41.21.181:3000/cloudsearch?keywords=${data.param}&limit=60`
   try {
     const headers = generateRandomHeader()
@@ -296,63 +296,65 @@ export async function findSong (data = { param: '', songId: '', isRandom: false,
       logger.error('没有获取到有效歌单')
       return false
     }
-    let searchRes
-    if (data.songId) {
+    let song, songId
+    if (data.id) {
       if (data.from === 'random') {
         logger.mark('avocadoMusic -> 随机点歌')
-        searchRes = result?.result?.songs
         // 处理搜id有概率搜不到的问题
-        searchRes = searchRes.find(song => song.id === data.songId)
+        song = result?.result?.songs.find(song => song.id === data.id)
+        songId = song.id
       }
       // wrongFind
       if (data.from === 'reChoose') {
         logger.mark('avocadoMusic -> 第二次点歌')
-        searchRes = result?.result?.songs
         // 处理搜id有概率搜不到的问题
-        searchRes = searchRes.find(song => song.id === data.songId)
+        song = result?.result?.songs.find(song => song.id === data.id)
+        songId = song.id
       }
       if (data.from === 'image') {
         logger.mark('avocadoMusic -> 图片点歌')
-        searchRes = result?.result?.songs
         // 处理搜id有概率搜不到的问题
-        searchRes = searchRes.find(song => song.id === data.songId)
+        song = result?.result?.songs.find(song => song.id === data.id)
+        songId = song.id
       }
       if (data.from === 'goodnight' || data.from === 'goodAfternoon' || data.from === 'goodMorning') {
         logger.mark('avocadoMusic -> 问好点歌')
-        searchRes = result?.result?.songs
         // 处理搜id有概率搜不到的问题
-        searchRes = searchRes.find(song => song.id === data.songId)
+        song = result?.result?.songs.find(song => song.id === data.id)
+        songId = song.id
       }
-    } else if (!data.songId && data.isRandom) {
+    } else if (!data.id && data.isRandom) {
       logger.mark('avocadoMusic -> 随机歌名点歌')
       // 随机但没有传入songId ==> 即参数不是歌手
-      searchRes = result?.result?.songs?.[Math.floor(Math.random() * result?.result?.songs.length)]
+      song = result?.result?.songs?.[Math.floor(Math.random() * result?.result?.songs.length)]
+      songId = song.id
     } else {
       logger.mark('avocadoMusic -> 正常点歌')
       if (data.param.includes(',')) {
         const singer = data.param.split(',')[0]
         const songName = data.param.split(',')[1]
-        searchRes = result?.result?.songs
-        searchRes = searchRes.find(song => song.ar.find(item => item.name.toLowerCase() === singer.toLowerCase() && song.name.toLowerCase() === songName.toLowerCase()))
+        const songList = result?.result?.songs
+        song = songList.find(song => song.ar.find(item => item.name.toLowerCase() === singer.toLowerCase() && song.name.toLowerCase() === songName.toLowerCase()))
+        songId = song?.id
         // 没有找到符合的结果，保存此次搜索结果，二次选择 =》 Context : wrongFind
-        if (!searchRes) {
-          const songList = result?.result?.songs.map((song, index) => ({
+        if (!songId) {
+          const tempRes = result?.result?.songs.map((song, index) => ({
             index: index + 1,
             name: song.name,
             id: song.id,
             singer: song.ar.map(item => item.name)
           }))
-          await redis.set(`AVOCADO:MUSIC_${data.param}`, JSON.stringify(songList), { EX: 60 * 2 })
-          return songList
+          await redis.set(`AVOCADO:MUSIC_${data.param}`, JSON.stringify(tempRes), { EX: 60 * 2 })
+          return tempRes
         }
       } else {
-        searchRes = result?.result?.songs?.[0]
+        songId = result?.result?.songs?.[0].id
       }
     }
-    if (!searchRes) {
+    if (!songId) {
       return false
     } else {
-      return await getMusicDetail(searchRes)
+      return await getMusicDetail(songId)
     }
   } catch (err) {
     logger.error(err)
@@ -362,38 +364,33 @@ export async function findSong (data = { param: '', songId: '', isRandom: false,
 
 /**
  * 获取单曲所有信息
- * @param musicElem
- * - 可以是未处理的musicElem，也可以是经过getFavList处理后的elem（已提前获取并处理artist/albumId）
- * - 后期考虑将favList通过图片发送给用户
  * @returns {Promise<{}>}
+ * @param songId
  */
-export async function getMusicDetail (musicElem) {
-  let response, resJson
+export async function getMusicDetail (songId) {
+  let response, resJson, song
   const songInfo = {}
   try {
-    songInfo.id = musicElem.id
-    songInfo.name = musicElem.name
-    songInfo.artist = musicElem?.artist || musicElem.ar.map(item => item.name).join(',')
-    songInfo.albumId = musicElem?.albumId || musicElem.al.id
-    response = await fetch(`http://110.41.21.181:3000/song/detail?ids=${musicElem.id}`)
+    response = await fetch(`http://110.41.21.181:3000/song/detail?ids=${songId}`)
     resJson = await response.json()
-    songInfo.pic = resJson.songs[0].al.picUrl
-    songInfo.fee = musicElem.fee
-    songInfo.mv = musicElem.mv
-    songInfo.link = 'https://music.163.com/#/song?id=' + musicElem.id
-    response = await fetch(`http://110.41.21.181:3000/comment/hot?id=${musicElem.id}&type=0`)
-    resJson = await response.json()
-    songInfo.comments = resJson.hotComments.slice(0, 15).map(item => {
-      return [item.likedCount, item.content]
-    })
-    response = await fetch(`http://110.41.21.181:3000/lyric?id=${musicElem.id}`)
-    resJson = await response.json()
-    songInfo.lyrics = [resJson.lrc.lyric]
-    songInfo.musicUrl = await getMusicUrl(musicElem.id)
+    song = resJson.songs[0]
+    songInfo.id = song.id
+    songInfo.name = song.name
+    songInfo.artist = song.ar.map(item => item.name).join(',')
+    songInfo.albumId = song.al.id
+    songInfo.pic = song.al.picUrl
+    songInfo.fee = song.fee
+    songInfo.mv = song.mv
+    songInfo.link = 'https://music.163.com/#/song?id=' + song.id
+    songInfo.musicUrl = await getMusicUrl(song.id)
+    const list = await getCommentsOrLyrics(songId, 0)
+    songInfo.comments = list[0]
+    songInfo.lyrics = list[1]
+    return songInfo
   } catch (err) {
     logger.error(err)
+    return false
   }
-  return songInfo
 }
 
 /**
@@ -421,9 +418,9 @@ export async function getSingerHotList (userId, singer) {
   const songList = res.songs
   const hotList = songList.map((item, index) => ({
     index: index + 1,
-    songId: item.id,
-    songName: item.name,
-    singer: item?.ar.map(singer => singer.name)
+    id: item.id,
+    name: item.name,
+    artist: item?.ar.map(singer => singer.name)
   }))
   await redis.set(`AVOCADO:MUSIC_${userId}_HOTLIST`, JSON.stringify(hotList))
   return hotList
@@ -512,9 +509,9 @@ export async function getHotSingers () {
     if (result.code !== 200) {
       return false
     }
-    let searchRes = result?.artists
-    if (searchRes.length) {
-      return searchRes.map((artist, index) => ({ index: index + 1, id: artist.id, name: artist.name }))
+    const artists = result?.artists
+    if (artists.length) {
+      return artists.map((artist, index) => ({ index: index + 1, id: artist.id, name: artist.name }))
     }
   } catch (e) {
     logger.error(e)
@@ -535,8 +532,8 @@ export async function getFavList (userID, SingerID) {
     if (result.code !== 200) {
       return false
     }
-    let searchRes = result.songs
-    const favList = searchRes.map((item, index) => ({
+    const songList = result.songs
+    const favList = songList.map((item, index) => ({
       index: index + 1,
       id: item.id,
       name: item.name,
@@ -552,7 +549,62 @@ export async function getFavList (userID, SingerID) {
   }
   return true
 }
-
+export async function shareMusicToGroup (groupList, songId, imgToShare, greetMsg) {
+  for (const group of groupList) {
+    let groupId = parseInt(group)
+    if (Bot.getGroupList().get(groupId)) {
+      let g = await Bot.pickGroup(groupId)
+      await g.shareMusic('163', songId)
+      await sleep(1000)
+      if (greetMsg) await Bot.sendGroupMsg(groupId, greetMsg)
+      await sleep(1000)
+      if (imgToShare) await Bot.sendGroupMsg(groupId, imgToShare)
+      await sleep(2000)
+    } else {
+      logger.mark('avocadoSayGoodnight -> 找不到群聊: ' + groupId)
+    }
+  }
+}
+/**
+ *
+ * @param musicObjectOrMusicId - 音乐对象或音乐id
+ * @param type - 获取类型 0:歌词+评论 1:歌词 2:评论
+ * @returns {Promise<*>}
+ */
+export async function getCommentsOrLyrics (musicObjectOrMusicId, type = 0) {
+  let comments, lyrics
+  if (typeof musicObjectOrMusicId !== 'object') {
+    const id = parseInt(musicObjectOrMusicId)
+    let response = await fetch(`http://110.41.21.181:3000/lyric?id=${id}`)
+    let resJson = await response.json()
+    lyrics = [resJson.lrc?.lyric]
+    if (type === 1 || type === 0) {
+      response = await fetch(`http://110.41.21.181:3000/comment/hot?id=${id}&type=0`)
+      resJson = await response.json()
+      comments = resJson.hotComments.slice(0, 15).map(item => {
+        return [item.likedCount, item.content]
+      })
+    }
+  }
+  logger.warn(comments, lyrics)
+  switch (type) {
+    case 0: {
+      if (Object.getOwnPropertyNames(musicObjectOrMusicId).length !== 0) return musicObjectOrMusicId
+      return [
+        comments,
+        lyrics
+      ]
+    }
+    case 1: {
+      if (Object.getOwnPropertyNames(musicObjectOrMusicId).length !== 0) return musicObjectOrMusicId?.lyrics
+      return lyrics
+    }
+    case 2: {
+      if (Object.getOwnPropertyNames(musicObjectOrMusicId).length !== 0) return musicObjectOrMusicId?.comments
+      return comments
+    }
+  }
+}
 export async function sendMusic (e, data, toUin = null) {
   if (!Bot.sendOidb) return false
 
@@ -664,33 +716,6 @@ export async function sendMusic (e, data, toUin = null) {
   try {
     let payload = await Bot.sendOidb('OidbSvc.0xb77_9', core.pb.encode(body))
     let result = core.pb.decode(payload)
-    if (data?.from === undefined) { // 非内部调用
-      let comments = data.comments.map(item => [`点赞数：${item[0]}\n评论内容：${item[1]}`]).join('\n\n')
-      let forwardMsg
-      if (comments.length) {
-        // ['']
-        if (data.lyrics.join('').length) {
-          forwardMsg = [
-            await avocadoRender(comments, { title: `${data.name} - 精选评论`, caption: '', footer: '', renderType: 1 }),
-            await avocadoRender(data.lyrics.join(''), { title: `${data.name}`, caption: '', footer: '', renderType: 1 })
-          ]
-        } else {
-          await avocadoRender(comments, { title: `${data.name} - 精选评论`, caption: '', footer: '', renderType: 1 })
-        }
-      } else if (data.lyrics.join('').length) {
-        forwardMsg = [
-          await avocadoRender(data.lyrics.join(''), { title: `${data.name}`, caption: '', footer: '', renderType: 1 })
-        ]
-      }
-      if (data?.autoSend === undefined) {
-        if (forwardMsg) {
-          const formattedMsg = await makeForwardMsg(e, forwardMsg, '热评+歌词 鳄门🙏...')
-          await e.reply(formattedMsg)
-        }
-      } else {
-        return forwardMsg
-      }
-    }
     if (result[3] !== 0) {
       if (!data.groupId) {
         e.reply('歌曲分享失败：' + result[3], true)
