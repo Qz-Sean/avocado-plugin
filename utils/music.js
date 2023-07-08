@@ -157,9 +157,18 @@ export async function getGreetMsg (listId, greetType) {
   return [res.text, introSong.id, introSong.name]
 }
 
+/**
+ * 获取歌手信息
+ * @param nameOrId
+ * @returns {Promise<{transName: (string|*[]|*|*[]), briefDesc: (string|*), musicSize: (string|*), name, alias: (*|*[]), secondaryExpertIdentiy: (*|string), id: (number|boolean|[*,boolean]), mvSize: (string|*), albumSize: (string|*)}|boolean>}
+ */
 export async function getSingerDetail (nameOrId) {
-  let singerId = typeof nameOrId === 'number' ? nameOrId : await getSingerId(nameOrId)
+  let r
+  let singerId = r = typeof nameOrId === 'number' ? nameOrId : await getSingerId(nameOrId)
+  // 因为为获取指定歌手返回值
   if (!singerId) return false
+  // 模糊查找的结果,不保真
+  if (Array.isArray(r)) singerId = r[0]
   let url = `http://110.41.21.181:3000/artist/detail?id=${singerId}`
   const headers = generateRandomHeader()
   const options = {
@@ -405,9 +414,12 @@ export async function getMusicDetail (id) {
  * @returns {Promise<boolean>}
  */
 export async function getSingerHotList (userId, artist) {
-  const singerId = await getSingerId(artist)
-  if (!singerId) {
+  const r = await getSingerId(artist)
+  let singerId
+  if (!r) {
     return false
+  } else {
+    singerId = r[0]
   }
   const url = `http://110.41.21.181:3000/artist/top/song?id=${singerId}`
   const headers = generateRandomHeader()
@@ -453,11 +465,26 @@ export async function getSingerId (artist) {
   if (!songs?.length) {
     return false
   }
+  let flag = true
   songs.forEach(item => {
     const lowerCaseSinger = artist.toLowerCase()
     singerId = item.ar.find(arItem => [arItem.name, arItem?.tns?.[0], arItem?.alias?.[0], arItem?.alia?.[0]].some(name => name?.toLowerCase() === lowerCaseSinger))?.id
   })
-  return singerId || false
+  // 如果找不到完全匹配的就返回包含参数的歌手, 并设置flag为false
+  // 例如: 三无 => 三无 MarBlue
+  if (!singerId) {
+    let singer
+    songs.forEach(item => {
+      const lowerCaseSinger = artist.toLowerCase()
+      singer = item.ar.find(arItem => [arItem.name, arItem?.tns?.[0], arItem?.alias?.[0], arItem?.alia?.[0]].some(name => name?.toLowerCase().includes(lowerCaseSinger)))
+      singerId = singer?.id
+    })
+    if (singerId) {
+      await redis.set(`AVOCADO:MUSIC_WRONGSINGER_${artist}`, JSON.stringify(singer), { EX: 60 })
+      flag = false
+    }
+  }
+  return singerId ? [singerId, flag] : false
 }
 
 /**
@@ -540,7 +567,7 @@ export async function getFavList (userID, SingerID) {
     const songList = result.songs
     let mIndex = 0
     const favList = songList.map((item) => {
-      return item.noCopyrightRcmd === null
+      return item.noCopyrightRcmd === null && item.st === 1
         ? {
             index: ++mIndex,
             id: item.id,
@@ -554,11 +581,10 @@ export async function getFavList (userID, SingerID) {
         : null
     }).filter(item => item !== null)
     await redis.set(`AVOCADO:MUSIC_${userID}_FAVSONGLIST`, JSON.stringify(favList))
-  } catch (e) {
-    logger.error(e)
-    return false
+    return favList.length
+  } catch (error) {
+    return error
   }
-  return true
 }
 
 export async function avocadoShareMusic (id, target, imgToShare, textMsg, platformCode) {

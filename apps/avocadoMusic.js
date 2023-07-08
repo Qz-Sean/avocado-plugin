@@ -98,17 +98,17 @@ export class AvocadoMusic extends plugin {
     const selectType = match[3] ? match[3] : ''
     const query = match[5] ? match[5].replace(/[，,]/g, ',') : ''
     const { isRandom, isHotList } = { isRandom: selectType === '随机', isHotList: selectType === '热门' }
-    const isSinger = query ? !!(await getSingerId(query)) : false
+    const queryIsSinger = query ? !!(await getSingerId(query)) : false
     let singerType = singerTypeMap[match[4]] || Math.ceil(Math.random() * 4)
     let hotList
-    if (isSinger) hotList = await getSingerHotList(e.sender.user_id, query)
+    if (queryIsSinger) hotList = await getSingerHotList(e.sender.user_id, query)
     // 指令包含类型 =》 随机|热门
     if (selectType) {
       // 存在点歌参数
       if (query) {
         if (isRandom) { // 随机点歌
           // 点歌参数是否为歌手名
-          if (isSinger) {
+          if (queryIsSinger) {
             let song = hotList[Math.floor(Math.random() * hotList.length)]
             const data = {
               param: song.name,
@@ -117,14 +117,19 @@ export class AvocadoMusic extends plugin {
               from: 'random'
             }
             song = await findSong(data)
-            if (!song) {
-              const img = await avocadoRender(`### 没有找到名为 ${query} 的歌曲呢...试试其他选择吧~\n${await getBonkersBabble({}, global.God, 'native')}`, { title: '', caption: '', footer: '', renderType: 1 })
-              if (img) await this.e.reply(img)
-              return
-            }
+            // if (!song) {
+            //   const img = await avocadoRender(`### 没有找到名为 ${query} 的歌曲呢...试试其他选择吧~\n${await getBonkersBabble({}, global.God, 'native')}`, { title: '', caption: '', footer: '', renderType: 1 })
+            //   if (img) await this.e.reply(img)
+            //   return
+            // }
             await redis.set(`AVOCADO:MUSIC_${this.e.sender.user_id}_PICKED`, JSON.stringify(song), { EX: 60 * 3 })
             // await sendMusic(this.e, song)
+            const wrongSinger = await redis.get(`AVOCADO:MUSIC_WRONGSINGER_${query}`)
             await avocadoShareMusic(song.id, this.e.group_id || this.e.sender.user_id)
+            if (wrongSinger) {
+              const singerName = JSON.parse(wrongSinger).name
+              await this.e.reply(`没有找到名为 ${query} 的歌手呢...猜测你想查询的是${singerName}，已为你发送一首${singerName}的${song.name}！`)
+            }
             return true
           } else {
             if (/歌手|音乐人/.test(query)) {
@@ -172,10 +177,16 @@ export class AvocadoMusic extends plugin {
               return true
             }
           }
-          if (isSinger) { // 点歌参数为歌手名
+          if (queryIsSinger) { // 点歌参数为歌手名
             const text = splitArray(hotList.map(obj => `${obj.index}: ${obj.name}\n`), 2)
-            const img = await avocadoRender(text, { title: `${query}-热门播放50`, caption: '', footer: '可通过发送对应序号获取音乐~', renderType: 2 })
-            if (img) await e.reply(img)
+            const wrongSinger = await redis.get(`AVOCADO:MUSIC_WRONGSINGER_${query}`)
+            let wsn = ''
+            if (wrongSinger) {
+              wsn = JSON.parse(wrongSinger).name
+              await this.e.reply(`没有找到名为 ${query} 的歌手呢...猜测你想查询的是${wsn}，即将为你发送${wsn}的热门歌单！`)
+            }
+            const img = await avocadoRender(text, { title: `${wsn || query}-热门播放50`, caption: '', footer: '可通过发送对应序号获取音乐~', renderType: 2 })
+            if (img) await this.e.reply(img)
             this.setContext('selectSongFromImage')
             return true
           }
@@ -194,10 +205,16 @@ export class AvocadoMusic extends plugin {
         }
       }
     } else if (query) { // 没有指定点歌类型但有点歌参数
-      if (isSinger) {
+      if (queryIsSinger) {
         const text = splitArray(hotList.map(obj => `${obj.index}: ${obj.name}\n`), 2)
+        const wrongSinger = await redis.get(`AVOCADO:MUSIC_WRONGSINGER_${query}`)
+        let wsn = ''
+        if (wrongSinger) {
+          wsn = JSON.parse(wrongSinger).name
+          await this.e.reply(`没有找到名为 ${query} 的歌手呢...猜测你想查询的是${wsn}，即将为你发送${wsn}的热门歌单！`)
+        }
         const img = await avocadoRender(text, {
-          title: `${query}-热门播放50`,
+          title: `${wsn || query}-热门播放50`,
           caption: '',
           footer: '可通过发送对应序号获取音乐~',
           renderType: 2
@@ -334,13 +351,19 @@ export class AvocadoMusic extends plugin {
   async getSinger (e) {
     const singer = e.msg.trim().replace(/#?了解/, '')
     logger.mark('singer: ', singer)
-    const singerId = await getSingerId(singer)
-    if (!singerId) {
+    let singerId
+    const res = await getSingerId(singer)
+    if (!res) {
       const img = await avocadoRender(`### 没有找到名为 ${singer} 的歌手呢...\n${await getBonkersBabble({}, global.God, 'native')}`, { title: '', caption: '', footer: '', renderType: 1 })
       if (img) await this.reply(img)
       return true
     }
-
+    if (res) singerId = res[0]
+    const wrongSinger = await redis.get(`AVOCADO:MUSIC_WRONGSINGER_${singer}`)
+    if (wrongSinger) {
+      const singerName = JSON.parse(wrongSinger).name
+      await this.e.reply(`没有找到名为 ${singer} 的歌手呢...猜测你想查询的是${singerName}，即将为你发送${singerName}的歌手卡片~`)
+    }
     const singerInfo = await getSingerDetail(singerId)
     let replyMsg = []
     for (const key in singerInfo) {
@@ -420,6 +443,7 @@ export class AvocadoMusic extends plugin {
     // if (img) await this.reply(img)
     if (this.e.msg === '0') {
       this.finish('selectSongFromImage')
+      await this.e.reply(global.God + '！！！')
       return true
     }
     if (/歌词|热评|评论/.test(this.e.msg)) {
@@ -460,14 +484,16 @@ export class AvocadoMusic extends plugin {
     }
     const userData = await redis.get(`AVOCADO:MUSIC_${e.sender.user_id}_FAVSINGER`)
     if (!userData) {
-      await e.reply('你还没有设置歌手')
+      await e.reply('你还没有设置歌手呢!')
       return false
     } else {
       const singerId = JSON.parse(userData).singerId
-      await e.reply('正在更新歌曲数据...')
+      await e.reply('正在更新歌曲数据...', { recallMsg: 2 })
       const res = await getFavList(e.sender.user_id, singerId)
-      if (res) {
-        await e.reply('成功了！')
+      if (res > 0) {
+        await e.reply('成功了！本次共获取到' + res + '首歌曲！')
+      } else {
+        await e.reply('失败了！' + res)
       }
     }
   }
@@ -520,7 +546,6 @@ export class AvocadoMusic extends plugin {
     let singerName = e.msg.trim().replace(/^#?设置歌手\s*/, '')
     // 检查是否已存在同名歌手数据
     const userSinger = await redis.get(`AVOCADO:MUSIC_${e.sender.user_id}_FAVSINGER`)
-    let singerId
     if (userSinger) {
       const data = JSON.parse(userSinger)
       const uSinger = data.singerName
@@ -539,11 +564,19 @@ export class AvocadoMusic extends plugin {
       singerId: singer.id
     }
     await redis.set(`AVOCADO:MUSIC_${e.sender.user_id}_FAVSINGER`, JSON.stringify(data))
-    await this.reply('设置成功')
-    await this.reply('正在获取歌曲数据...')
+    const wrongSinger = await redis.get(`AVOCADO:MUSIC_WRONGSINGER_${singerName}`)
+    if (!wrongSinger) {
+      await this.reply('设置成功', false, { recallMsg: 2 })
+      await this.reply('正在获取歌曲数据...', false, { recallMsg: 2 })
+    } else {
+      const sn = JSON.parse(wrongSinger).name
+      await this.e.reply(`没有找到名为 ${singerName} 的歌手呢...猜测你想查询的是${sn}，即将为你获取${sn}的歌曲数据...`)
+    }
     const res = await getFavList(e.sender.user_id, singer.id)
-    if (res) {
-      await this.reply('成功了！')
+    if (res > 0) {
+      await e.reply('成功了！本次共获取到' + res + '首歌曲！')
+    } else {
+      await e.reply('失败了！' + res)
     }
   }
 
