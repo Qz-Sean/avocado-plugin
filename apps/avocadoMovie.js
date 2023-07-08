@@ -1,9 +1,6 @@
 import plugin from '../../../lib/plugins/plugin.js'
-import {
-  avocadoRender, makeForwardMsg,
-  splitArray
-} from '../utils/common.js'
-import { analyseMovieList, findMovie, getHotMovieList, getMovieDetail } from '../utils/movie.js'
+import { avocadoRender, getTimeDifference, makeForwardMsg, splitArray } from '../utils/common.js'
+import { analyseMovieList, findMovie, getHotMovieList, getMovieDetail, processMovieDetail } from '../utils/movie.js'
 import { movieKeyMap } from '../utils/const.js'
 import { segment } from 'icqq'
 
@@ -22,9 +19,31 @@ export class AvocadoPsycho extends plugin {
         {
           reg: `^#?(${global.God}|鳄梨酱)?#搜索电影(.+)`,
           fnc: 'searchMovie'
+        },
+        {
+          reg: '^#?重新获取电影数据',
+          fnc: 'reloadMovieInfo'
         }
       ]
     })
+  }
+
+  async reloadMovieInfo (e) {
+    let movieList
+    try {
+      movieList = await getHotMovieList()
+      await redis.set('AVOCADO:MOVIE_DETAILS', JSON.stringify(movieList))
+      await redis.set('AVOCADO:MOVIE_EXPIRE', 1, { EX: 60 * 60 * 24 * 7 })
+    } catch (error) {
+      await e.reply(`啊哦!${error}`)
+      return false
+    }
+    if (!movieList.length) {
+      await e.reply('出错了！')
+      return false
+    }
+    await e.reply('成功了！')
+    return true
   }
 
   async searchMovie (e) {
@@ -32,19 +51,43 @@ export class AvocadoPsycho extends plugin {
     const regex = new RegExp(`^#?(${global.God}|鳄梨酱)?#搜索电影(.+)`)
     const keyword = e.msg.match(regex)[2]
     const resList = await findMovie(keyword, e.sender.user_id)
-    let processList = resList.map(item => {
-      const img = `<img src="${item.img}" alt="img">`
-      return `${img}${item.index}.${item.nm}`
-    })
-    const img = await avocadoRender(splitArray(processList, 2), {
-      title: 'Avocado Movie Search',
-      caption: '',
-      footer: `<strong><i>共搜到 '${keyword}' ${resList.length}部，你想了解哪一部影片呢~</i></strong>`,
-      renderType: 2
-    })
-    this.e.from = 'search'
-    await this.e.reply(img)
-    this.setContext('pickMe')
+    if (resList === 'no related movies' || !resList) {
+      await this.e.reply('没有找到' + keyword + '相关的影片呢~')
+      return false
+    }
+    // 只有一条搜索结果时,直接开始上下文并发送影片信息
+    if (resList.length === 1) {
+      const selectedMovie = await getMovieDetail(resList[0].id)
+      const [transformedMoviesDetails, others, textToShow] = processMovieDetail(selectedMovie)
+      const img = await avocadoRender(textToShow, {
+        title: `${transformedMoviesDetails['封面'] ? '![img](' + transformedMoviesDetails['封面'] + ')' : ''}`,
+        caption: '',
+        footer: `<strong><i>可继续选择影片~~<br>回复 00 获取本片剧照及预告<br>${selectedMovie?.comments ? '回复 000 获取本片热门评论<br>' : ''}回复 0 结束会话, 距本次会话结束还剩${getTimeDifference()}秒<i></strong>`,
+        renderType: 3
+      })
+      if (img) {
+        await redis.set(`AVOCADO:MOVIE_${this.e.sender.user_id}_PICKEDMOVIE`, JSON.stringify(selectedMovie), { EX: 60 * 3 })
+        await this.e.reply(img)
+      } else {
+        await this.e.reply('searchMovie: 图片生成出错了！')
+      }
+      this.e.from = 'search'
+      this.setContext('pickMe')
+    } else {
+      let processList = resList.map(item => {
+        const img = `<img src="${item.img}" alt="img">`
+        return `${img}<div class="text-container"><span>${item.index}. ${item.nm}</span><br><span>主演：${item.star}</span><br><span>评分：${item.sc}</span></div>`
+      })
+      const img = await avocadoRender(splitArray(processList, 2), {
+        title: 'Avocado Movie Search',
+        caption: '',
+        footer: `<strong><i>共搜到 '${keyword}' ${resList.length}部，你想了解哪一部影片呢~</i></strong>`,
+        renderType: 2
+      }, 'searchMovie')
+      this.e.from = 'search'
+      await this.e.reply(img)
+      this.setContext('pickMe')
+    }
   }
 
   async getHotMovies (e) {
@@ -81,19 +124,19 @@ export class AvocadoPsycho extends plugin {
 
   async pickMe (e) {
     if (typeof this.e.msg !== 'string') return
-    let mainInfoList
-    logger.warn(e.from)
-    switch (e.from) {
+    let movieList
+    const from = e.from
+    switch (from) {
       case 'search':{
-        mainInfoList = JSON.parse(await redis.get(`AVOCADO:MOVIE_${this.e.sender.user_id}_SEARCH`))
+        movieList = JSON.parse(await redis.get(`AVOCADO:MOVIE_${this.e.sender.user_id}_SEARCH`))
         break
       }
       case 'hotMovies':{
-        mainInfoList = JSON.parse(await redis.get('AVOCADO:MOVIE_DETAILS'))
+        movieList = JSON.parse(await redis.get('AVOCADO:MOVIE_DETAILS'))
         break
       }
     }
-    const reg = new RegExp(`^((0{1,2})|(${mainInfoList.map(item => item.index).join('|')})|(${mainInfoList.map(item => item.nm).join('|').replace(/\*/g, ' fuck ')}))$`)
+    const reg = new RegExp(`^((0{1,3})|(${movieList.map(item => item.index).join('|')})|(${movieList.map(item => item.nm).join('|').replace(/\*/g, ' fuck ')}))$`)
     if (!reg.test(this.e.msg)) { return }
     if (this.e.msg === '0') {
       await redis.del(`AVOCADO:MOVIE_${this.e.sender.user_id}_PICKEDMOVIE`)
@@ -105,83 +148,71 @@ export class AvocadoPsycho extends plugin {
     try {
       if (this.e.msg === '00' || this.e.msg === '000') {
         // 获取上次选择的查影片
-        const selected = await redis.get(`AVOCADO:MOVIE_${this.e.sender.user_id}_PICKEDMOVIE`)
+        let selected = await redis.get(`AVOCADO:MOVIE_${this.e.sender.user_id}_PICKEDMOVIE`)
         if (selected) {
-          choose = mainInfoList.find(item => item.index === selected.index)
+          selected = JSON.parse(selected)
+          choose = movieList.find(item => item.id === selected.id)
         } else {
           await this.reply('先告诉我你想了解的电影吧！')
           return
         }
       } else {
-        choose = mainInfoList.find(item => item.index === parseInt(this.e.msg) || item.nm === this.e.msg)
+        choose = movieList.find(item => item.index === parseInt(this.e.msg) || item.nm === this.e.msg)
       }
-      logger.mark('pickMe: ' + choose.index + '. ' + choose.nm)
+      logger.mark('pickMe: ' + (choose?.index ? choose.index + '. ' + choose.nm : choose.nm))
       await this.e.reply('请稍等...', false, { recallMsg: 2 })
-      let selectedMovie = await getMovieDetail(choose.id)
-      let transformedMoviesDetails = {}
-      let others = []
-      Object.keys(movieKeyMap).map(async key => {
-        // 空值不要
-        if (!selectedMovie[key] || key === 'index') return false
-        if (key === 'videoName') {
-          others.push(`${movieKeyMap[key]}: ${selectedMovie[key]}\n`)
-          return false
+      let selectedMovie
+      // 获取本次选择的影片详细信息
+      switch (from) {
+        case 'search':{
+          selectedMovie = await getMovieDetail(choose.id)
+          break
         }
-        if (key === 'videourl') {
-          others.push(`${selectedMovie[key]}`)
-          others.push('\n')
-          return false
+        case 'hotMovies':{
+          // 热门电影已获取所有细节信息，不用再次获取
+          selectedMovie = choose
+          break
         }
-        if (key === 'photos') {
-          let photo
-          others.push(`${movieKeyMap[key]}: \n`)
-          for (const i of selectedMovie[key]) {
-            photo = segment.image(i)
-            others.push(photo)
-          }
-          return false
-        }
-        transformedMoviesDetails[movieKeyMap[key]] = selectedMovie[key]
-        return true
-      })
-      let str = Object.keys(transformedMoviesDetails).map(function (key) {
-        if (key === '封面') return null
-        return key + '：' + transformedMoviesDetails[key] + '\n'
-      }).join('')
+      }
+      const [transformedMoviesDetails, others, textToShow] = processMovieDetail(selectedMovie)
       // 获取周边信息
       if (this.e.msg === '00') {
         await this.reply(await makeForwardMsg(this.e, [others], '鳄门🙏...'))
-        await this.reply('可继续选择影片~~\n回复 0 结束此次操作\n¡¡¡( •̀ ᴗ •́ )و!!!')
+        await this.reply('可继续选择影片~~\n回复 000 获取本片热门评论\n回复 0 结束会话, 距本次会话结束还剩' + (getTimeDifference()) + '秒\n¡¡¡( •̀ ᴗ •́ )و!!!')
         return
       }
       // 获取评论 -> 图片形式回复
       if (this.e.msg === '000') {
-        const comments = selectedMovie.comments
+        const comments = transformedMoviesDetails['热门评论']
+        if (!comments) {
+          await this.reply('未获取到热门评论！请重新选择呢。')
+          return
+        }
         // ...调整排版
         const img = await avocadoRender(comments, {
           title: selectedMovie.nm + '-热门评论',
           caption: '',
-          footer: '<strong><i>可继续选择影片~~<br>回复 00 获取本片剧照及预告<br>回复 000 获取本片热门评论<br>回复 0 结束此次操作\n¡¡¡( •̀ ᴗ •́ )و!!!<i></strong>',
+          footer: `<strong><i>可继续选择影片~~<br>回复 00 获取本片剧照及预告<br>回复 0 结束此次操作, 距本次会话结束还剩${getTimeDifference()}秒<i></strong>`,
           renderType: 1
         })
         await this.e.reply(img)
         return
       }
-      const img = await avocadoRender(str, {
-        title: `![img](${transformedMoviesDetails['封面']})`,
+      const img = await avocadoRender(textToShow, {
+        title: `${transformedMoviesDetails['封面'] ? '![img](' + transformedMoviesDetails['封面'] + ')' : ''}`,
         caption: '',
-        footer: '<strong><i>可继续选择影片~~<br>回复 00 获取本片剧照及预告<br>回复 000 获取本片热门评论<br>回复 0 结束此次操作\n¡¡¡( •̀ ᴗ •́ )و!!!<i></strong>',
+        footer: `<strong><i>可继续选择影片~~<br>回复 00 获取本片剧照及预告<br>${selectedMovie?.comments ? '回复 000 获取本片热门评论<br>' : ''}回复 0 结束此次操作, 距本次会话结束还剩${getTimeDifference()}秒<i></strong>`,
         renderType: 3
       })
       if (img) {
-        await redis.set(`AVOCADO:MOVIE_${this.e.sender.user_id}_PICKEDMOVIE`, selectedMovie, { EX: 60 * 3 })
-        await this.reply(img)
+        await redis.set(`AVOCADO:MOVIE_${this.e.sender.user_id}_PICKEDMOVIE`, JSON.stringify(selectedMovie), { EX: 60 * 3 })
+        await this.e.reply(img)
       } else {
         await this.e.reply('图片生成出错了！')
         this.finish('pickMe')
       }
     } catch (error) {
-      await this.e.reply(error)
+      await this.e.reply('pickMeError: ' + error)
       this.finish('pickMe')
     }
   }
@@ -200,7 +231,9 @@ export class AvocadoPsycho extends plugin {
    * @param time 操作时间，默认120秒
    */
   setContext (type, isGroup = false, time = 120) {
+    global.remainingTime = time
     logger.mark('start ' + type + ' context')
+    getTimeDifference()
     let key = this.conKey(isGroup)
     if (!stateArr[key]) stateArr[key] = {}
     stateArr[key][type] = this.e
@@ -237,3 +270,4 @@ export class AvocadoPsycho extends plugin {
   }
 }
 let stateArr = {}
+let from = ''

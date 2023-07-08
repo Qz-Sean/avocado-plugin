@@ -1,4 +1,6 @@
 import { generateRandomHeader, sleep } from './common.js'
+import { movieKeyMap } from './const.js'
+import { segment } from 'icqq'
 
 /**
  * 获取单部影片的详细信息
@@ -20,41 +22,89 @@ export async function getMovieDetail (movieId) {
     }
     const detailResponse = await response.json()
     const movieDetailJson = detailResponse.detailMovie
-    let viewable
-    const releaseDate = new Date(movieDetailJson.rt)
-    const now = new Date()
-    const diffTime = now.getTime() - releaseDate.getTime()
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    if (diffDays > 0) {
-      viewable = 1
-    } else {
-      viewable = 0
-    }
-    return {
-      img: movieDetailJson?.img || 0,
-      id: movieId,
-      nm: movieDetailJson.nm.replace(',', '，'),
-      enm: movieDetailJson.enm.replace(',', '，'),
-      filmAlias: movieDetailJson.filmAlias,
-      rt: movieDetailJson.rt,
-      viewable,
-      diffDays,
-      sc: movieDetailJson.sc,
-      cat: movieDetailJson.cat.replace(',', '，'),
-      star: movieDetailJson.star.replace(',', '，'),
-      dra: movieDetailJson.dra.replace(/\s/g, ''),
-      watched: movieDetailJson.watched,
-      wish: movieDetailJson.wish,
-      ver: movieDetailJson.ver,
-      src: movieDetailJson.src,
-      dur: movieDetailJson.dur + '分钟',
-      oriLang: movieDetailJson.oriLang,
-      pubDesc: movieDetailJson.pubDesc,
-      comments: await getMovieComments(movieId),
-      videoName: movieDetailJson.videoName,
-      videourl: movieDetailJson.videourl,
-      photos: movieDetailJson.photos.slice(0, 5)
-    }
+    let detail = {}
+    Object.keys(movieKeyMap).forEach(key => {
+      detail.id = movieId
+      if (typeof movieDetailJson[key] !== 'undefined') {
+        if (key === 'rt') {
+          const releaseDate = new Date(movieDetailJson.rt)
+          const now = new Date()
+          const diffTime = now.getTime() - releaseDate.getTime()
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+          if (diffDays > 0) {
+            detail.viewable = 1
+          } else {
+            detail.viewable = 0
+          }
+          detail.diffDays = diffDays
+          detail.rt = movieDetailJson.rt
+        }
+        switch (key) {
+          case 'dur': {
+            detail.dur = movieDetailJson.dur + '分钟'
+            break
+          }
+          case 'nm': {
+            detail.nm = movieDetailJson.nm.replace(',', '，')
+            break
+          }
+          case 'enm': {
+            detail.enm = movieDetailJson.enm.replace(',', '，')
+            break
+          }
+          case 'cat':{
+            detail.cat = movieDetailJson.cat.replace(',', '，')
+            break
+          }
+          case 'star':{
+            detail.star = movieDetailJson.star.replace(',', '，')
+            break
+          }
+          case 'dra':{
+            detail.dra = movieDetailJson.dra.replace(/\s/g, '')
+            break
+          }
+          case 'comments':{
+            detail.comments = movieDetailJson.comments
+            break
+          }
+          case 'photos':{
+            detail.photos = movieDetailJson.photos.slice(0, 6)
+            break
+          }
+          default:{
+            detail[key] = movieDetailJson[key]
+          }
+        }
+      }
+    })
+    detail.comments = await getMovieComments(movieId)
+    return detail
+    // return {
+    //   img: movieDetailJson?.img || 0,
+    //   id: movieId,
+    //   nm: movieDetailJson.nm.replace(',', '，'),
+    //   enm: movieDetailJson.enm.replace(',', '，'),
+    //   filmAlias: movieDetailJson.filmAlias,
+    //   rt: movieDetailJson.rt,
+    //   viewable,
+    //   diffDays,
+    //   sc: movieDetailJson.sc,
+    //   cat: movieDetailJson.cat.replace(',', '，'),
+    //   star: movieDetailJson.star.replace(',', '，'),
+    //   dra: movieDetailJson.dra.replace(/\s/g, ''),
+    //   watched: movieDetailJson.watched,
+    //   wish: movieDetailJson.wish,
+    //   ver: movieDetailJson.ver,
+    //   src: movieDetailJson.src,
+    //   dur: movieDetailJson.dur + '分钟',
+    //   oriLang: movieDetailJson.oriLang,
+    //   pubDesc: movieDetailJson.pubDesc,
+    //   comments: await getMovieComments(movieId),
+    //   videoName: movieDetailJson.videoName,
+    //   videourl: movieDetailJson.videourl,
+    //   photos: movieDetailJson.photos.slice(0, 5)
+    // }
   } catch (error) {
     logger.error(error)
     return false
@@ -96,7 +146,7 @@ export async function getHotMovieList () {
 }
 export async function getMovieComments (movieId) {
   try {
-    const url = `https://m.maoyan.com/review/v2/comments.json?movieId=${movieId}&userId=-1&offset=1&limit=20`
+    const url = `https://m.maoyan.com/review/v2/comments.json?movieId=${movieId}&userId=-1&offset=1&limit=10`
     const headers = generateRandomHeader()
     const options = {
       method: 'GET',
@@ -107,20 +157,27 @@ export async function getMovieComments (movieId) {
       logger.error('Request failed with status code', response.status)
       return false
     }
-    const resJson = await response.json()
-    let comments = []
-    for (const [index, item] of resJson.hotComments.entries()) {
-      let comment = {}
-      comment.index = index + 1
-      comment.content = item.content
-      comment.nick = item.nick
-      comment.time = item.time
-      comment.hotReply = item?.hotReply.content
-      comment.hotReplyNick = item?.hotReply.nick
-      comment.hotReplyTime = item?.hotReply.time
-      comments.push(comment)
+    const resList = (await response.json()).data.hotComments
+    if (typeof resList === 'undefined') {
+      logger.warn('未获取到有效评论：' + url)
+      return false
+    } else {
+      let comments = []
+      resList.forEach((item, index) => {
+        const comment = {}
+        comment.index = index + 1
+        comment.content = item.content.replace(/\n{2,}/g, '\n')
+        comment.nick = item.nick
+        comment.time = item.time
+        if (typeof item?.hotReply !== 'undefined' && typeof item?.hotReply?.content !== 'undefined') {
+          comment.hotReply = item.hotReply.content.replace(/\n{2,}/g, '\n')
+          comment.hotReplyNick = item.hotReply.nick
+          comment.hotReplyTime = item.hotReply.time
+        }
+        comments.push(comment)
+      })
+      return comments
     }
-    return comments
   } catch (error) {
     logger.error(error)
     return false
@@ -129,21 +186,33 @@ export async function getMovieComments (movieId) {
 
 export async function findMovie (keyword, userId) {
   try {
-    const url = `https://m.maoyan.com/searchlist/movies?keyword=${keyword}&ci=59&offset=1&limit=30`
-    const headers = generateRandomHeader()
-    const options = {
-      method: 'GET',
-      headers
+    let resList
+    for (let i = 0; i <= 1; i++) {
+      const url = [`https://m.maoyan.com/ajax/search?kw=${keyword}&cityId=1&stype=-1`,
+        `https://m.maoyan.com/searchlist/movies?keyword=${keyword}&ci=59&offset=1&limit=20`]
+      const headers = generateRandomHeader()
+      const options = {
+        method: 'GET',
+        headers
+      }
+      const response = await fetch(url[i], options)
+      if (!response.ok) {
+        logger.error('Request failed with status code', response.status)
+        return false
+      }
+      const resJson = await response.json()
+      if (resJson.total === 0) {
+        return 'no related movies'
+      }
+      resList = i === 0 ? resJson.movies.list : resJson.movies
+      // 只有一条结果
+      if (resList.length === 1 && resList[0].nm === keyword) break
     }
-    const response = await fetch(url, options)
-    if (!response.ok) {
-      logger.error('Request failed with status code', response.status)
-      return false
-    }
-    const resList = (await response.json()).movies
     // logger.warn(resList)
     let roughList = []
-    for (const [index, item] of resList.entries()) {
+    resList.forEach((item, index) => {
+      // 跳过非电影
+      if (item.movieType !== 0 && resList.length !== 1) return
       let movie = {}
       movie.index = index + 1
       movie.id = item.id
@@ -152,8 +221,12 @@ export async function findMovie (keyword, userId) {
       movie.star = item.star
       movie.img = item.img
       roughList.push(movie)
+    })
+    if (!roughList.length) {
+      return 'no related movies'
     }
-    await redis.set(`AVOCADO:MOVIE_${userId}_SEARCH`, JSON.stringify(roughList), 'EX', 60 * 3)
+    await redis.set(`AVOCADO:MOVIE_${userId}_SEARCH`, JSON.stringify(roughList), 'EX', 60 * 6)
+    await redis.set(`AVOCADO:MOVIE_${userId}_FROM`, 'search', 'EX', 60 * 6)
     return roughList
   } catch (error) {
     logger.error(error)
@@ -181,4 +254,46 @@ export function analyseMovieList (movieList) {
       }
       return `${item.index}.${item.nm} -> ${n}`
     })
+}
+export function processMovieDetail (selectedMovie) {
+  let transformedMoviesDetails = {}
+  let others = []
+  for (const key in movieKeyMap) {
+    if (key === 'index') continue // 跳过'index'键
+    const value = selectedMovie[key]
+    if (!value) continue // 空值不要
+    if (key === 'videoName') {
+      others.push(`${movieKeyMap[key]}: ${value}\n`)
+      continue
+    }
+    if (key === 'comments') {
+      if (value && value.length) {
+        transformedMoviesDetails[movieKeyMap[key]] = value.map(item => {
+          return `${item.index}. <span class="nick">${item.nick}：</span>${item.content}${item.hotReply ? '\n<pre>\t<em><span><span class="nick">🗨️' + item.hotReplyNick + '：</span>' + item.hotReply + '</span></em></pre>' : ''}`
+        }).join('\n')
+      }
+      continue
+    }
+    if (key === 'videourl') {
+      others.push(`${value}`)
+      others.push('\n')
+      continue
+    }
+    if (key === 'photos') {
+      others.push(`${movieKeyMap[key]}: \n`)
+      for (const i of value) {
+        const photo = segment.image(i)
+        others.push(photo)
+      }
+      continue
+    }
+    transformedMoviesDetails[movieKeyMap[key]] = value
+  }
+  // 处理电影详情需要显示的内容
+  let textToShow = Object.keys(transformedMoviesDetails).map(function (key) {
+    if (key === '封面') return ''
+    if (key === '热门评论') return '' // 暂时不显示
+    return key + '：' + transformedMoviesDetails[key] + '\n'
+  }).join('')
+  return [transformedMoviesDetails, others, textToShow]
 }

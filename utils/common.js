@@ -6,6 +6,7 @@ import template from 'art-template'
 import { segment } from 'icqq'
 import MarkdownIt from 'markdown-it'
 import { Config } from './config.js'
+
 export async function getSource (e) {
   if (!e.source) return false
   let sourceReply
@@ -136,22 +137,20 @@ export async function sendToMaster (msg, all = false, idx = 0) {
   let masterQQ = await getMasterQQ()
   let sendTo = all ? masterQQ : [masterQQ[idx]]
   for (let qq of sendTo) {
-    await replyPrivate(qq, msg)
+    await sendPrivateMsg(qq, msg)
   }
 }
 
 /**
- * 发送私聊消息，仅给好友发送
+ * 给好友发送发送私聊消息
  * @param userId qq号
  * @param msg 消息
  */
-async function replyPrivate (userId, msg) {
-  userId = Number(userId)
-  let friend = Bot.fl.get(userId)
+export async function sendPrivateMsg (userId, msg) {
+  let friend = Bot.getFriendList().get(userId)
   if (friend) {
-    logger.mark(`发送好友消息[${friend.nickname}](${userId})`)
     return await Bot.pickUser(userId).sendMsg(msg).catch((err) => {
-      logger.mark(err)
+      logger.error('sendPrivateMsg Error: ' + err)
     })
   }
 }
@@ -214,7 +213,7 @@ export function splitArray (arr, num) {
  * - renderType： 渲染类型 1. 普通文本渲染 2. 以表格样式渲染 3. 渲染电影详情信息 4. 渲染搜索电影结果详情
  * @returns {Promise<ImageElem|string>}
  */
-export async function avocadoRender (pendingText, otherInfo = { title: '', caption: '', footer: '', renderType: 1 }) {
+export async function avocadoRender (pendingText, otherInfo = { title: '', caption: '', footer: '', renderType: 1 }, from) {
   let tplFile, data, buff
   let title = otherInfo.title
   if (title === '') title = Math.random() > 0.5 ? ' Here is Avocado! ' : ' Avocado’s here! '
@@ -236,7 +235,6 @@ export async function avocadoRender (pendingText, otherInfo = { title: '', capti
       }
     } else if (otherInfo.renderType === 2) {
       tplFile = path.join(pluginRoot, 'resources', 'html', 'table.html')
-      // const columns = pendingText.map(item => item.map(item2 => he.decode(item2)))
       data = {
         title,
         caption: otherInfo.caption,
@@ -267,7 +265,16 @@ export async function avocadoRender (pendingText, otherInfo = { title: '', capti
     await page.goto(`file://${tplFile}`, { waitUntil: 'networkidle0' })
     const templateContent = await fs.promises.readFile(tplFile, 'utf-8')
     const render = template.compile(templateContent)
-    const htmlContent = render(data)
+    let htmlContent = render(data)
+    // 当传入内容包含<>且没有经过mdrender时需要转义实体至正常标签
+    if (from === 'searchMovie') {
+      htmlContent = htmlContent.replace(/&#(\d+);/g, function (match, dec) {
+        return String.fromCharCode(dec)
+      })
+    }
+    // 方便调试样式
+    const fullPath = path.join(pluginRoot, 'resources', 'html', 'render.html')
+    await fs.writeFileSync(fullPath, htmlContent)
     await page.setContent(htmlContent)
     if (title === null) { // 搜索歌曲
       await page.evaluate(() => {
@@ -287,10 +294,15 @@ export async function avocadoRender (pendingText, otherInfo = { title: '', capti
         }
       })
     }
-    const { width, height } = await page.$eval('body', (element) => {
+    let { width, height } = await page.$eval('body', (element) => {
       const { width, height } = element.getBoundingClientRect()
       return { width, height }
     })
+    // 打补丁...
+    if (from === 'searchMovie') {
+      width = 1920
+      height = 1080
+    }
     await page.setViewport({
       width: Math.round(width) || 1920,
       height: Math.round(height) || 1080,
@@ -357,14 +369,14 @@ export async function makeForwardMsg (e, msg = [], dec = '') {
   return forwardMsg
 }
 
-export function syncPath (fullPath, dataType) {
+export function syncPath (fullPath, data) {
   try {
     if (!fs.existsSync(fullPath)) {
       const directoryPath = path.dirname(fullPath)
       if (!fs.existsSync(directoryPath)) {
         fs.mkdirSync(directoryPath, { recursive: true })
       }
-      fs.writeFileSync(fullPath, dataType)
+      fs.writeFileSync(fullPath, data)
     }
   } catch (err) {
     logger.error(err)
@@ -375,4 +387,26 @@ export function syncPath (fullPath, dataType) {
 
 export function sleep (ms = 1000) {
   return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+export function getTimeDifference () {
+  const currentTime = process.hrtime()
+
+  if (global.invokeTme === null) {
+    global.invokeTme = currentTime
+    return global.remainingTime
+  }
+
+  const previousTime = global.invokeTme
+  global.invokeTme = currentTime
+
+  const diffInSeconds = currentTime[0] - previousTime[0]
+  const diffInNanoSeconds = currentTime[1] - previousTime[1]
+  const milliseconds = diffInSeconds * 1000 + diffInNanoSeconds / 1000000
+
+  const seconds = milliseconds / 1000
+
+  global.remainingTime -= seconds
+
+  return Math.ceil(global.remainingTime)
 }

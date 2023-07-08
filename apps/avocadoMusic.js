@@ -1,7 +1,7 @@
 import fetch from 'node-fetch'
 import plugin from '../../../lib/plugins/plugin.js'
 import { Config } from '../utils/config.js'
-import { avocadoRender, generateRandomHeader, sleep, splitArray } from '../utils/common.js'
+import { avocadoRender, generateRandomHeader, getTimeDifference, splitArray } from '../utils/common.js'
 import { getBonkersBabble } from './avocadoPsycho.js'
 import { singerMap, singerTypeMap } from '../utils/const.js'
 import {
@@ -13,7 +13,7 @@ import {
   getSingerDetail,
   getSingerId,
   getSingerRankingList,
-  sendMusic, getOrderSongList, shareMusicToGroup
+  getOrderSongList, avocadoShareMusic
 } from '../utils/music.js'
 
 export class AvocadoMusic extends plugin {
@@ -57,10 +57,6 @@ export class AvocadoMusic extends plugin {
           reg: '歌词|热评|评论',
           fnc: 'getCommentsOrLyrics'
         }
-        // {
-        //   reg: '^#?(华语|欧美|韩国|日本)歌手榜',
-        //   fnc: 'getSingerRankingList'
-        // }
       ]
     })
 
@@ -95,7 +91,7 @@ export class AvocadoMusic extends plugin {
       await e.reply('你还没有设置音乐ck呢~')
       return false
     }
-    // 绑定this.e, 供context()开启当前上下文
+    // 绑定this.e, 供context()开启当前plugin上下文
     this.e = e
     const regex = new RegExp(`^#?(鳄梨酱|${global.God})(#|%)(随机|热门)?(华语|欧美|韩国|日本)?(.*)`)
     const match = this.e.msg.trim().match(regex)
@@ -104,7 +100,6 @@ export class AvocadoMusic extends plugin {
     const query = match[5] ? match[5].replace(/[，,]/g, ',') : ''
     const { isRandom, isHotList } = { isRandom: selectType === '随机', isHotList: selectType === '热门' }
     const isSinger = query ? !!(await getSingerId(query)) : false
-
     let singerType = singerTypeMap[match[4]] || Math.ceil(Math.random() * 4)
     let hotList
     if (isSinger) hotList = await getSingerHotList(e.sender.user_id, query)
@@ -130,7 +125,7 @@ export class AvocadoMusic extends plugin {
             }
             await redis.set(`AVOCADO:MUSIC_${this.e.sender.user_id}_PICKED`, JSON.stringify(song), { EX: 60 * 3 })
             // await sendMusic(this.e, song)
-            await this.e.shareMusic('163', song.id)
+            await avocadoShareMusic(song.id, this.e.group_id || this.e.sender.user_id)
             return true
           } else {
             if (/歌手|音乐人/.test(query)) {
@@ -157,7 +152,7 @@ export class AvocadoMusic extends plugin {
               return
             }
             await redis.set(`AVOCADO:MUSIC_${this.e.sender.user_id}_PICKED`, JSON.stringify(song), { EX: 60 * 3 })
-            await sendMusic(this.e, song)
+            await avocadoShareMusic(song.id, this.e.group_id || this.e.sender.user_id)
             return true
           }
         }
@@ -178,7 +173,7 @@ export class AvocadoMusic extends plugin {
             }
           }
           if (isSinger) { // 点歌参数为歌手名
-            const text = splitArray(hotList.map(obj => `${obj.index}: ${obj.songName}\n`), 2)
+            const text = splitArray(hotList.map(obj => `${obj.index}: ${obj.name}\n`), 2)
             const img = await avocadoRender(text, { title: `${query}-热门播放50`, caption: '', footer: '可通过发送对应序号获取音乐~', renderType: 2 })
             if (img) await e.reply(img)
             this.setContext('selectSongFromImage')
@@ -200,8 +195,13 @@ export class AvocadoMusic extends plugin {
       }
     } else if (query) { // 没有指定点歌类型但有点歌参数
       if (isSinger) {
-        const text = splitArray(hotList.map(obj => `${obj.index}: ${obj.songName}\n`), 2)
-        const img = await avocadoRender(text, { title: `${query}-热门播放50`, caption: '', footer: '可通过发送对应序号获取音乐~', renderType: 2 })
+        const text = splitArray(hotList.map(obj => `${obj.index}: ${obj.name}\n`), 2)
+        const img = await avocadoRender(text, {
+          title: `${query}-热门播放50`,
+          caption: '',
+          footer: '可通过发送对应序号获取音乐~',
+          renderType: 2
+        })
         if (img) await this.e.reply(img)
         this.setContext('selectSongFromImage')
         return true
@@ -209,7 +209,7 @@ export class AvocadoMusic extends plugin {
       // 正常点歌
       if (isImageOrder) {
         const songList = await getOrderSongList(this.e.sender.user_id, query, 50)
-        const text = splitArray(songList.map(obj => `${obj.index}: ${obj.songName} by ${obj.singer}\n`), 2)
+        const text = splitArray(songList.map(obj => `${obj.index}: ${obj.name} by ${obj.artist}\n`), 2)
         const img = await avocadoRender(text, { title: `${query}-搜索结果`, caption: '', footer: '可通过发送对应序号获取音乐~', renderType: 2 })
         if (img) await this.e.reply(img)
         this.e.orderFrom = 'imageOrder'
@@ -219,7 +219,7 @@ export class AvocadoMusic extends plugin {
         const data = { param: query, isRandom: false, id: '', from: '' }
         const song = await findSong(data)
         if (Array.isArray(song)) {
-          const text = splitArray(song.map(obj => `${obj.index}: ${obj.name} by ${obj.singer}`), 2)
+          const text = splitArray(song.map(obj => `${obj.index}: ${obj.name} by ${obj.artist}`), 2)
           await this.e.reply('哎呀，找不到您想听的歌曲啦~(>_<)~不要难过，看看下面的列表吧！说不定您会在这里找到自己心仪的歌曲呢！(≧∇≦)ﾉ 发送对应序号即可选择歌曲哦~ 或者发送 0 取消点歌呦~(＾Ｕ＾)ノ~ＹＯ')
           const img = await avocadoRender(text, { title: null, caption: '', footer: '', renderType: 2 })
           if (img) await this.e.reply(img)
@@ -233,7 +233,7 @@ export class AvocadoMusic extends plugin {
           return true
         }
         await redis.set(`AVOCADO:MUSIC_${this.e.sender.user_id}_PICKED`, JSON.stringify(song), { EX: 60 * 3 })
-        await sendMusic(this.e, song)
+        await avocadoShareMusic(song.id, this.e.group_id || this.e.sender.user_id)
         return true
       }
     } else { // 没有指定点歌类型且没有任何点歌参数
@@ -251,7 +251,7 @@ export class AvocadoMusic extends plugin {
     if (!reg.test(this.e.msg)) {
       const count = await redis.get('AVOCADO_REQUESTCOUNT')
       if (!count) {
-        await this.reply('告诉我序号吧，回复0结束点歌。')
+        await this.reply(`告诉我序号吧，回复0结束点歌。\n距本次会话结束还剩${getTimeDifference()}秒。。`)
         await redis.set('AVOCADO_REQUESTCOUNT', 1, { EX: 60 * 1.5 })
       }
     } else {
@@ -261,28 +261,24 @@ export class AvocadoMusic extends plugin {
         return true
       }
       const selectedMusic = songList.find(eachSong => eachSong.index === parseInt(this.e.msg) || eachSong.name === this.e.msg)
-      const songName = selectedMusic?.name
-      const songId = selectedMusic?.id
+      const name = selectedMusic?.name
+      const id = selectedMusic?.id
       logger.mark('第二次点歌: ', selectedMusic)
-      if (!(songName && songId)) return false
+      if (!(name && id)) return false
       const data = {
-        param: songName,
+        param: name,
         isRandom: false,
-        id: songId,
+        id,
         from: 'reChoose'
       }
       const song = await findSong(data)
-      let res
       if (song) {
         await redis.set(`AVOCADO:MUSIC_${this.e.sender.user_id}_PICKED`, JSON.stringify(song), { EX: 60 * 3 })
-        res = sendMusic(this.e, song)
+        await avocadoShareMusic(song.id, this.e.group_id || this.e.sender.user_id)
       } else {
-        const img = await avocadoRender(`### 没有找到名为${songName}的歌曲呢...\n${await getBonkersBabble({}, global.God, 'native')}`, { title: '', caption: '', footer: '', renderType: 1 })
+        const img = await avocadoRender(`### 没有找到名为${name}的歌曲呢...\n${await getBonkersBabble({}, global.God, 'native')}`, { title: '', caption: '', footer: '', renderType: 1 })
         if (img) await this.e.reply(img)
         this.finish('wrongFind')
-      }
-      if (!res) {
-        logger.error('sendMusic:', res)
       }
       this.finish('wrongFind')
     }
@@ -297,7 +293,7 @@ export class AvocadoMusic extends plugin {
     if (!reg.test(this.e.msg)) {
       const count = await redis.get('AVOCADO_REQUESTCOUNT')
       if (!count) {
-        img = await avocadoRender(`### 没有找到名为 ${this.e.msg} 的歌手呢...试试其他选择吧~\n${await getBonkersBabble({}, global.God, 'native')}`, { title: '', caption: '', footer: '', renderType: 1 })
+        img = await avocadoRender(`### 没有找到名为 ${this.e.msg} 的歌手呢...试试其他选择吧~\n距本次会话结束还剩${getTimeDifference()}秒\n\n${await getBonkersBabble({}, global.God, 'native')}`, { title: '', caption: '', footer: '', renderType: 1 })
         if (img) await this.reply(img)
         await redis.set('AVOCADO_REQUESTCOUNT', 1, { EX: 60 * 3 })
       }
@@ -325,6 +321,11 @@ export class AvocadoMusic extends plugin {
     }
   }
 
+  /**
+   * 了解(搜索)歌手
+   * @param e
+   * @returns {Promise<boolean>}
+   */
   async getSinger (e) {
     const singer = e.msg.trim().replace(/#?了解/, '')
     logger.mark('singer: ', singer)
@@ -356,9 +357,9 @@ export class AvocadoMusic extends plugin {
     if (!reg.test(this.e.msg)) {
       const count = await redis.get('AVOCADO_REQUESTCOUNT')
       if (!count) {
-        const img = await avocadoRender(`### 🤔💭 想要呢？还是算了呢？\n${await getBonkersBabble({}, global.God, 'native')}`, { title: '', caption: '', footer: '', renderType: 1 })
+        const img = await avocadoRender(`### 🤔💭 想要呢？还是算了呢？\n距本次会话结束还剩${getTimeDifference()}秒\n\n${await getBonkersBabble({}, global.God, 'native')}`, { title: '', caption: '', footer: '', renderType: 1 })
         if (img) await this.reply(img)
-        await redis.set('AVOCADO_REQUESTCOUNT', 1, { EX: 60 * 3 })
+        await redis.set('AVOCADO_REQUESTCOUNT', 1, { EX: 60 * 3 }) // 会话期间只提醒一次
       }
       return true
     } else {
@@ -386,9 +387,9 @@ export class AvocadoMusic extends plugin {
         }
       }
       const hotList = JSON.parse(await redis.get(`AVOCADO:MUSIC_${this.e.sender.user_id}_HOTLIST`))
-      const singer = hotList.find(obj => obj.singer.length === 1).singer[0]
-      const text = splitArray(hotList.map(obj => `${obj.index}: ${obj.songName}`), 2)
-      const img = await avocadoRender(text, { title: `${singer}-热门播放50`, caption: '', footer: '', renderType: 2 })
+      const artist = hotList.find(obj => obj.artist.length === 1).artist[0]
+      const text = splitArray(hotList.map(obj => `${obj.index}: ${obj.name}`), 2)
+      const img = await avocadoRender(text, { title: `${artist}-热门播放50`, caption: '', footer: '', renderType: 2 })
       if (img) await this.reply(img)
       this.finish('isContinue')
       this.setContext('selectSongFromImage')
@@ -405,7 +406,7 @@ export class AvocadoMusic extends plugin {
     } else {
       songList = JSON.parse(await redis.get(`AVOCADO:MUSIC_${this.e.sender.user_id}_HOTLIST`))
     }
-    const reg = new RegExp(`^((0)|(${songList.map(item => item.index).join('|')})|(${songList.map(item => item.songName).join('|').replace(/\*/g, ' fuckWords ').replace(/\(/g, '（').replace(/\)/g, '）').replace(/\./g, ' ')}))$`)
+    const reg = new RegExp(`^((0)|(${songList.map(item => item.index).join('|')})|(${songList.map(item => item.name).join('|').replace(/\*/g, ' fuckWords ').replace(/\(/g, '（').replace(/\)/g, '）').replace(/\./g, ' ')}))$`)
     let res, img
     if (!reg.test(this.e.msg)) return
     // img = await avocadoRender(`### 没有找到 ${this.e.msg} 呢...试试其他选择吧~\n${await getBonkersBabble({}, global.God, 'native')}`, { title: '', caption: '', footer: '' })
@@ -414,28 +415,25 @@ export class AvocadoMusic extends plugin {
       this.finish('selectSongFromImage')
       return true
     }
-    const selectedMusic = songList.find(eachSong => eachSong.index === parseInt(this.e.msg) || eachSong.songName === this.e.msg)
-    const songName = selectedMusic?.songName
-    const songId = selectedMusic?.songId
+    const selectedMusic = songList.find(eachSong => eachSong.index === parseInt(this.e.msg) || eachSong.name === this.e.msg)
+    const name = selectedMusic?.name
+    const id = selectedMusic?.id
     logger.mark('图片点歌: ', selectedMusic)
-    if (!(songName && songId)) return false
+    if (!(name && id)) return false
     const data = {
-      param: songName,
+      param: name,
       isRandom: false,
-      id: songId,
+      id,
       from: 'image'
     }
     const song = await findSong(data)
     if (song) {
       await redis.set(`AVOCADO:MUSIC_${this.e.sender.user_id}_PICKED`, JSON.stringify(song), { EX: 60 * 3 })
-      res = sendMusic(this.e, song)
+      await avocadoShareMusic(song.id, this.e.group_id || this.e.sender.user_id)
     } else {
-      const img = await avocadoRender(`### 没有找到名为${songName}的歌曲呢...\n${await getBonkersBabble({}, global.God, 'native')}`, { title: '', caption: '', footer: '', renderType: 1 })
+      const img = await avocadoRender(`### 没有找到名为${name}的歌曲呢...\n距本次会话结束还剩${getTimeDifference()}秒\n\n${await getBonkersBabble({}, global.God, 'native')}`, { title: '', caption: '', footer: '', renderType: 1 })
       if (img) await this.e.reply(img)
       this.finish('selectSongFromImage')
-    }
-    if (!res) {
-      logger.error('sendMusic:', res)
     }
   }
 
@@ -446,19 +444,19 @@ export class AvocadoMusic extends plugin {
    */
   async reloadMusicInfo (e) {
     if (!Config.wyy) {
-      await this.reply('你还没有设置音乐ck呢~')
+      await e.reply('你还没有设置音乐ck呢~')
       return false
     }
     const userData = await redis.get(`AVOCADO:MUSIC_${e.sender.user_id}_FAVSINGER`)
     if (!userData) {
-      await this.reply('你还没有设置歌手')
+      await e.reply('你还没有设置歌手')
       return false
     } else {
       const singerId = JSON.parse(userData).singerId
-      await this.reply('正在更新歌曲数据...')
+      await e.reply('正在更新歌曲数据...')
       const res = await getFavList(e.sender.user_id, singerId)
       if (res) {
-        await this.reply('成功了！')
+        await e.reply('成功了！')
       }
     }
   }
@@ -470,7 +468,7 @@ export class AvocadoMusic extends plugin {
    */
   async randomMusic (e) {
     if (!Config.wyy) {
-      await this.reply('你还没有设置音乐ck呢~')
+      await e.reply('你还没有设置音乐ck呢~')
       return false
     }
     const userData = await redis.get(`AVOCADO:MUSIC_${e.sender.user_id}_FAVSONGLIST`)
@@ -482,8 +480,8 @@ export class AvocadoMusic extends plugin {
     const selectedMusic = songList[Math.floor(songList.length * Math.random())]
     const song = await getMusicDetail(selectedMusic.id)
     if (song) {
-      await redis.set(`AVOCADO:MUSIC_${this.e.sender.user_id}_PICKED`, JSON.stringify(song), { EX: 60 * 3 })
-      await sendMusic(this.e, song)
+      await redis.set(`AVOCADO:MUSIC_${e.sender.user_id}_PICKED`, JSON.stringify(song), { EX: 60 * 3 })
+      await avocadoShareMusic(song.id, e.group_id || e.sender.user_id)
     }
     return true
   }
@@ -569,7 +567,7 @@ export class AvocadoMusic extends plugin {
     const list = await getSingerRankingList('', singerType)
     const reg = new RegExp(`^(0|(${list.map(item => item.index).join('|')})|(${list.map(item => item.name).join('|').replace(/\*/g, ' fuckWords ').replace(/\(/g, '（').replace(/\)/g, '）').replace(/\./g, ' ')})|(${list.map(item => item.transName).join('|').replace(/\*/g, '')}))$`)
     if (!reg.test(this.e.msg)) {
-      const img = await avocadoRender(`### 没有找到 ${this.e.msg} 呢...试试其他选择吧~\n${await getBonkersBabble({}, global.God, 'native')}`, { title: '', caption: '', footer: '', renderType: 1 })
+      const img = await avocadoRender(`### 没有找到 ${this.e.msg} 呢...试试其他选择吧~\n距本次会话结束还剩${getTimeDifference()}秒\n\n${await getBonkersBabble({}, global.God, 'native')}`, { title: '', caption: '', footer: '', renderType: 1 })
       if (img) await this.reply(img)
     } else {
       if (parseInt(this.e.msg) === 0) {
@@ -598,7 +596,8 @@ export class AvocadoMusic extends plugin {
   async getCommentsOrLyrics (e) {
     const userPicked = await redis.get(`AVOCADO:MUSIC_${e.sender.user_id}_PICKED`)
     if (!userPicked) {
-      await e.reply('你还没有点歌呢~')
+      // await e.reply('你还没有点歌呢~')
+      logger.mark('未获取当前用户的点歌数据')
       return false
     }
     const musicElem = JSON.parse(userPicked)
@@ -638,13 +637,13 @@ export class AvocadoMusic extends plugin {
       logger.mark('avocadoSayGoodMorning -> 未配置apiKey或apiBaseUrl, 取消本次操作')
       return false
     }
-    let [greetMsg, songId, songName] = await getGreetMsg(105402228, 1)
-    let data = { param: songName, id: songId, isRandom: false, from: 'goodMorning' }
+    let [greetMsg, id, name] = await getGreetMsg(105402228, 1)
+    let data = { param: name, id, isRandom: false, from: 'goodMorning' }
     let song = await findSong(data)
     // 重试一次
     if (!song) {
-      [greetMsg, songId, songName] = await getGreetMsg(105402228, 1)
-      data = { param: songName, id: songId, isRandom: false, from: 'goodMorning' }
+      [greetMsg, id, name] = await getGreetMsg(105402228, 1)
+      data = { param: name, id, isRandom: false, from: 'goodMorning' }
       song = await findSong(data)
     }
     let toSend = Config.initiativeGroups || []
@@ -654,7 +653,7 @@ export class AvocadoMusic extends plugin {
       if (comments.length) {
         img = await avocadoRender(comments, { title: '🌻早上好呀🌻', caption: '', footer: '', renderType: 1 })
       }
-      await shareMusicToGroup(toSend, song.id, img, greetMsg)
+      await avocadoShareMusic(song.id, toSend, img, greetMsg)
     }
   }
 
@@ -663,13 +662,13 @@ export class AvocadoMusic extends plugin {
       logger.mark('avocadoSayGoodAfternoon -> 未配置apiKey或apiBaseUrl, 取消本次操作')
       return false
     }
-    let [greetMsg, songId, songName] = await getGreetMsg(2878202769, 2)
-    let data = { param: songName, id: songId, isRandom: false, from: 'goodAfternoon' }
+    let [greetMsg, id, name] = await getGreetMsg(2878202769, 2)
+    let data = { param: name, id, isRandom: false, from: 'goodAfternoon' }
     let song = await findSong(data)
     // 重试一次
     if (!song) {
-      [greetMsg, songId, songName] = await getGreetMsg(2878202769, 2)
-      data = { param: songName, id: songId, isRandom: false, from: 'goodAfternoon' }
+      [greetMsg, id, name] = await getGreetMsg(2878202769, 2)
+      data = { param: name, id, isRandom: false, from: 'goodAfternoon' }
       song = await findSong(data)
     }
     let toSend = Config.initiativeGroups || []
@@ -679,7 +678,7 @@ export class AvocadoMusic extends plugin {
       if (comments.length) {
         img = await avocadoRender(comments, { title: '🍴大家中午好呀！！', caption: '', footer: '', renderType: 1 })
       }
-      await shareMusicToGroup(toSend, song.id, img, greetMsg)
+      await avocadoShareMusic(song.id, toSend, img, greetMsg)
     }
   }
 
@@ -689,12 +688,12 @@ export class AvocadoMusic extends plugin {
       return false
     }
     try {
-      let [greetMsg, songId, songName] = await getGreetMsg(7350109521, 3)
-      let data = { param: songName, id: songId, isRandom: false, from: 'goodnight' }
+      let [greetMsg, id, name] = await getGreetMsg(7350109521, 3)
+      let data = { param: name, id, isRandom: false, from: 'goodnight' }
       let song = await findSong(data)
       if (!song) {
-        [greetMsg, songId, songName] = await getGreetMsg(7350109521, 3)
-        data = { param: songName, id: songId, isRandom: false, from: 'goodnight' }
+        [greetMsg, id, name] = await getGreetMsg(7350109521, 3)
+        data = { param: name, id, isRandom: false, from: 'goodnight' }
         song = await findSong(data)
       }
       let toSend = Config.initiativeGroups || []
@@ -704,7 +703,7 @@ export class AvocadoMusic extends plugin {
         if (comments.length) {
           img = await avocadoRender(comments, { title: '晚安😴', caption: '', footer: '', renderType: 1 })
         }
-        await shareMusicToGroup(toSend, song.id, img, greetMsg)
+        await avocadoShareMusic(song.id, toSend, img, greetMsg)
       }
     } catch (error) {
       logger.error(error)
@@ -725,7 +724,9 @@ export class AvocadoMusic extends plugin {
    * @param time 操作时间，默认120秒
    */
   setContext (type, isGroup = false, time = 120) {
+    global.remainingTime = time
     logger.mark('start ' + type + ' context')
+    getTimeDifference()
     let key = this.conKey(isGroup)
     if (!stateArr[key]) stateArr[key] = {}
     stateArr[key][type] = this.e
