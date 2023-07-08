@@ -205,10 +205,9 @@ export async function findMovie (keyword, userId) {
         return 'no related movies'
       }
       resList = i === 0 ? resJson.movies.list : resJson.movies
-      // 只有一条结果
+      // 只有一条结果且名字等于关键词时直接退出循环
       if (resList.length === 1 && resList[0].nm === keyword) break
     }
-    // logger.warn(resList)
     let roughList = []
     let mIndex = 0
     resList.forEach(item => {
