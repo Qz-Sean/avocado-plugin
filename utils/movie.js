@@ -80,31 +80,6 @@ export async function getMovieDetail (movieId) {
     })
     detail.comments = await getMovieComments(movieId)
     return detail
-    // return {
-    //   img: movieDetailJson?.img || 0,
-    //   id: movieId,
-    //   nm: movieDetailJson.nm.replace(',', '，'),
-    //   enm: movieDetailJson.enm.replace(',', '，'),
-    //   filmAlias: movieDetailJson.filmAlias,
-    //   rt: movieDetailJson.rt,
-    //   viewable,
-    //   diffDays,
-    //   sc: movieDetailJson.sc,
-    //   cat: movieDetailJson.cat.replace(',', '，'),
-    //   star: movieDetailJson.star.replace(',', '，'),
-    //   dra: movieDetailJson.dra.replace(/\s/g, ''),
-    //   watched: movieDetailJson.watched,
-    //   wish: movieDetailJson.wish,
-    //   ver: movieDetailJson.ver,
-    //   src: movieDetailJson.src,
-    //   dur: movieDetailJson.dur + '分钟',
-    //   oriLang: movieDetailJson.oriLang,
-    //   pubDesc: movieDetailJson.pubDesc,
-    //   comments: await getMovieComments(movieId),
-    //   videoName: movieDetailJson.videoName,
-    //   videourl: movieDetailJson.videourl,
-    //   photos: movieDetailJson.photos.slice(0, 5)
-    // }
   } catch (error) {
     logger.error(error)
     return false
