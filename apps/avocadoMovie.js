@@ -15,7 +15,7 @@ export class AvocadoMovie extends plugin {
           fnc: 'getHotMovies'
         },
         {
-          reg: `^#?(${global.God}|鳄梨酱?)?影视#(.+)`,
+          reg: `^#?(${global.God}|鳄梨酱?)?影视(#|%)(.+)`,
           fnc: 'searchMovie'
         },
         {
@@ -46,17 +46,18 @@ export class AvocadoMovie extends plugin {
 
   async searchMovie (e) {
     this.e = e
-    const regex = new RegExp(`^#?(${global.God}|鳄梨酱?)?影视#(.+)`)
-    const keyword = e.msg.match(regex)[2]
-    const resList = await findMovie(keyword, e.sender.user_id)
+    const regex = new RegExp(`^#?(${global.God}|鳄梨酱?)?影视(#|%)(.+)`)
+    const match = e.msg.match(regex)
+    // 1精准 2模糊
+    const type = match[2] === '#' ? 1 : 2
+    const keyword = match[3]
+    const resList = await findMovie(keyword, e.sender.user_id, type)
     if (resList === 'no related movies' || !resList) {
       await this.e.reply('没有找到' + keyword + '相关的影片呢~')
       return false
     }
     // 只有一条搜索结果时,直接开始上下文并发送影片信息
     if (resList.length === 1) {
-      this.e.from = 'search'
-      this.setContext('pickMe')
       const selectedMovie = await getMovieDetail(resList[0].id)
       const [transformedMoviesDetails, others, textToShow] = processMovieDetail(selectedMovie)
       const img = await avocadoRender(textToShow, {
@@ -68,8 +69,11 @@ export class AvocadoMovie extends plugin {
       if (img) {
         await redis.set(`AVOCADO:MOVIE_${this.e.sender.user_id}_PICKEDMOVIE`, JSON.stringify(selectedMovie), { EX: 60 * 3 })
         await this.e.reply(img)
+        this.e.from = 'search'
+        this.setContext('pickMe')
       } else {
         await this.e.reply('searchMovie: 图片生成出错了！')
+        return false
       }
     } else {
       let processList = resList.map(item => {
@@ -124,6 +128,7 @@ export class AvocadoMovie extends plugin {
     if (typeof this.e.msg !== 'string') return
     let movieList
     const from = e.from
+    logger.warn(from)
     switch (from) {
       case 'search':{
         movieList = JSON.parse(await redis.get(`AVOCADO:MOVIE_${this.e.sender.user_id}_SEARCH`))
@@ -205,6 +210,10 @@ export class AvocadoMovie extends plugin {
       if (img) {
         await redis.set(`AVOCADO:MOVIE_${this.e.sender.user_id}_PICKEDMOVIE`, JSON.stringify(selectedMovie), { EX: 60 * 3 })
         await this.e.reply(img)
+        this.finish('pickMe')
+        // 传递给下次对话
+        this.e.from = from
+        this.setContext('pickMe')
       } else {
         await this.e.reply('图片生成出错了！')
         this.finish('pickMe')
@@ -228,7 +237,7 @@ export class AvocadoMovie extends plugin {
    * @param isGroup 是否群聊
    * @param time 操作时间，默认120秒
    */
-  setContext (type, isGroup = false, time = 120) {
+  setContext (type, isGroup = false, time = 180) {
     global.remainingTime = time
     logger.mark('start ' + type + ' context')
     getTimeDifference()

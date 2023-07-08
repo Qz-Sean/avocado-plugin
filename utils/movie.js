@@ -184,10 +184,20 @@ export async function getMovieComments (movieId) {
   }
 }
 
-export async function findMovie (keyword, userId) {
+/**
+ *
+ * @returns {Promise<*[]|string|boolean>}
+ * @param keyword - 关键词
+ * @param userId - 用户qq
+ * @param type - 类型，1：精准，2：模糊
+ * @returns {Promise<*[]|string|boolean>}
+ */
+export async function findMovie (keyword, userId, type) {
   try {
-    let resList
+    let resList = []
     for (let i = 0; i <= 1; i++) {
+      let tempList
+      // 两个接口的搜索结果不一样, 新电影接口2一般找不到
       const url = [`https://m.maoyan.com/ajax/search?kw=${keyword}&cityId=1&stype=-1`,
         `https://m.maoyan.com/searchlist/movies?keyword=${keyword}&ci=59&offset=1&limit=20`]
       const headers = generateRandomHeader()
@@ -204,9 +214,17 @@ export async function findMovie (keyword, userId) {
       if (resJson.total === 0) {
         return 'no related movies'
       }
-      resList = i === 0 ? resJson.movies.list : resJson.movies
-      // 只有一条结果且名字等于关键词时直接退出循环
-      if (resList.length === 1 && resList[0].nm === keyword) break
+      tempList = i === 0 ? resJson.movies.list.filter(item => item.nm === keyword) : resJson.movies
+      // 接口1若能找到完全匹配的结果储存到reslist变量中
+      if (tempList.length && tempList.length === 1) {
+        resList = tempList
+        // 若type=1则直接跳出循环
+        if (type === 1) break
+      }
+      // 拼接接口1的结果
+      resList = tempList.concat(resList)
+      // 去重
+      resList = Array.from(new Set(resList.map(item => JSON.stringify(item)))).map(item => JSON.parse(item))
     }
     let roughList = []
     let mIndex = 0
@@ -237,6 +255,12 @@ export async function findMovie (keyword, userId) {
     return false
   }
 }
+
+/**
+ * 瞎评
+ * @param movieList
+ * @returns {*}
+ */
 export function analyseMovieList (movieList) {
   return movieList
     .filter(item => item.id)
@@ -246,14 +270,14 @@ export function analyseMovieList (movieList) {
       if (sc !== 0) {
         return `${item.index}.${item.nm} -> 评分: ${sc}`
       } else if (item.viewable === 1) {
-        if (item.diffDays > 15) {
+        if (item.diffDays > 15) { // 十五天没出分
           n = '大概率烂片~'
-        } else if (item.diffDays > 7) {
+        } else if (item.diffDays > 7) { // 超过七天没出分
           n = '成分复杂...'
-        } else {
+        } else { // 七天内
           n = '是新片哦~'
         }
-      } else {
+      } else { // 未上映
         n = '还在预售哦~'
       }
       return `${item.index}.${item.nm} -> ${n}`
@@ -267,20 +291,20 @@ export function processMovieDetail (selectedMovie) {
     const value = selectedMovie[key]
     if (!value) continue // 空值不要
     if (key === 'videoName') {
-      others.push(`${movieKeyMap[key]}: ${value}\n`)
+      others.push(`${movieKeyMap[key]}: ${value}\n\n`)
       continue
     }
     if (key === 'comments') {
       if (value && value.length) {
         transformedMoviesDetails[movieKeyMap[key]] = value.map(item => {
-          return `${item.index}. <span class="nick">${item.nick}：</span>${item.content}${item.hotReply ? '\n<pre>\t<em><span><span class="nick">🗨️' + item.hotReplyNick + '：</span>' + item.hotReply + '</span></em></pre>' : ''}`
+          return `${item.index}. <span class="nick">${item.nick}：</span>${item.content}${item.hotReply ? '<br><em><span><span class="reply">🗨️' + item.hotReplyNick + '：</span>' + item.hotReply + '</span></em>' : ''}`
         }).join('\n')
       }
       continue
     }
     if (key === 'videourl') {
       others.push(`${value}`)
-      others.push('\n')
+      others.push('\n\n')
       continue
     }
     if (key === 'photos') {
