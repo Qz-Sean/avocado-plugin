@@ -45,19 +45,19 @@ export async function getMovieDetail (movieId) {
             break
           }
           case 'nm': {
-            detail.nm = movieDetailJson.nm.replace(',', '，')
+            detail.nm = movieDetailJson.nm.replace(/,/g, '，')
             break
           }
           case 'enm': {
-            detail.enm = movieDetailJson.enm.replace(',', '，')
+            detail.enm = movieDetailJson.enm.replace(/,/g, '，')
             break
           }
           case 'cat':{
-            detail.cat = movieDetailJson.cat.replace(',', '，')
+            detail.cat = movieDetailJson.cat.replace(/,/g, '，')
             break
           }
           case 'star':{
-            detail.star = movieDetailJson.star.replace(',', '，')
+            detail.star = movieDetailJson.star.replace(/,/g, '，')
             break
           }
           case 'dra':{
@@ -210,11 +210,17 @@ export async function findMovie (keyword, userId) {
     }
     // logger.warn(resList)
     let roughList = []
-    resList.forEach((item, index) => {
+    let mIndex = 0
+    resList.forEach(item => {
+      mIndex = mIndex + 1
       // 跳过非电影
-      if (item.movieType !== 0 && resList.length !== 1) return
+      if (item.movieType !== 0 && resList.length !== 1) {
+        mIndex--
+        return
+      }
+
       let movie = {}
-      movie.index = index + 1
+      movie.index = mIndex
       movie.id = item.id
       movie.nm = item.nm
       movie.sc = item.sc
