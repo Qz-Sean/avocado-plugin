@@ -268,4 +268,3 @@ export class AvocadoMovie extends plugin {
   }
 }
 let stateArr = {}
-let from = ''

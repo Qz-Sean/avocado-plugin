@@ -217,7 +217,6 @@ export async function findMovie (keyword, userId) {
         mIndex--
         return
       }
-
       let movie = {}
       movie.index = mIndex
       movie.id = item.id
