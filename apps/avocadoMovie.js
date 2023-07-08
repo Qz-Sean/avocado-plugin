@@ -2,7 +2,7 @@ import plugin from '../../../lib/plugins/plugin.js'
 import { avocadoRender, getTimeDifference, makeForwardMsg, splitArray } from '../utils/common.js'
 import { analyseMovieList, findMovie, getHotMovieList, getMovieDetail, processMovieDetail } from '../utils/movie.js'
 
-export class AvocadoPsycho extends plugin {
+export class AvocadoMovie extends plugin {
   constructor (e) {
     super({
       name: '鳄梨酱！！！ => Movie',
