@@ -44,6 +44,18 @@ const panel = {
         component: 'Input'
       },
       {
+        field: 'isAutoShareMusic',
+        label: '是否主动发送问候信息',
+        bottomHelpMessage: '开启后会在早中晚向群组发送问候信息与相关音乐。',
+        component: 'Switch'
+      },
+      {
+        field: 'initiativeGroups',
+        label: '问候群组',
+        bottomHelpMessage: '',
+        component: 'Input'
+      },
+      {
         field: 'psychoKey',
         label: '发电Key',
         bottomHelpMessage: '前往 https://api.caonm.net 申请。',
@@ -73,9 +85,9 @@ const panel = {
         }
       },
       {
-        field: 'initiativeGroups',
+        field: 'onsetGroups',
         label: '发电群组',
-        bottomHelpMessage: '',
+        bottomHelpMessage: '留空则所有群主动发电。',
         component: 'Input'
       },
       {
@@ -102,8 +114,9 @@ const panel = {
     // 设置配置的方法（前端点确定后调用的方法）
     setConfigData (data, { Result }) {
       for (let [keyPath, value] of Object.entries(data)) {
-        if (keyPath === 'translateLang' || keyPath === 'targetArea' || keyPath === 'initiativeGroups') {
+        if (keyPath === 'translateLang' || keyPath === 'targetArea' || keyPath === 'initiativeGroups' || keyPath === 'onsetGroups') {
           value = value.toString().split(/[,，;；|]/)
+          if (!value.join().length) value = []
         }
         if (keyPath === 'onsetLatentPeriod') {
           value = /^\d{1,2}$/.test(value) ? value : 3

@@ -45,7 +45,8 @@ export class AvocadoPsycho extends plugin {
   }
 
   async avocadoPsycho (e) {
-    if (e.msg.includes('#') || Config.isPeriodicOnset) return true
+    if (Config.onsetGroups.length !== 0 && !Config.onsetGroups.includes(e.group_id.toString())) return true
+    if (e.msg.includes('#') || !Config.isAutoOnset) return true
     let godName
     // 内部调用
     if (!e.msg.includes(global.God)) {

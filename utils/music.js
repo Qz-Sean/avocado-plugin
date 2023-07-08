@@ -157,7 +157,9 @@ export async function getGreetMsg (listId, greetType) {
   return [res.text, introSong.id, introSong.name]
 }
 
-export async function getSingerDetail (singerId) {
+export async function getSingerDetail (nameOrId) {
+  let singerId = await getSingerId(nameOrId)
+  if (!singerId) return false
   let url = `http://110.41.21.181:3000/artist/detail?id=${singerId}`
   const headers = generateRandomHeader()
   const options = {
@@ -331,8 +333,9 @@ export async function findSong (data = { param: '', id: '', isRandom: false, fro
     } else {
       logger.mark('avocadoMusic -> 正常点歌')
       if (data.param.includes(',')) {
-        const artist = data.param.split(',')[0]
-        const songName = data.param.split(',')[1]
+        const [a, b] = data.param.split(',')
+        const artist = ((await getSingerDetail(a))?.name || (await getSingerDetail(b))?.name) || a
+        const songName = artist === b ? a : b
         const songList = result?.result?.songs
         song = songList.find(song => song.ar.find(item => item.name.toLowerCase() === artist.toLowerCase() && song.name.toLowerCase() === songName.toLowerCase()))
         id = song?.id

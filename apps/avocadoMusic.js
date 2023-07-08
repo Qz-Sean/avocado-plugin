@@ -25,11 +25,11 @@ export class AvocadoMusic extends plugin {
       priority: 300,
       rule: [
         {
-          reg: `^#?(鳄梨酱|${global.God})(#|%)(随机|热门)?(华语|欧美|韩国|日本)?(.*)`,
+          reg: `^#?(鳄梨酱?|${global.God})?音乐(#|%)(随机|热门)?(华语|欧美|韩国|日本)?(.*)`,
           fnc: 'pickMusic'
         },
         {
-          reg: `^(来点好听的|${global.God}[~～]|下一首|切歌|听歌|换歌|下一曲)$`,
+          reg: `^(来点好听的|鳄梨酱?[~～]+|${global.God}[~～]+|下一首|切歌|听歌|换歌|下一曲)$`,
           fnc: 'randomMusic'
         },
         {
@@ -93,7 +93,7 @@ export class AvocadoMusic extends plugin {
     }
     // 绑定this.e, 供context()开启当前plugin上下文
     this.e = e
-    const regex = new RegExp(`^#?(鳄梨酱|${global.God})(#|%)(随机|热门)?(华语|欧美|韩国|日本)?(.*)`)
+    const regex = new RegExp(`^#?(鳄梨酱?|${global.God})?音乐(#|%)(随机|热门)?(华语|欧美|韩国|日本)?(.*)`)
     const match = this.e.msg.trim().match(regex)
     const isImageOrder = match[2] === '%' // 正常点歌将时使用图片点歌的形式
     const selectType = match[3] ? match[3] : ''
@@ -247,7 +247,7 @@ export class AvocadoMusic extends plugin {
     logger.mark('wrongFind:', this.e.msg)
     // 从上次对话中获取歌名
     const songList = JSON.parse(await redis.get(`AVOCADO:MUSIC_${e.songName}`))
-    const reg = new RegExp(`^((0)|(${songList.map(item => item.index).join('|')})|(${songList.map(item => item.name).join('|').replace(/\*/g, ' fuckWords ').replace(/\(/g, '（').replace(/\)/g, '）').replace(/\./g, ' ')}))$`)
+    const reg = new RegExp(`^((歌词|热评|评论)|(0)|(${songList.map(item => item.index).join('|')})|(${songList.map(item => item.name).join('|').replace(/\*/g, ' fuckWords ').replace(/\(/g, '（').replace(/\)/g, '）').replace(/\./g, ' ')}))$`)
     if (!reg.test(this.e.msg)) {
       const count = await redis.get('AVOCADO_REQUESTCOUNT')
       if (!count) {
@@ -255,6 +255,10 @@ export class AvocadoMusic extends plugin {
         await redis.set('AVOCADO_REQUESTCOUNT', 1, { EX: 60 * 1.5 })
       }
     } else {
+      if (/歌词|热评|评论/.test(this.e.msg)) {
+        await this.getCommentsOrLyrics(this.e)
+        return
+      }
       if (this.e.msg === '0') {
         await this.e.reply(`${global.God}！！！`)
         this.finish('wrongFind')
@@ -406,7 +410,7 @@ export class AvocadoMusic extends plugin {
     } else {
       songList = JSON.parse(await redis.get(`AVOCADO:MUSIC_${this.e.sender.user_id}_HOTLIST`))
     }
-    const reg = new RegExp(`^((0)|(${songList.map(item => item.index).join('|')})|(${songList.map(item => item.name).join('|').replace(/\*/g, ' fuckWords ').replace(/\(/g, '（').replace(/\)/g, '）').replace(/\./g, ' ')}))$`)
+    const reg = new RegExp(`^((歌词|热评|评论)|(0)|(${songList.map(item => item.index).join('|')})|(${songList.map(item => item.name).join('|').replace(/\*/g, ' fuckWords ').replace(/\(/g, '（').replace(/\)/g, '）').replace(/\./g, ' ')}))$`)
     let res, img
     if (!reg.test(this.e.msg)) return
     // img = await avocadoRender(`### 没有找到 ${this.e.msg} 呢...试试其他选择吧~\n${await getBonkersBabble({}, global.God, 'native')}`, { title: '', caption: '', footer: '' })
@@ -414,6 +418,10 @@ export class AvocadoMusic extends plugin {
     if (this.e.msg === '0') {
       this.finish('selectSongFromImage')
       return true
+    }
+    if (/歌词|热评|评论/.test(this.e.msg)) {
+      await this.getCommentsOrLyrics(this.e)
+      return
     }
     const selectedMusic = songList.find(eachSong => eachSong.index === parseInt(this.e.msg) || eachSong.name === this.e.msg)
     const name = selectedMusic?.name

@@ -11,15 +11,15 @@ export class AvocadoPsycho extends plugin {
       priority: 300,
       rule: [
         {
-          reg: `^#?((${global.God}|鳄梨酱)?#热门电影|来点好看的)$`,
+          reg: `^#?((${global.God}|鳄梨酱?)?#热门电影|来点好看的)$`,
           fnc: 'getHotMovies'
         },
         {
-          reg: `^#?(${global.God}|鳄梨酱)?#搜索电影(.+)`,
+          reg: `^#?(${global.God}|鳄梨酱?)?影视#(.+)`,
           fnc: 'searchMovie'
         },
         {
-          reg: '^#?重新获取电影数据',
+          reg: '^#(刷新|重新获取)(电影|影片)信息$',
           fnc: 'reloadMovieInfo'
         }
       ]
@@ -46,7 +46,7 @@ export class AvocadoPsycho extends plugin {
 
   async searchMovie (e) {
     this.e = e
-    const regex = new RegExp(`^#?(${global.God}|鳄梨酱)?#搜索电影(.+)`)
+    const regex = new RegExp(`^#?(${global.God}|鳄梨酱?)?影视#(.+)`)
     const keyword = e.msg.match(regex)[2]
     const resList = await findMovie(keyword, e.sender.user_id)
     if (resList === 'no related movies' || !resList) {
@@ -55,6 +55,8 @@ export class AvocadoPsycho extends plugin {
     }
     // 只有一条搜索结果时,直接开始上下文并发送影片信息
     if (resList.length === 1) {
+      this.e.from = 'search'
+      this.setContext('pickMe')
       const selectedMovie = await getMovieDetail(resList[0].id)
       const [transformedMoviesDetails, others, textToShow] = processMovieDetail(selectedMovie)
       const img = await avocadoRender(textToShow, {
@@ -69,8 +71,6 @@ export class AvocadoPsycho extends plugin {
       } else {
         await this.e.reply('searchMovie: 图片生成出错了！')
       }
-      this.e.from = 'search'
-      this.setContext('pickMe')
     } else {
       let processList = resList.map(item => {
         const img = `<img src="${item.img}" alt="img">`

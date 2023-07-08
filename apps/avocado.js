@@ -41,19 +41,19 @@ export class AvocadoRuleALL extends plugin {
           fnc: 'avocadoHelp'
         },
         {
-          reg: `^#?(${global.God}|鳄梨酱)([!！]+)([?？]*)\\s?(.*)`,
+          reg: `^#?(${global.God}|鳄梨酱?)([!！]+)([?？]*)\\s?(.*)`,
           fnc: 'avocado'
         },
         {
-          reg: `^#?(.*)(${global.God}|鳄梨酱)[?？]([?？]*)`,
+          reg: `^#?(.*)(${global.God}|鳄梨酱?)[?？]([?？]*)`,
           fnc: 'avocadoTranslate'
         },
         {
-          reg: `^#?(.*)(${global.God}|鳄梨酱)[.。]([.。]*)$`,
+          reg: `^#?(.*)(${global.God}|鳄梨酱?)[.。]([.。]*)$`,
           fnc: 'avocadoWeather'
         },
         {
-          reg: `^#?((${global.God}|鳄梨酱)?#发[癫|电|疯](.+))`,
+          reg: `^#?((${global.God}|鳄梨酱?)?#发[癫|电|疯](.+))`,
           fnc: 'avocadoPsycho'
         }
       ]
@@ -61,7 +61,7 @@ export class AvocadoRuleALL extends plugin {
   }
 
   async avocadoPsycho (e) {
-    const regex = new RegExp(`^#?((${global.God}|鳄梨酱)?#发[癫电疯](.+))`)
+    const regex = new RegExp(`^#?((${global.God}|鳄梨酱?)?#发[癫电疯](.+))`)
     e.msg = e.msg.match(regex)[3]
     await new AvocadoPsycho().avocadoPsycho(e)
   }
@@ -121,7 +121,7 @@ export class AvocadoRuleALL extends plugin {
       }
     } else {
       let msg
-      const regex = new RegExp(`#?(${global.God}|鳄梨酱)([!！]+)([?？]*)\\s?(.*)`)
+      const regex = new RegExp(`#?(${global.God}|鳄梨酱?)([!！]+)([?？]*)\\s?(.*)`)
       msg = e.msg.trim().match(regex)
       if (!msg) { return false }
       // 鳄梨酱！！！！ + img =》 获取其ocr结果
@@ -282,7 +282,7 @@ export class AvocadoRuleALL extends plugin {
   async avocadoWeather (e) {
     let targetArea
     const areaConfig = Config.targetArea || []
-    let match = e.msg.trim().match(new RegExp(`^#?(.*)${global.God}|鳄梨酱[.。]([.。]*)`))
+    let match = e.msg.trim().match(new RegExp(`^#?(.*)${global.God}|鳄梨酱?[.。]([.。]*)`))
     if (match[1]) {
       targetArea = match[1]
       if (!(await getAreaInfo(this, targetArea))) {
@@ -313,7 +313,7 @@ export class AvocadoRuleALL extends plugin {
     let pendingText, langCode
     const codeConfig = Config.translateLang
     // [?？]([?？]+) => 使match[2]结果和配置数组的索引保持一致
-    const translateRegex = new RegExp(`^#?(.*)(${global.God}|鳄梨酱)[?？]([?？]*)`)
+    const translateRegex = new RegExp(`^#?(.*)(${global.God}|鳄梨酱?)[?？]([?？]*)`)
     const match = this.e.msg.trim().match(translateRegex)
     if (match[1]) {
       // 支持传入语言code或全称
