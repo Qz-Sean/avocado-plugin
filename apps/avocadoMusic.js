@@ -541,7 +541,7 @@ export class AvocadoMusic extends plugin {
     await redis.set(`AVOCADO:MUSIC_${e.sender.user_id}_FAVSINGER`, JSON.stringify(data))
     await this.reply('设置成功')
     await this.reply('正在获取歌曲数据...')
-    res = await getFavList(e.sender.user_id, singerId)
+    const res = await getFavList(e.sender.user_id, singer.id)
     if (res) {
       await this.reply('成功了！')
     }

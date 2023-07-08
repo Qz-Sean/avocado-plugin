@@ -385,6 +385,7 @@ export async function getMusicDetail (id) {
     songInfo.pic = song.al.picUrl
     songInfo.fee = song.fee
     songInfo.mv = song.mv
+    songInfo.dt = song.dt
     songInfo.link = 'https://music.163.com/#/song?id=' + song.id
     songInfo.musicUrl = await getMusicUrl(song.id)
     const list = await getCommentsOrLyrics(id, 0)
@@ -524,7 +525,7 @@ export async function getHotSingers () {
 }
 
 export async function getFavList (userID, SingerID) {
-  let url = `http://110.41.21.181:3000/artist/songs?id=${SingerID}&limit=100`
+  let url = `http://110.41.21.181:3000/artist/songs?id=${SingerID}&limit=200`
   try {
     const headers = generateRandomHeader()
     const options = {
@@ -537,15 +538,21 @@ export async function getFavList (userID, SingerID) {
       return false
     }
     const songList = result.songs
-    const favList = songList.map((item, index) => ({
-      index: index + 1,
-      id: item.id,
-      name: item.name,
-      artist: item?.ar.map(artist => artist.name),
-      albumId: item.al.id,
-      fee: item.fee,
-      mv: item.mv
-    }))
+    let mIndex = 0
+    const favList = songList.map((item) => {
+      return item.noCopyrightRcmd === null
+        ? {
+            index: ++mIndex,
+            id: item.id,
+            name: item.name,
+            dt: Math.ceil(item.dt / 1000),
+            artist: item?.ar.map(artist => artist.name),
+            albumId: item.al.id,
+            fee: item.fee,
+            mv: item.mv
+          }
+        : null
+    }).filter(item => item !== null)
     await redis.set(`AVOCADO:MUSIC_${userID}_FAVSONGLIST`, JSON.stringify(favList))
   } catch (e) {
     logger.error(e)
