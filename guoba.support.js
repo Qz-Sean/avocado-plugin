@@ -45,7 +45,7 @@ const panel = {
       },
       {
         field: 'isAutoShareMusic',
-        label: '是否主动发送问候信息',
+        label: '主动发送问候信息',
         bottomHelpMessage: '开启后会在早中晚向群组发送问候信息与相关音乐。',
         component: 'Switch'
       },
