@@ -128,7 +128,6 @@ export class AvocadoMovie extends plugin {
     if (typeof this.e.msg !== 'string') return
     let movieList
     const from = e.from
-    logger.warn(from)
     switch (from) {
       case 'search':{
         movieList = JSON.parse(await redis.get(`AVOCADO:MOVIE_${this.e.sender.user_id}_SEARCH`))
