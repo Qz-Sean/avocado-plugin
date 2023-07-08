@@ -158,7 +158,7 @@ export async function getGreetMsg (listId, greetType) {
 }
 
 export async function getSingerDetail (nameOrId) {
-  let singerId = await getSingerId(nameOrId)
+  let singerId = typeof nameOrId === 'number' ? nameOrId : await getSingerId(nameOrId)
   if (!singerId) return false
   let url = `http://110.41.21.181:3000/artist/detail?id=${singerId}`
   const headers = generateRandomHeader()
@@ -171,6 +171,7 @@ export async function getSingerDetail (nameOrId) {
   if (res.code !== 200 && !res?.data?.artist) return false
   const artist = res.data.artist
   return {
+    id: singerId,
     name: artist.name,
     transName: artist.transName || [],
     alias: artist.alias || [],

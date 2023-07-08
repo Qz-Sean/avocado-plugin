@@ -1,7 +1,6 @@
-import fetch from 'node-fetch'
 import plugin from '../../../lib/plugins/plugin.js'
 import { Config } from '../utils/config.js'
-import { avocadoRender, generateRandomHeader, getTimeDifference, splitArray } from '../utils/common.js'
+import { avocadoRender, getTimeDifference, splitArray } from '../utils/common.js'
 import { getBonkersBabble } from './avocadoPsycho.js'
 import { singerMap, singerTypeMap } from '../utils/const.js'
 import {
@@ -134,6 +133,7 @@ export class AvocadoMusic extends plugin {
               const singerInfo = await getSingerDetail(picked.id)
               const replyMsg = []
               for (const key in singerInfo) {
+                if (key === 'id') continue
                 replyMsg.push([singerInfo[key]].join('').length ? `${singerMap[key]}：${singerInfo[key]}\n` : '')
               }
               const img = await avocadoRender(replyMsg.join(''), { title: '', caption: '', footer: `你想不想继续了解${singerInfo.name}的热门单曲呢~`, renderType: 1 })
@@ -313,6 +313,7 @@ export class AvocadoMusic extends plugin {
       const singerInfo = await getSingerDetail(singerId)
       let replyMsg = []
       for (const key in singerInfo) {
+        if (key === 'id') continue
         replyMsg.push([singerInfo[key]].join('').length ? `${singerMap[key]}：${singerInfo[key]}\n` : '')
       }
       img = await avocadoRender(replyMsg.join(''), { title: '', caption: '', footer: `你想不想继续了解${singerName}的热门单曲呢~`, renderType: 1 })
@@ -343,6 +344,7 @@ export class AvocadoMusic extends plugin {
     const singerInfo = await getSingerDetail(singerId)
     let replyMsg = []
     for (const key in singerInfo) {
+      if (key === 'id') continue
       replyMsg.push([singerInfo[key]].join('').length ? `${singerMap[key]}：${singerInfo[key]}\n` : '')
     }
     const img = await avocadoRender(replyMsg.join(''), { title: '', caption: '', footer: `你想不想继续了解${singer}的热门单曲呢~`, renderType: 1 })
@@ -380,6 +382,7 @@ export class AvocadoMusic extends plugin {
           const singerInfo = await getSingerDetail(picked.id)
           const replyMsg = []
           for (const key in singerInfo) {
+            if (key === 'id') continue
             replyMsg.push([singerInfo[key]].join('').length ? `${singerMap[key]}：${singerInfo[key]}\n` : '')
           }
           const img = await avocadoRender(replyMsg.join(''), { title: '', caption: '', footer: `你愿意继续了解${singerInfo.name}最受欢迎的单曲吗~☺️`, renderType: 1 })
@@ -523,31 +526,17 @@ export class AvocadoMusic extends plugin {
       const uSinger = data.singerName
       if (singerName === uSinger) {
         await this.reply('设置成功')
-        return false
+        return true
       }
     }
-
-    let url = `http://110.41.21.181:3000/cloudsearch?keywords=${encodeURI(singerName)}&limit=1`
-    const headers = generateRandomHeader()
-    const options = {
-      method: 'GET',
-      headers
-    }
-    const response = await fetch(url, options)
-    let res = await response.json()
-    if (res.code !== 200) { return false }
-    const songs = res.result.songs
-    songs.forEach(item => {
-      const lowerCaseSinger = singerName.toLowerCase()
-      singerId = item.ar.find(arItem => [arItem.name, arItem?.tns?.[0], arItem?.alias?.[0], arItem?.alia?.[0]].some(name => name?.toLowerCase() === lowerCaseSinger))?.id
-    })
-    if (!singerId) {
+    const singer = await getSingerDetail(singerName)
+    if (!singer) {
       await this.reply(`找不到名为${singerName}的歌手，请检查名称是否输入完整。`)
       return false
     }
     const data = {
-      singerName,
-      singerId
+      singerName: singer.name,
+      singerId: singer.id
     }
     await redis.set(`AVOCADO:MUSIC_${e.sender.user_id}_FAVSINGER`, JSON.stringify(data))
     await this.reply('设置成功')
@@ -588,6 +577,7 @@ export class AvocadoMusic extends plugin {
       const singerInfo = await getSingerDetail(singerId)
       let replyMsg = []
       for (const key in singerInfo) {
+        if (key === 'id') continue
         replyMsg.push([singerInfo[key]].join('').length ? `${singerMap[key]}：${singerInfo[key]}\n` : '')
       }
       const img = await avocadoRender(replyMsg.join(''), { title: '', caption: '', footer: `你想不想继续了解${singerName}的热门单曲呢~`, renderType: 1 })
