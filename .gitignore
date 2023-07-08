@@ -1,0 +1,4 @@
+node_modules/
+/resources/json/
+/resources/html/render.html
+/config/config.json

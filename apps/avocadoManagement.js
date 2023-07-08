@@ -7,7 +7,7 @@ import {
   phantomTransformation,
   translateLangSupports
 } from '../utils/const.js'
-import {getHotMovieList} from "../utils/movie.js";
+import { getHotMovieList } from '../utils/movie.js'
 
 export class AvocadoManagement extends plugin {
   constructor (e) {

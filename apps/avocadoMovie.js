@@ -1,8 +1,6 @@
 import plugin from '../../../lib/plugins/plugin.js'
 import { avocadoRender, getTimeDifference, makeForwardMsg, splitArray } from '../utils/common.js'
 import { analyseMovieList, findMovie, getHotMovieList, getMovieDetail, processMovieDetail } from '../utils/movie.js'
-import { movieKeyMap } from '../utils/const.js'
-import { segment } from 'icqq'
 
 export class AvocadoPsycho extends plugin {
   constructor (e) {
