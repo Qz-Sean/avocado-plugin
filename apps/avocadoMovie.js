@@ -62,7 +62,7 @@ export class AvocadoMovie extends plugin {
       const img = await avocadoRender(textToShow, {
         title: `${transformedMoviesDetails['封面'] ? '![img](' + transformedMoviesDetails['封面'] + ')' : ''}`,
         caption: '',
-        footer: `<strong><i>可继续选择影片~~<br>回复 00 获取本片剧照及预告<br>${selectedMovie?.comments ? '回复 000 获取本片热门评论<br>' : ''}回复 0 结束会话, 距本次会话结束还剩${getTimeDifference()}秒<i></strong>`,
+        footer: `<strong><i>可继续选择影片~~<br>回复 00 获取本片剧照及预告<br>${selectedMovie?.comments ? '回复 000 获取本片热门评论<br>' : ''}回复 0 结束会话<i></strong>`,
         renderType: 3
       })
       if (img) {
