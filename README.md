@@ -16,7 +16,7 @@
 # 在云崽根路径下执行
 # Github
 git clone --depth=1 https://github.com/Qz-Sean/avocado-plugin.git ./plugins/avocado-plugin/
-# Gitee
+# Gitee 可能更新不及时，建议使用github源
 git clone --depth=1 https://gitee.com/sean_l/avocado-plugin.git ./plugins/avocado-plugin/
 # 安装项目依赖
 cd plugins/avocado-plugin
