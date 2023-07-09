@@ -237,18 +237,25 @@ export class AvocadoMovie extends plugin {
    * @param time 操作时间，默认120秒
    */
   setContext (type, isGroup = false, time = 180) {
+    // 每次调用刷新剩余时间
     global.remainingTime = time
     logger.mark('start ' + type + ' context')
     getTimeDifference()
     let key = this.conKey(isGroup)
     if (!stateArr[key]) stateArr[key] = {}
     stateArr[key][type] = this.e
+    // 取消之前的超时操作
+    if (stateArr[key][type]) {
+      clearTimeout(stateArr[key][type])
+      delete stateArr[key][type]
+    }
+    stateArr[key][type] = this.e
     if (time) {
       /** 操作时间 */
       setTimeout(() => {
         if (stateArr[key][type]) {
           delete stateArr[key][type]
-          // this.e.reply('操作超时已取消', true)
+          logger.mark('finish ' + type + ' context')
         }
       }, time * 1000)
     }
