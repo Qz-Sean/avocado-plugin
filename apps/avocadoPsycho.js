@@ -60,7 +60,7 @@ export class AvocadoPsycho extends plugin {
     if (apiErrorCode) {
       switch (apiErrorCode) {
         case 1: {
-          replyMsg = await getBonkersBabble(e, godName, 'native')
+          replyMsg = await getBonkersBabble(godName, 'native')
           if (!replyMsg) {
             await e.reply('Σ( ° △ °|||)︴ 震惊！本地发电失败！')
             await redis.set('AVOCADO_PSYCHO_ERROR', 2, { EX: 60 * 30 })
@@ -74,7 +74,7 @@ export class AvocadoPsycho extends plugin {
         }
       }
     } else {
-      const res = await getBonkersBabble(e, godName, 'api')
+      const res = await getBonkersBabble(godName, 'api')
       if (!res || res === 403) {
         let errorMsg = '发电失败(ノへ￣、)'
         if (!Config.psychoKey) {
@@ -88,7 +88,7 @@ export class AvocadoPsycho extends plugin {
         await e.reply(errorMsg)
         await redis.set('AVOCADO_PSYCHO_ERROR', 1, { EX: 60 * 60 })
         await sleep(1500)
-        replyMsg = await getBonkersBabble(e, godName, 'native')
+        replyMsg = await getBonkersBabble(godName, 'native')
         if (!replyMsg) {
           await e.reply('Σ( ° △ °|||)︴ 震惊！发电失败！')
           await redis.set('AVOCADO_PSYCHO_ERROR', 2, { EX: 60 * 60 })
@@ -127,7 +127,7 @@ export class AvocadoPsycho extends plugin {
           logger.warn(groupId + '：时机未到！下次一定！')
           continue
         }
-        let replyMsg = await getBonkersBabble({}, global.God, 'native')
+        let replyMsg = await getBonkersBabble(global.God, 'native')
         if (replyMsg) {
           if (Math.random() < 0.5) {
             await Bot.sendGroupMsg(groupId, replyMsg)
@@ -149,12 +149,11 @@ export class AvocadoPsycho extends plugin {
 
 /**
  * 获取发电数据
- * @param e
  * @param {string} GodName - 关键词
  * @param {string} dataSource - 数据源
  * @param {number} wordLimit - 字数限制
  */
-export async function getBonkersBabble (e = {}, GodName = '', dataSource = '', wordLimit = 0) {
+export async function getBonkersBabble (GodName = '', dataSource = '', wordLimit = 0) {
   let replyMsg = ''
   const fullPath = path.join(pluginRoot, 'resources', 'json', 'psycho.json')
   syncPath(fullPath, '[]')
