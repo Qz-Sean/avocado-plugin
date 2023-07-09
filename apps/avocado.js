@@ -26,7 +26,7 @@ import { AvocadoPsycho } from './avocadoPsycho.js'
 export class AvocadoRuleALL extends plugin {
   constructor (e) {
     super({
-      name: '鳄梨酱',
+      name: '鳄梨酱！！！ => 日常',
       dsc: '鳄梨酱！！！',
       event: 'message',
       priority: 200,
@@ -264,7 +264,6 @@ export class AvocadoRuleALL extends plugin {
         document.querySelector('#write').appendChild(p)
       }, pluginVersion, yunZaiVersion) // 将外部变量作为参数传入
       const body = await page.$('body')
-      // await page.waitForNavigation({ timeout: 10000 })
       const buff = await body.screenshot({ type: 'jpeg', quality: 100 })
       const kb = (buff.length / 1024).toFixed(2) + 'kb'
       logger.mark(`[图片生成][帮助][${puppeteerManager.screenshotCount}次]${kb} ${logger.green(`${Date.now() - start}ms`)}`)
