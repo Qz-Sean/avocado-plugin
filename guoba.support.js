@@ -93,7 +93,7 @@ const panel = {
       {
         field: 'wyy',
         label: '网易云音乐登录ck',
-        bottomHelpMessage: 'https://music.163.com 登录 => 下载 https://chrome.google.com/webstore/detail/cookie-editor/hlkenndednhfkekhgcdicdfddnkalmdm => 刷新页面，点击拓展获取"MUSIC_U"字段的值填入此处。',
+        bottomHelpMessage: '是会员的话可以用自己，否则部分歌曲只能听30s。的获取方法:https://music.163.com 登录 => 下载 https://chrome.google.com/webstore/detail/cookie-editor/hlkenndednhfkekhgcdicdfddnkalmdm => 刷新页面，点击拓展获取"MUSIC_U"字段的值填入此处。',
         component: 'Input'
       },
       {

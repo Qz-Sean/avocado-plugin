@@ -198,9 +198,10 @@ export async function getSingerDetail (nameOrId) {
  * @returns {Promise<string|boolean>}
  */
 async function getMusicUrl (id) {
+  let ck = Config.wyy
+
   let musicUrl = 'http://music.163.com/song/media/outer/url?id=' + id
 
-  let ck = Config.wyy
   try {
     let options = {
       method: 'POST',
@@ -217,7 +218,7 @@ async function getMusicUrl (id) {
     if (res.code === 200) {
       musicUrl = res.data[0]?.url
       musicUrl = musicUrl || ''
-      logger.mark('MusicUrl: ', musicUrl)
+      // logger.mark('MusicUrl: ', musicUrl)
     }
   } catch (err) {
     logger.error(err)
@@ -342,7 +343,7 @@ export async function findSong (data = { param: '', id: '', isRandom: false, fro
       id = song.id
     } else {
       logger.mark('avocadoMusic -> 正常点歌')
-      if (data.param.includes(',')) {
+      if (data.param.includes(',')) { // 精确查找
         const [a, b] = data.param.split(',')
         const artist = ((await getSingerDetail(a))?.name || (await getSingerDetail(b))?.name) || a
         const songName = artist === b ? a : b
@@ -361,7 +362,8 @@ export async function findSong (data = { param: '', id: '', isRandom: false, fro
           return tempRes
         }
       } else {
-        id = result?.result?.songs?.[0].id
+        // 取搜索结果第一条
+        id = result?.result?.songs?.filter(item => item.name.toLowerCase() === data.param.toLowerCase())[0]?.id || result?.result?.songs?.[0]?.id
       }
     }
     if (!id) {
@@ -587,14 +589,21 @@ export async function getFavList (userID, SingerID) {
   }
 }
 
-export async function avocadoShareMusic (id, target, imgToShare, textMsg, platformCode) {
+export async function avocadoShareMusic (data, target, imgToShare, textMsg, platformCode) {
+  logger.mark('avocadoMusic -> ' + data.name)
   try {
     const platform = platformCode || '163'
+    // 单个目标
     if (!Array.isArray(target)) {
       let t
       if (Bot.getFriendList().get(target)) {
-        t = await Bot.pickFriend(target)
-        await t.shareMusic(platform, id)
+        if (Config.wyy) {
+          data.userId = target
+          await sendMusic(data)
+        } else {
+          t = await Bot.pickFriend(target)
+          await t.shareMusic(platform, data.id)
+        }
         if (textMsg) {
           await sleep(1000)
           await sendPrivateMsg(target, textMsg)
@@ -605,8 +614,13 @@ export async function avocadoShareMusic (id, target, imgToShare, textMsg, platfo
         }
         await Bot.send
       } else if (Bot.getGroupList().get(target)) {
-        t = await Bot.pickGroup(target)
-        await t.shareMusic(platform, id)
+        if (Config.wyy) {
+          data.groupId = target
+          await sendMusic(data)
+        } else {
+          t = await Bot.pickGroup(target)
+          await t.shareMusic(platform, data.id)
+        }
       } else {
         throw new Error('所选对象不存在: ' + target)
       }
@@ -615,7 +629,7 @@ export async function avocadoShareMusic (id, target, imgToShare, textMsg, platfo
         let groupId = parseInt(group)
         if (Bot.getGroupList().get(groupId)) {
           let g = await Bot.pickGroup(groupId)
-          await g.shareMusic(platform, id)
+          await g.shareMusic(platform, data.id)
           await sleep(1000)
           if (textMsg) await Bot.sendGroupMsg(groupId, textMsg)
           await sleep(1000)
@@ -670,7 +684,7 @@ export async function getCommentsOrLyrics (musicObjectOrMusicId, type = 0) {
     }
   }
 }
-export async function sendMusic (e, data, toUin = null) {
+export async function sendMusic (data) {
   if (!Bot.sendOidb) return false
 
   let appid
@@ -737,24 +751,27 @@ export async function sendMusic (e, data, toUin = null) {
   let recvUin
   let sendType
   let recvGuildId = 0
-  if (data.groupId) {
+
+  if (data?.groupId) {
     recvUin = data.groupId
     sendType = 1
   } else {
-    if (e.isGroup && toUin == null) { // 群聊
-      recvUin = e.group.gid
-      sendType = 1
-    } else if (e.guild_id) { // 频道
-      recvUin = Number(e.channel_id)
-      recvGuildId = BigInt(e.guild_id)
-      sendType = 3
-    } else if (toUin == null) { // 私聊
-      recvUin = e.friend.uid
-      sendType = 0
-    } else { // 指定号码私聊
-      recvUin = toUin
-      sendType = 0
-    }
+    recvUin = data?.userId
+    sendType = 0
+    // if (e.isGroup && toUin == null) { // 群聊
+    //   recvUin = e.group.gid
+    //   sendType = 1
+    // } else if (e.guild_id) { // 频道
+    //   recvUin = Number(e.channel_id)
+    //   recvGuildId = BigInt(e.guild_id)
+    //   sendType = 3
+    // } else if (toUin == null) { // 私聊
+    //   recvUin = e.friend.uid
+    //   sendType = 0
+    // } else { // 指定号码私聊
+    //   recvUin = toUin
+    //   sendType = 0
+    // }
   }
   let body = {
     1: appid,
@@ -782,11 +799,7 @@ export async function sendMusic (e, data, toUin = null) {
     let payload = await Bot.sendOidb('OidbSvc.0xb77_9', core.pb.encode(body))
     let result = core.pb.decode(payload)
     if (result[3] !== 0) {
-      if (!data.groupId) {
-        e.reply('歌曲分享失败：' + result[3], true)
-      } else {
-        logger.error('歌曲分享失败：' + result[3])
-      }
+      logger.error('歌曲分享失败：' + result[3])
     }
   } catch (err) {
     logger.error('err:', err)
