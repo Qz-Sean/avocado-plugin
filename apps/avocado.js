@@ -161,7 +161,7 @@ export class AvocadoRuleALL extends plugin {
   }
 
   async avocadoPreview (e, param = '') {
-    if (e.isGroup && e.msg.startsWith('#')) return false
+    if (e.isGroup && (e.msg.startsWith('#') || e.msg.startsWith('/？'))) return false
     if (e.isPrivate && !e.msg.startsWith('#')) return false
     let url
     if (param.length) {
@@ -206,6 +206,7 @@ export class AvocadoRuleALL extends plugin {
       const regex = new RegExp(urlRegex.toString().slice(1, -2), 'i')
       url = e.msg.trim().replace(/^#?/, '').replace(/[,，。]/g, '').match(regex)[0]
       if (!url) { return false }
+      if (/(wolai|example|onetimesecret).com/i.test(url)) return false
       // }
     }
     // 递归终止
