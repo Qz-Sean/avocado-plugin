@@ -18,7 +18,7 @@ export class AvocadoManagement extends plugin {
       priority: 200,
       rule: [
         {
-          reg: `^#?(${Object.keys(phantomTransformation).join('|')})?(变身|切换)！?([\u4e00-\u9fa5]*)`,
+          reg: `^#(${Object.keys(phantomTransformation).join('|')})?(变身|切换)！?([\u4e00-\u9fa5]*)`,
           fnc: 'setGod',
           permission: 'master'
         },
