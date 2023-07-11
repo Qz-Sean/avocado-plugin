@@ -378,7 +378,14 @@ export async function avocadoRender (pendingText, opts = {}) {
     await puppeteerManager.closePage(page)
   } catch (error) {
     await puppeteerManager.close()
-    return `avocadoRender图片生成失败: ${error}`
+    let errorReply = ''
+    if (error.message.includes('net::ERR_CONNECTION_CLOSED')) {
+      errorReply += '无法链接到目标服务器'
+      // 进行相应的处理逻辑
+    } else {
+      errorReply += error.message
+    }
+    return `avocadoRender图片生成失败: ${errorReply}`
   }
   return segment.image(buff)
 }
@@ -479,9 +486,10 @@ export async function filterUrl (input) {
   const urls = cleanedInput.match(regex)
 
   if (!urls) return []
-  const filteredUrls = await Promise.all(urls.map(async url => { return await filterSingleUrl(url) }))
   // logger.warn(filteredUrls)
-  return urls.filter((url, index) => filteredUrls[index])
+  return await Promise.all(urls.map(async url => {
+    return await filterSingleUrl(url)
+  }))
   // return urls.filter(async url => await filterSingleUrl(url))
 }
 

@@ -1,6 +1,7 @@
 import plugin from '../../../lib/plugins/plugin.js'
-import { avocadoRender, getTimeDifference, makeForwardMsg, splitArray } from '../utils/common.js'
+import { avocadoRender, makeForwardMsg, splitArray, initTimer, refreshTimer } from '../utils/common.js'
 import { analyseMovieList, findMovie, getHotMovieList, getMovieDetail, processMovieDetail } from '../utils/movie.js'
+import { timer } from '../utils/const.js'
 
 export class AvocadoMovie extends plugin {
   constructor (e) {
@@ -15,7 +16,7 @@ export class AvocadoMovie extends plugin {
           fnc: 'getHotMovies'
         },
         {
-          reg: `^#?(${global.God}|鳄梨酱?)?影视(#|%)(.+)`,
+          reg: `^#?(${global.God}|鳄梨酱?)?(?:影视|搜电影)(#|%)?(.+)`,
           fnc: 'searchMovie'
         },
         {
@@ -46,10 +47,10 @@ export class AvocadoMovie extends plugin {
 
   async searchMovie (e) {
     this.e = e
-    const regex = new RegExp(`^#?(${global.God}|鳄梨酱?)?影视(#|%)(.+)`)
+    const regex = new RegExp(`^#?(${global.God}|鳄梨酱?)?(?:影视|搜电影)(#|%)?(.+)`)
     const match = e.msg.match(regex)
     // 1精准 2模糊
-    const type = match[2] === '#' ? 1 : 2
+    const type = match[2] === '%' ? 1 : 2
     const keyword = match[3]
     const resList = await findMovie(keyword, e.sender.user_id, type)
     if (resList === 'no related movies' || !resList) {
@@ -59,10 +60,9 @@ export class AvocadoMovie extends plugin {
     // 只有一条搜索结果时,直接开始上下文并发送影片信息
     if (resList.length === 1) {
       const selectedMovie = await getMovieDetail(resList[0].id)
-      const [transformedMoviesDetails, others, textToShow] = processMovieDetail(selectedMovie)
-      const img = await avocadoRender(textToShow, {
-        title: `${transformedMoviesDetails['封面'] ? '![img](' + transformedMoviesDetails['封面'] + ')' : ''}`,
-        caption: '',
+      const [processedMovieDetail, , textOnPic] = processMovieDetail(selectedMovie)
+      const img = await avocadoRender(textOnPic, {
+        title: `${processedMovieDetail['封面'] ? '![img](' + processedMovieDetail['封面'] + ')' : ''}`,
         footer: `<strong><i>可继续选择影片~~<br>回复 00 获取本片剧照及预告<br>${selectedMovie?.comments ? '回复 000 获取本片热门评论<br>' : ''}回复 0 结束会话<i></strong>`,
         renderType: 3
       })
@@ -76,16 +76,18 @@ export class AvocadoMovie extends plugin {
         return false
       }
     } else {
-      let processList = resList.map(item => {
+      let processedList = resList.map(item => {
         const img = `<img src="${item.img}" alt="img">`
         return `${img}<div class="text-container"><span>${item.index}. ${item.nm}</span><br><span>主演：${item.star}</span><br><span>评分：${item.sc}</span></div>`
       })
-      const img = await avocadoRender(splitArray(processList, 2), {
+      const img = await avocadoRender(splitArray(processedList, 2), {
         title: 'Avocado Movie Search',
-        caption: '',
         footer: `<strong><i>共搜到 '${keyword}' ${resList.length}部，你想了解哪一部影片呢~</i></strong>`,
-        renderType: 2
-      }, 'searchMovie')
+        renderType: 2,
+        width: 1920,
+        height: 1080,
+        transformEntity: true
+      })
       this.e.from = 'search'
       await this.e.reply(img)
       this.setContext('pickMe')
@@ -115,7 +117,6 @@ export class AvocadoMovie extends plugin {
     let analyzedList = analyseMovieList(movieList)
     const img = await avocadoRender(splitArray(analyzedList, 2), {
       title: '热映电影',
-      caption: '',
       footer: `<strong><i>最近上映的影片共有${movieList.length}部，你想了解哪一部影片呢~</i></strong>`,
       renderType: 2
     })
@@ -176,16 +177,16 @@ export class AvocadoMovie extends plugin {
           break
         }
       }
-      const [transformedMoviesDetails, others, textToShow] = processMovieDetail(selectedMovie)
+      const [processedMovieDetail, others, textToShow] = processMovieDetail(selectedMovie)
       // 获取周边信息
       if (this.e.msg === '00') {
         await this.reply(await makeForwardMsg(this.e, [others], '鳄门🙏...'))
-        await this.reply('可继续选择影片~~\n回复 000 获取本片热门评论\n回复 0 结束会话, 距本次会话结束还剩' + (getTimeDifference()) + '秒\n¡¡¡( •̀ ᴗ •́ )و!!!')
+        await this.reply('可继续选择影片~~\n回复 000 获取本片热门评论\n回复 0 结束会话, 距本次会话结束还剩' + (refreshTimer(timer.movieCtx).leftTime) + '秒\n¡¡¡( •̀ ᴗ •́ )و!!!')
         return
       }
       // 获取评论 -> 图片形式回复
       if (this.e.msg === '000') {
-        const comments = transformedMoviesDetails['热门评论']
+        const comments = processedMovieDetail['热门评论']
         if (!comments) {
           await this.reply('未获取到热门评论！请重新选择呢。')
           return
@@ -193,17 +194,14 @@ export class AvocadoMovie extends plugin {
         // ...调整排版
         const img = await avocadoRender(comments, {
           title: selectedMovie.nm + '-热门评论',
-          caption: '',
-          footer: `<strong><i>可继续选择影片~~<br>回复 00 获取本片剧照及预告<br>回复 0 结束此次操作, 距本次会话结束还剩${getTimeDifference()}秒<i></strong>`,
-          renderType: 1
+          footer: `<strong><i>可继续选择影片~~<br>回复 00 获取本片剧照及预告<br>回复 0 结束此次操作, 距本次会话结束还剩${refreshTimer(timer.movieCtx).leftTime}秒<i></strong>`
         })
         await this.e.reply(img)
         return
       }
       const img = await avocadoRender(textToShow, {
-        title: `${transformedMoviesDetails['封面'] ? '![img](' + transformedMoviesDetails['封面'] + ')' : ''}`,
-        caption: '',
-        footer: `<strong><i>可继续选择影片~~<br>回复 00 获取本片剧照及预告<br>${selectedMovie?.comments ? '回复 000 获取本片热门评论<br>' : ''}回复 0 结束此次操作, 距本次会话结束还剩${getTimeDifference()}秒<i></strong>`,
+        title: `${processedMovieDetail['封面'] ? '![img](' + processedMovieDetail['封面'] + ')' : ''}`,
+        footer: `<strong><i>可继续选择影片~~<br>回复 00 获取本片剧照及预告<br>${selectedMovie?.comments ? '回复 000 获取本片热门评论<br>' : ''}回复 0 结束此次操作, 距本次会话结束还剩${refreshTimer(timer.movieCtx).leftTime}秒<i></strong>`,
         renderType: 3
       })
       if (img) {
@@ -238,9 +236,9 @@ export class AvocadoMovie extends plugin {
    */
   setContext (type, isGroup = false, time = 180) {
     // 每次调用刷新剩余时间
-    global.remainingTime = time
+    const duration = time
     logger.mark('start ' + type + ' context')
-    getTimeDifference()
+    initTimer(timer.movieCtx, duration)
     let key = this.conKey(isGroup)
     if (!stateArr[key]) stateArr[key] = {}
     stateArr[key][type] = this.e
@@ -283,4 +281,3 @@ export class AvocadoMovie extends plugin {
   }
 }
 let stateArr = {}
-

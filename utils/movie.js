@@ -259,44 +259,44 @@ export function analyseMovieList (movieList) {
     })
 }
 export function processMovieDetail (selectedMovie) {
-  let transformedMoviesDetails = {}
-  let others = []
+  let processedMovieDetail = {}
+  let trailerAndStills  = []
   for (const key in movieKeyMap) {
     if (key === 'index') continue // 跳过'index'键
     const value = selectedMovie[key]
     if (!value) continue // 空值不要
     if (key === 'videoName') {
-      others.push(`${movieKeyMap[key]}: ${value}\n\n`)
+      trailerAndStills.push(`${movieKeyMap[key]}: ${value}\n\n`)
       continue
     }
     if (key === 'comments') {
       if (value && value.length) {
-        transformedMoviesDetails[movieKeyMap[key]] = value.map(item => {
+        processedMovieDetail[movieKeyMap[key]] = value.map(item => {
           return `${item.index}. <span class="nick">${item.nick}：</span>${item.content}${item.hotReply ? '<br><em><span><span class="reply">🗨️' + item.hotReplyNick + '：</span>' + item.hotReply + '</span></em>' : ''}`
         }).join('\n')
       }
       continue
     }
     if (key === 'videourl') {
-      others.push(`${value}`)
-      others.push('\n\n')
+      trailerAndStills.push(`${value}`)
+      trailerAndStills.push('\n\n')
       continue
     }
     if (key === 'photos') {
-      others.push(`${movieKeyMap[key]}: \n`)
+      trailerAndStills.push(`${movieKeyMap[key]}: \n`)
       for (const i of value) {
         const photo = segment.image(i)
-        others.push(photo)
+        trailerAndStills.push(photo)
       }
       continue
     }
-    transformedMoviesDetails[movieKeyMap[key]] = value
+    processedMovieDetail[movieKeyMap[key]] = value
   }
-  // 处理电影详情需要显示的内容
-  let textToShow = Object.keys(transformedMoviesDetails).map(function (key) {
+  // 渲染图片上显示的内容
+  let textOnPic = Object.keys(processedMovieDetail).map(function (key) {
     if (key === '封面') return ''
     if (key === '热门评论') return '' // 暂时不显示
-    return key + '：' + transformedMoviesDetails[key] + '\n'
+    return key + '：' + processedMovieDetail[key] + '\n'
   }).join('')
-  return [transformedMoviesDetails, others, textToShow]
+  return [processedMovieDetail, trailerAndStills, textOnPic]
 }

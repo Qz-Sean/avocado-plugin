@@ -1,7 +1,7 @@
-import { generateRandomHeader, sendPrivateMsg, sleep } from './common.js'
+import { generateRandomHeader, getGptResponse, sendPrivateMsg, sleep } from './common.js'
 import fetch from 'node-fetch'
 import { Config } from './config.js'
-import { ChatGPTAPI } from 'chatgpt'
+import chalk from 'chalk'
 
 async function getRankingLists () {
   let list = await redis.get('AVOCADO_MUSICRANKINGLIST')
@@ -107,14 +107,6 @@ async function getAlbumDetail (albumId) {
  * @returns {Promise<(string|*)[]|boolean>}
  */
 export async function getGreetMsg (listId, greetType) {
-  let proxy
-  if (Config.proxy) {
-    try {
-      proxy = (await import('https-proxy-agent')).default
-    } catch (e) {
-      console.warn('未安装https-proxy-agent，请在插件目录下执行pnpm add https-proxy-agent')
-    }
-  }
   const greetList = await getPlaylistById(listId)
   // logger.warn('goodnightList:', goodnightList)
   const introSong = greetList ? greetList[Math.floor(Math.random() * greetList.length)] : ''
@@ -134,27 +126,8 @@ export async function getGreetMsg (listId, greetType) {
       question = `我们现在在一个群聊中，已经是晚上${hour}:${minute}点了，以你的口吻写一段话告诉群友早点休息，并将这首来自${introSong.artist.join('')}的${introSong.name}推荐给群友。这首歌的歌曲专辑信息是${await getAlbumDetail(introSong.albumId)}，可以简单为群友介绍一下哦。`
       break
   }
-  const newFetch = (url, options = {}) => {
-    const defaultOptions = Config.proxy
-      ? {
-          agent: proxy(Config.proxy)
-        }
-      : {}
-
-    const mergedOptions = {
-      ...defaultOptions,
-      ...options
-    }
-
-    return fetch(url, mergedOptions)
-  }
-  let api = new ChatGPTAPI({
-    apiBaseUrl: Config.apiBaseUrl,
-    apiKey: Config.apiKey,
-    fetch: newFetch
-  })
-  const res = await api.sendMessage(question)
-  return [res.text, introSong.id, introSong.name]
+  const res = await getGptResponse(question)
+  return [res, introSong.id, introSong.name]
 }
 
 /**
@@ -378,6 +351,34 @@ export async function findSong (data = { param: '', id: '', isRandom: false, fro
 }
 
 /**
+ *
+ * @param listId
+ * @param listName
+ * @param userId
+ * @returns {Promise<*|boolean>}
+ */
+export async function getPlayList (listId, listName, userId) {
+  try {
+    const headers = generateRandomHeader()
+    const options = {
+      method: 'GET',
+      headers
+    }
+    const url = `http://110.41.21.181:3000/playlist/detail?id=${listId}`
+    const response = await fetch(url, options)
+    const result = await response.json()
+    if (result.code !== 200) return false
+    const rawList = result.playlist.trackIds
+    if (!rawList.length) return false
+    const list = rawList.map(item => ({ id: item.id }))
+    await redis.set(`AVOCADO:MUSIC_${userId}_${listName}_PLAYLIST`, JSON.stringify(list))
+    return list
+  } catch (err) {
+    logger.error(err)
+    return false
+  }
+}
+/**
  * 获取单曲所有信息
  * @returns {Promise<{}>}
  * @param id
@@ -390,13 +391,14 @@ export async function getMusicDetail (id) {
     resJson = await response.json()
     song = resJson.songs[0]
     songInfo.id = song.id
+    songInfo.isAudible = (song.noCopyrightRcmd === null && song.copyright === 1)
     songInfo.name = song.name
-    songInfo.artist = song.ar.map(item => item.name).join(',')
+    songInfo.artist = song.ar.map(item => item.name)
     songInfo.albumId = song.al.id
     songInfo.pic = song.al.picUrl
     songInfo.fee = song.fee
     songInfo.mv = song.mv
-    songInfo.dt = song.dt
+    songInfo.dt = Math.ceil(song.dt / 1000)
     songInfo.link = 'https://music.163.com/#/song?id=' + song.id
     songInfo.musicUrl = await getMusicUrl(song.id)
     const list = await getCommentsOrLyrics(id, 0)
@@ -569,7 +571,7 @@ export async function getFavList (userID, SingerID) {
     const songList = result.songs
     let mIndex = 0
     const favList = songList.map((item) => {
-      return item.noCopyrightRcmd === null && item.st === 1
+      return item.noCopyrightRcmd === null && item.st !== -1
         ? {
             index: ++mIndex,
             id: item.id,
@@ -590,7 +592,7 @@ export async function getFavList (userID, SingerID) {
 }
 
 export async function avocadoShareMusic (data, target, imgToShare, textMsg, platformCode) {
-  logger.mark('avocadoMusic -> ' + data.name)
+  logger.mark(chalk.greenBright('avocadoShareMusic -> ' + data.name))
   try {
     const platform = platformCode || '163'
     // 单个目标
@@ -640,6 +642,7 @@ export async function avocadoShareMusic (data, target, imgToShare, textMsg, plat
         }
       }
     }
+    return true
   } catch (e) {
     logger.error('avocadoShareMusic: ' + e)
     return false
