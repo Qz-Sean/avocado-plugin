@@ -7,6 +7,7 @@
       src: url('../fonts/9w6ve-4l668.ttf')
     }
     body {
+      font-size:20px;
       width: 100%;
       margin: 0;
       padding: 0;
@@ -30,6 +31,7 @@
       left: 0;
       background-image: linear-gradient(to bottom right,#002f4b,#dc4225);
       opacity: .6;
+      border-radius:10px;
     }
 
     .box {
@@ -44,7 +46,7 @@
       border:1px solid rgba(255,255,255,0.18);
       transition: all .3s ease-in-out;
       /*background:  linear-gradient(135deg,#7117ea,#ea6060);*/
-
+      background-color: transparent;
       /*-webkit-background-clip: text;*/
       /*color: transparent;*/
       /*background-clip: text;*/
@@ -55,6 +57,9 @@
     }
     .title, .footer{
       transition: all .3s ease-in-out;
+    }
+    .footer{
+      margin: 10px 0 3px 0;
     }
     .footer span{
       margin: 10px;
@@ -80,10 +85,10 @@
       /*color: transparent;*/
     }
     .title span{
-      margin: 0 0 10px;
+      margin: 0;
       padding-top: 0px;
-      display: inline-block;
-      white-space: nowrap;
+      /*display: inline-block;*/
+      /*white-space: nowrap;*/
       font-size: 23px;
       min-width: 100px;
     }
@@ -121,7 +126,7 @@
   {{@markdownHtml}}
   <p style="text-align:center">{{@footer}}</p>
 </div>
-<div class="footer" style="text-align: center;margin: 20px 0">
+<div class="footer" style="text-align: center">
   <span>Created By Yunzai-Bot {{@yunZaiVersion}} & Avocado-Plugin {{@pluginVersion}}</span>
 </div>
 </body>

@@ -9,6 +9,7 @@
     body {
       width: 100%;
       margin: 0;
+      background-color: transparent;
       padding: 0;
       font-family: "genshin";
     }
@@ -20,7 +21,9 @@
       background: url('http://unsplash.it/1200x800') center center no-repeat;
       background-size: cover;
     }
-
+    .footer{
+      margin: 10px 0 3px 0;
+    }
     .bg-img:before {
       content: '';
       position: absolute;
@@ -30,6 +33,7 @@
       left: 0;
       background-image: linear-gradient(to bottom right,#002f4b,#dc4225);
       opacity: .6;
+      border-radius:10px;
     }
 
     .box {
@@ -82,7 +86,7 @@
       margin: 0 0 10px;
       padding-top: 0px;
       display: inline-block;
-      white-space: nowrap;
+      /*white-space: nowrap;*/
       font-size: 23px;
       min-width: 100px;
     }
@@ -190,7 +194,7 @@
 </div>
   <p style="text-align:center">{{@footer}}</p>
 </div>
-<div class="footer" style="text-align: center;margin: 20px 0">
+<div class="footer" style="text-align: center;">
   <span>Created By Yunzai-Bot {{@yunZaiVersion}} & Avocado-Plugin {{@pluginVersion}}</span>
 </div>
 </body>
