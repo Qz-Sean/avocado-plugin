@@ -11,6 +11,7 @@ class PuppeteerManager {
       // puppeteerWS: 'ws://browserless:3000'
       puppeteerWS: '',
       headless: 'new',
+      // headless: false,
       args: [
         '--disable-gpu',
         '--disable-setuid-sandbox',

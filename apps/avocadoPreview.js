@@ -1,6 +1,6 @@
 import plugin from '../../../lib/plugins/plugin.js'
 import { timer, urlRegex } from '../utils/const.js'
-import { avocadoRender, filterUrl, initTimer, refreshTimer } from '../utils/common.js'
+import {avocadoRender, filterUrl, initTimer, refreshTimer, sleep} from '../utils/common.js'
 
 export class AvocadoPreview extends plugin {
   constructor (e) {
@@ -62,11 +62,12 @@ export class AvocadoPreview extends plugin {
       //     return false
       //   }
       // } else {
-      // todo 多链接截图，不过好像意义不大
-      url = filterUrl(e.msg.trim().replace(/^#?/, '').replace(/[,，。]/g, '\n'))
+      // todo 多链接预览，不过好像意义不大
+      url = filterUrl(e.msg.trim().replace(/^#?/, ''))
       url = url[0]
       const leftTime = refreshTimer(timer.previewCtx)?.leftTime
-      if (!url.length) return false
+      if (!url?.length) return false
+      if (!leftTime) preUrl = []
       if (preUrl.includes(url) && leftTime > 0) {
         return false
       } else {
@@ -81,7 +82,10 @@ export class AvocadoPreview extends plugin {
 
     // 最多尝试两次
     let img = await avocadoRender('', { title: '网页预览', url })
-    if (typeof img !== 'object') img = await avocadoRender('', { title: '网页预览', url })
+    if (typeof img !== 'object') {
+      await sleep(3000)
+      img = await avocadoRender('', { title: '网页预览', url })
+    }
     e.reply([url, '\n', img])
   }
 }

@@ -9,6 +9,7 @@ import { Config } from './config.js'
 import fetch from 'node-fetch'
 import { ChatGPTAPI } from 'chatgpt'
 import chalk from 'chalk'
+import dns from 'dns'
 
 export async function getSource (e) {
   if (!e.source) return false
@@ -264,6 +265,7 @@ export async function avocadoRender (pendingText, opts = {}) {
   try {
     const start = Date.now()
     await puppeteerManager.init()
+
     const page = await puppeteerManager.newPage()
     if (!url) {
       try {
@@ -446,30 +448,6 @@ export function sleep (ms = 1000) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-// export function getTimeLeft (timerType,invokeTime, durationTime) {
-//   const currentTime = process.hrtime()
-//   // 初始化
-//   if (durationTime) {
-//     global[timerType] = durationTime
-//     global.invokeTime = currentTime
-//     return global[timerType]
-//   }
-//
-//   const previousTime = global.invokeTime
-//   global.invokeTime = currentTime
-//
-//   // 计算距上次调用经过的时间
-//   const diffInSeconds = currentTime[0] - previousTime[0]
-//   const diffInNanoSeconds = currentTime[1] - previousTime[1]
-//   const milliseconds = diffInSeconds * 1000 + diffInNanoSeconds / 1000000
-//
-//   const seconds = milliseconds / 1000
-//   global[timerType] -= seconds
-//
-//   // 返回剩余时间，超时则返回零
-//   return Math.ceil(global[timerType]) || 0
-// }
-
 export function refreshTimer (t) {
   if (!t.invokeTime) return false
   const currentTime = process.hrtime()
@@ -494,21 +472,42 @@ export function initTimer (t, duration) {
   return t.leftTime
 }
 
-export function filterUrl (input) {
+export async function filterUrl (input) {
   const regex = new RegExp(urlRegex.toString().slice(1, -2), 'ig')
-  function filterSingleUrl (url) {
-    url = url.startsWith('http') ? url : 'http://' + url
-    for (const item of urlBlacklist) {
-      if (item.test(url)) {
-        return false
-      }
-    }
-    return !blockedDomains.test(url)
-  }
-  const urls = input.match(regex)
-  if (!urls) {
-    return []
-  }
+  const regex1 = /[\u4e00-\u9fa5\u3000-\u303f\uff01-\uff0f\uff1a-\uff20\uff3b-\uff40\uff5b-\uff65]/g
+  const cleanedInput = input.replace(regex1, ' ')
+  const urls = cleanedInput.match(regex)
 
-  return urls.filter(url => filterSingleUrl(url))
+  if (!urls) return []
+  const filteredUrls = await Promise.all(urls.map(async url => { return await filterSingleUrl(url) }))
+  // logger.warn(filteredUrls)
+  return urls.filter((url, index) => filteredUrls[index])
+  // return urls.filter(async url => await filterSingleUrl(url))
+}
+
+async function filterSingleUrl (url) {
+  url = url.startsWith('http') ? url : 'http://' + url
+  const isBlocked = urlBlacklist.some(item => item.test(url)) || blockedDomains.test(url)
+  const isValidUrl = !!(await getIPAddress(getDomain(url)))
+  return isBlocked ? false : isValidUrl ? url : false
+}
+function getDomain (url) {
+  const domainRegex = /((?:[\u4e00-\u9fa5a-zA-Z0-9-]+\.)+[\u4e00-\u9fa5a-zA-Z]{2,})/
+  const match = url.match(domainRegex)
+  return match ? match[1] : false
+}
+async function getIPAddress (host) {
+  try {
+    return await new Promise((resolve, reject) => {
+      dns.lookup(host, (err, address) => {
+        if (err) {
+          reject(err)
+        } else {
+          resolve(address)
+        }
+      })
+    })
+  } catch (error) {
+    return false
+  }
 }
