@@ -1,4 +1,4 @@
-import { pluginRoot, pluginVersion, urlRegex, yunZaiVersion } from './const.js'
+import { blockedDomains, pluginRoot, pluginVersion, urlBlacklist, urlRegex, yunZaiVersion } from './const.js'
 import path from 'path'
 import puppeteerManager from './puppeteer.js'
 import fs from 'fs'
@@ -6,6 +6,9 @@ import template from 'art-template'
 import { segment } from 'icqq'
 import MarkdownIt from 'markdown-it'
 import { Config } from './config.js'
+import fetch from 'node-fetch'
+import { ChatGPTAPI } from 'chatgpt'
+import chalk from 'chalk'
 
 export async function getSource (e) {
   if (!e.source) return false
@@ -127,6 +130,41 @@ export async function getMasterQQ () {
   return (await import('../../../lib/config/config.js')).default.masterQQ
 }
 
+export async function getGptResponse (question) {
+  try {
+    logger.mark(chalk.blue('[avocado-plugin] Waiting for ChatGPT response...'))
+    let proxy
+    const completionParams = {}
+    completionParams.model = 'gpt-3.5-turbo-0613'
+    let api = new ChatGPTAPI({
+      apiBaseUrl: Config.apiBaseUrl,
+      apiKey: Config.apiKey,
+      debug: false,
+      completionParams,
+      fetch: (url, options = {}) => {
+        const defaultOptions = Config.proxy
+          ? {
+              agent: proxy(Config.proxy)
+            }
+          : {}
+        const mergedOptions = {
+          ...defaultOptions,
+          ...options
+        }
+        return fetch(url, mergedOptions)
+      }
+    })
+    const res = await api.sendMessage(question)
+    if (res) {
+      logger.mark(res.detail.usage)
+      // logger.mark(Object.entries(res.detail.usage).map(([key, value]) => `${key}: ${value}`).join(', '))
+    }
+    return res?.text
+  } catch (e) {
+    logger.error(e)
+    return false
+  }
+}
 /**
  * 给主人发送消息
  * @param msg 消息内容
@@ -209,111 +247,130 @@ export function splitArray (arr, num) {
 /**
  *
  * @param pendingText
- * @param otherInfo
+ * @param {Object} [opts]
  * - renderType： 渲染类型 1. 普通文本渲染 2. 以表格样式渲染 3. 渲染电影详情信息 4. 渲染搜索电影结果详情
- * @returns {Promise<ImageElem|string>}
  */
-export async function avocadoRender (pendingText, otherInfo = { title: '', caption: '', footer: '', renderType: 1 }, from) {
+export async function avocadoRender (pendingText, opts = {}) {
   let tplFile, data, buff
-  let title = otherInfo.title
-  if (title === '') title = Math.random() > 0.5 ? ' Here is Avocado! ' : ' Avocado’s here! '
-  try {
-    // 解析md语法
-    const md = new MarkdownIt({
-      html: true,
-      breaks: true
-    })
-    if (otherInfo.renderType === 1) {
-      tplFile = path.join(pluginRoot, 'resources', 'html', 'text.html')
-      const markdownHtml = md.render(pendingText)
-      data = {
-        title,
-        markdownHtml,
-        footer: otherInfo.footer,
-        pluginVersion,
-        yunZaiVersion
-      }
-    } else if (otherInfo.renderType === 2) {
-      tplFile = path.join(pluginRoot, 'resources', 'html', 'table.html')
-      data = {
-        title,
-        caption: otherInfo.caption,
-        columns: pendingText,
-        footer: otherInfo.footer,
-        pluginVersion,
-        yunZaiVersion
-      }
-    } else if (otherInfo.renderType === 3) {
-      tplFile = path.join(pluginRoot, 'resources', 'html', 'movie.html')
-      const markdownHtml = md.render(pendingText)
-      title = md.render(title)
-      data = {
-        title,
-        markdownHtml,
-        footer: otherInfo.footer,
-        pluginVersion,
-        yunZaiVersion
-      }
-    }
-  } catch (error) {
-    return `avocadoRender解析出错: ${error}`
-  }
+  const renderType = opts.renderType || 1
+  let title = opts.title || (Math.random() > 0.5 ? ' Here is Avocado! ' : ' Avocado’s here! ')
+  let caption = opts.caption || ''
+  let width = opts.width || null
+  let height = opts.height || null
+  let from = opts.from || ''
+  let footer = opts.footer || ''
+  let transformEntity = opts.transformEntity || false
+  let url = opts.url || ''
   try {
     const start = Date.now()
     await puppeteerManager.init()
     const page = await puppeteerManager.newPage()
-    await page.goto(`file://${tplFile}`, { waitUntil: 'networkidle0' })
-    const templateContent = await fs.promises.readFile(tplFile, 'utf-8')
-    const render = template.compile(templateContent)
-    let htmlContent = render(data)
-    // 当传入内容包含<>且没有经过mdrender时需要转义实体至正常标签
-    if (from === 'searchMovie') {
-      htmlContent = htmlContent.replace(/&#(\d+);/g, function (match, dec) {
-        return String.fromCharCode(dec)
-      })
-    }
-    // 方便调试样式
-    const fullPath = path.join(pluginRoot, 'resources', 'html', 'render.html')
-    await fs.writeFileSync(fullPath, htmlContent)
-    await page.setContent(htmlContent)
-    if (title === null) { // 搜索歌曲
-      await page.evaluate(() => {
-        let elements = document.getElementsByClassName('title')
-        while (elements.length > 0) {
-          elements[0].remove()
-        }
-        let regex = /\sby\s/gi
-        elements = document.querySelectorAll('*')
-        for (let element of elements) {
-          // 获取只包含一个文本节点的节点
-          if (element.childNodes.length === 1 && element.childNodes[0].nodeType === Node.TEXT_NODE) {
-            const text = element.childNodes[0].nodeValue
-            // 替换斜体
-            element.innerHTML = text.replace(regex, ' <em>by</em> ')
+    if (!url) {
+      try {
+      // 解析md语法
+        const md = new MarkdownIt({
+          html: true,
+          breaks: true
+        })
+        if (renderType === 1) {
+          tplFile = path.join(pluginRoot, 'resources', 'html', 'text.html')
+          const markdownHtml = md.render(pendingText)
+          data = {
+            title,
+            markdownHtml,
+            footer,
+            pluginVersion,
+            yunZaiVersion
+          }
+        } else if (renderType === 2) {
+          tplFile = path.join(pluginRoot, 'resources', 'html', 'table.html')
+          data = {
+            title,
+            caption,
+            columns: pendingText,
+            footer,
+            pluginVersion,
+            yunZaiVersion
+          }
+        } else if (renderType === 3) {
+          tplFile = path.join(pluginRoot, 'resources', 'html', 'movie.html')
+          const markdownHtml = md.render(pendingText)
+          title = md.render(title)
+          data = {
+            title,
+            markdownHtml,
+            footer,
+            pluginVersion,
+            yunZaiVersion
           }
         }
+      } catch (error) {
+        return `avocadoRender解析出错: ${error}`
+      }
+      await page.goto(`file://${tplFile}`, { waitUntil: 'networkidle0' })
+      const templateContent = await fs.promises.readFile(tplFile, 'utf-8')
+      const render = template.compile(templateContent)
+      let htmlContent = render(data)
+      // 当传入内容包含<>且没有经过mdrender时需要转义实体至正常标签
+      if (transformEntity) {
+        htmlContent = htmlContent.replace(/&#(\d+);/g, function (match, dec) {
+          return String.fromCharCode(dec)
+        })
+      }
+      const fullPath = path.join(pluginRoot, 'resources', 'html', 'render.html')
+      await fs.writeFileSync(fullPath, htmlContent)
+      await page.setContent(htmlContent)
+      if (from === 'searchMusic') { // 搜索歌曲
+        await page.evaluate(() => {
+          let elements = document.getElementsByClassName('title')
+          while (elements.length > 0) {
+            elements[0].remove()
+          }
+          let regex = /\sby\s/gi
+          elements = document.querySelectorAll('*')
+          for (let element of elements) {
+          // 获取只包含一个文本节点的节点
+            if (element.childNodes.length === 1 && element.childNodes[0].nodeType === Node.TEXT_NODE) {
+              const text = element.childNodes[0].nodeValue
+              // 替换斜体
+              element.innerHTML = text.replace(regex, ' <em>by</em> ')
+            }
+          }
+        })
+      }
+    } else {
+      logger.info('avocadoPreviewUrl: ', url)
+      url = url.trim().replace(/^#?/, '')
+      url = url.startsWith('http') ? url : 'http://' + url
+      await page.goto(url, { timeout: 120000 })
+      await page.waitForTimeout(1000 * 5)
+    }
+
+    if (width && height) {
+      const data = {
+        width,
+        height,
+        deviceScaleFactor: Number(Config.deviceScaleFactor) || 1
+      }
+      await page.setViewport(data)
+    } else {
+      const { width, height } = await page.$eval('body', (element) => {
+        const { width, height } = element.getBoundingClientRect()
+        return { width, height }
+      })
+      await page.setViewport({
+        width: Math.round((url ? width + 300 : width)) || 1920,
+        height: Math.round(height) || 1080,
+        deviceScaleFactor: Number(Config.deviceScaleFactor) || 1
       })
     }
-    let { width, height } = await page.$eval('body', (element) => {
-      const { width, height } = element.getBoundingClientRect()
-      return { width, height }
-    })
-    // 打补丁...
-    if (from === 'searchMovie') {
-      width = 1920
-      height = 1080
-    }
-    await page.setViewport({
-      width: Math.round(width) || 1920,
-      height: Math.round(height) || 1080,
-      deviceScaleFactor: Number(Config.deviceScaleFactor) || 1
-    })
     const body = await page.$('body')
-    buff = await body.screenshot({
+    const captureParameters = {
       type: 'jpeg',
       quality: 85
-    })
-    if (title === null && otherInfo.renderType === 1) { title = '发癫' }
+    }
+    if (url) captureParameters.fullpage = true
+    buff = await body.screenshot(captureParameters)
     const kb = (buff.length / 1024).toFixed(2) + 'kb'
     logger.mark(`[图片生成][${title?.length > 20 ? '图片' : title}][${puppeteerManager.screenshotCount}次]${kb} ${logger.green(`${Date.now() - start}ms`)}`)
     await puppeteerManager.closePage(page)
@@ -389,24 +446,69 @@ export function sleep (ms = 1000) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-export function getTimeDifference () {
+// export function getTimeLeft (timerType,invokeTime, durationTime) {
+//   const currentTime = process.hrtime()
+//   // 初始化
+//   if (durationTime) {
+//     global[timerType] = durationTime
+//     global.invokeTime = currentTime
+//     return global[timerType]
+//   }
+//
+//   const previousTime = global.invokeTime
+//   global.invokeTime = currentTime
+//
+//   // 计算距上次调用经过的时间
+//   const diffInSeconds = currentTime[0] - previousTime[0]
+//   const diffInNanoSeconds = currentTime[1] - previousTime[1]
+//   const milliseconds = diffInSeconds * 1000 + diffInNanoSeconds / 1000000
+//
+//   const seconds = milliseconds / 1000
+//   global[timerType] -= seconds
+//
+//   // 返回剩余时间，超时则返回零
+//   return Math.ceil(global[timerType]) || 0
+// }
+
+export function refreshTimer (t) {
+  if (!t.invokeTime) return false
   const currentTime = process.hrtime()
 
-  if (global.invokeTme === null) {
-    global.invokeTme = currentTime
-    return global.remainingTime
-  }
+  const previousTime = t.invokeTime
+  t.invokeTime = currentTime
 
-  const previousTime = global.invokeTme
-  global.invokeTme = currentTime
-
+  // 计算距上次调用经过的时间
   const diffInSeconds = currentTime[0] - previousTime[0]
   const diffInNanoSeconds = currentTime[1] - previousTime[1]
   const milliseconds = diffInSeconds * 1000 + diffInNanoSeconds / 1000000
-
   const seconds = milliseconds / 1000
 
-  global.remainingTime -= seconds
+  t.leftTime = Math.ceil(t.leftTime - seconds) || 0
+  return t
+}
 
-  return Math.ceil(global.remainingTime)
+export function initTimer (t, duration) {
+  const currentTime = process.hrtime()
+  t.leftTime = duration
+  t.invokeTime = currentTime
+  return t.leftTime
+}
+
+export function filterUrl (input) {
+  const regex = new RegExp(urlRegex.toString().slice(1, -2), 'ig')
+  function filterSingleUrl (url) {
+    url = url.startsWith('http') ? url : 'http://' + url
+    for (const item of urlBlacklist) {
+      if (item.test(url)) {
+        return false
+      }
+    }
+    return !blockedDomains.test(url)
+  }
+  const urls = input.match(regex)
+  if (!urls) {
+    return []
+  }
+
+  return urls.filter(url => filterSingleUrl(url))
 }

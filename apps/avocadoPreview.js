@@ -1,7 +1,6 @@
 import plugin from '../../../lib/plugins/plugin.js'
-import { urlRegex } from '../utils/const.js'
-import puppeteerManager from '../utils/puppeteer.js'
-import { segment } from 'icqq'
+import { timer, urlRegex } from '../utils/const.js'
+import { avocadoRender, filterUrl, initTimer, refreshTimer } from '../utils/common.js'
 
 export class AvocadoPreview extends plugin {
   constructor (e) {
@@ -63,47 +62,27 @@ export class AvocadoPreview extends plugin {
       //     return false
       //   }
       // } else {
-      const regex = new RegExp(urlRegex.toString().slice(1, -2), 'i')
-      url = e.msg.trim().replace(/^#?/, '').replace(/[,，。]/g, '').match(regex)[0]
-      if (!url) { return false }
-      if (/(wolai|example|onetimesecret).com/i.test(url)) return false
+      // todo 多链接截图，不过好像意义不大
+      url = filterUrl(e.msg.trim().replace(/^#?/, '').replace(/[,，。]/g, '\n'))
+      url = url[0]
+      const leftTime = refreshTimer(timer.previewCtx)?.leftTime
+      if (!url.length) return false
+      if (preUrl.includes(url) && leftTime > 0) {
+        return false
+      } else {
+        // 相同的链接十分钟内只处理一次
+        initTimer(timer.previewCtx, 60 * 10)
+        preUrl.push(url)
+      }
       // }
     }
     // 递归终止
-    if (Array.isArray(url)) return true
-    const start = Date.now()
-    await puppeteerManager.init()
-    const page = await puppeteerManager.newPage()
-    try {
-      url = url.trim().replace(/^#?/, '')
-      url = url.startsWith('http') ? url : 'http://' + url
-      logger.info('avocadoPreviewUrl: ', url)
-      await page.goto(url, { timeout: 120000 })
-      await page.waitForTimeout(1000 * 5)
-      // await page.waitForNavigation({ waitUntil: 'networkidle2' })
-      const { width, height } = await page.$eval('body', (element) => {
-        const { width, height } = element.getBoundingClientRect()
-        return { width, height }
-      })
-      await page.setViewport({
-        width: Math.round(width + 300),
-        height: Math.round(height),
-        deviceScaleFactor: 3
-      })
-      const buff = await page.screenshot({
-        type: 'jpeg',
-        quality: 85,
-        fullPage: true
-      })
-      const kb = (buff.length / 1024).toFixed(2) + 'kb'
-      logger.mark(`[图片生成][网页预览][${puppeteerManager.screenshotCount}次]${kb} ${logger.green(`${Date.now() - start}ms`)}`)
-      await puppeteerManager.closePage(page)
-      await this.reply([url + '\n', segment.image(buff)])
-      return false
-    } catch (error) {
-      await this.reply(`图片生成失败:${error}`)
-      await puppeteerManager.close()
-      return false
-    }
+    // if (Array.isArray(url)) return true
+
+    // 最多尝试两次
+    let img = await avocadoRender('', { title: '网页预览', url })
+    if (typeof img !== 'object') img = await avocadoRender('', { title: '网页预览', url })
+    e.reply([url, '\n', img])
   }
 }
+let preUrl = []

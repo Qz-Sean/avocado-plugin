@@ -1,10 +1,8 @@
 import path from 'path'
-import { Config } from './config.js'
+import {Config} from './config.js'
 import cfg from '../../../lib/config/config.js'
+import chalk from 'chalk'
 
-global.invokeTme = null
-global.remainingTime = null
-global.guoba = []
 global.hasSend = []
 global.God = Config.OHMYGOD === '' ? '鳄梨酱' : Config.OHMYGOD
 // from 3399280843@qq.com@SmallK111407
@@ -13,7 +11,14 @@ export const pluginName = path.basename(path.join(import.meta.url, '../../'))
 export const pluginRoot = path.join(_path, 'plugins', pluginName)
 export const urlRegex = /(?:(?:https?|ftp):\/\/)?(?:\S+(?::\S*)?@)?(?:((?:(?:[a-z0-9\u00a1-\u4dff\u9fd0-\uffff][a-z0-9\u00a1-\u4dff\u9fd0-\uffff_-]{0,62})?[a-z0-9\u00a1-\u4dff\u9fd0-\uffff]\.)+(?:[a-z\u00a1-\u4dff\u9fd0-\uffff]{2,}\.?))(?::\d{2,5})?)(?:\/[\w\u00a1-\u4dff\u9fd0-\uffff$-_.+!*'(),%]+)*(?:\?(?:[\w\u00a1-\u4dff\u9fd0-\uffff$-_.+!*(),%:@&=]|(?:[\[\]])|(?:[\u00a1-\u4dff\u9fd0-\uffff]))*)?(?:#(?:[\w\u00a1-\u4dff\u9fd0-\uffff$-_.+!*'(),;:@&=]|(?:[\[\]]))*)?\/?/i
 export const pluginVersion = Config.version
+export const removeItem = chalk.rgb(110, 155, 197)
 export const yunZaiVersion = `v${cfg.package.version}`
+export const urlBlacklist = [
+  /\.(pdf|doc|docx|ppt|pptx|xls|xlsx)$/i,
+  /porn/i
+]
+export const blockedDomains = /(wolai|example|onetimesecret).com/i
+
 // 欢迎补充
 export const phantomTransformation = {
   '黑夜之力，赐予我力量！': '黑暗的力量已经注入你的身体，从此你将成为黑夜的主宰！\n黑夜啊，听从我的召唤，降临于这片大地吧！',
@@ -178,3 +183,22 @@ export const translateLangSupports = [
   { code: 'id', label: '印度尼西亚语', abbr: '印', alphabet: 'Y' },
   { code: 'zh-CHS', label: '中文', abbr: '中', alphabet: 'Z' }
 ]
+export const timer = {
+  musicCtx: {
+    leftTime: null,
+    invokeTime: null
+  },
+  playlistItem: {
+    leftTime: null,
+    invokeTime: null,
+    timeoutId: null
+  },
+  movieCtx: {
+    leftTime: null,
+    invokeTime: null
+  },
+  previewCtx: {
+    leftTime: null,
+    invokeTime: null
+  }
+}
