@@ -11,6 +11,10 @@ import { ChatGPTAPI } from 'chatgpt'
 import chalk from 'chalk'
 import dns from 'dns'
 
+// 在这里使用适合的压缩算法对buffer进行压缩
+// 这里只是一个示例，使用gzip进行压缩
+import zlib from 'zlib'
+
 export async function getSource (e) {
   if (!e.source) return false
   let sourceReply
@@ -348,33 +352,37 @@ export async function avocadoRender (pendingText, opts = {}) {
       await page.waitForTimeout(1000 * 5)
     }
 
+    const viewportOpts = {}
     if (width && height) {
-      const data = {
-        width,
-        height,
-        deviceScaleFactor: Number(Config.deviceScaleFactor) || 1
-      }
-      await page.setViewport(data)
+      viewportOpts.width = width
+      viewportOpts.height = height
+      viewportOpts.deviceScaleFactor = Number(Config.deviceScaleFactor) || 1
     } else {
       const { width, height } = await page.$eval('body', (element) => {
         const { width, height } = element.getBoundingClientRect()
         return { width, height }
       })
-      await page.setViewport({
-        width: Math.round((url ? width + 300 : width)) || 1920,
-        height: Math.round(height) || 1080,
-        deviceScaleFactor: Number(Config.deviceScaleFactor) || 1
-      })
+      viewportOpts.width = Math.round((url ? width + 300 : width)) || 1920
+      viewportOpts.height = Math.round(height) || 1080
+      viewportOpts.deviceScaleFactor = Number(Config.deviceScaleFactor) || 1
     }
+    await page.setViewport(viewportOpts)
     const body = await page.$('body')
-    const captureParameters = {
+    const captureOpts = {
       type: 'jpeg',
       quality: 85
     }
-    if (url) captureParameters.fullpage = true
-    buff = await body.screenshot(captureParameters)
-    const kb = (buff.length / 1024).toFixed(2) + 'kb'
-    logger.mark(`[图片生成][${title?.length > 20 ? '图片' : title}][${puppeteerManager.screenshotCount}次]${kb} ${logger.green(`${Date.now() - start}ms`)}`)
+    if (url) captureOpts.fullpage = true
+    buff = await body.screenshot(captureOpts)
+    let kb = (buff.length / 1024).toFixed(2)
+    if (kb > 4096) {
+      viewportOpts.deviceScaleFactor = 1
+      captureOpts.quality = 100
+      await page.setViewport(viewportOpts)
+      buff = await body.screenshot(captureOpts)
+      kb = '[new]' + (buff.length / 1024).toFixed(2)
+    }
+    logger.mark(`[图片生成][${title?.length > 20 ? '图片' : title}][${puppeteerManager.screenshotCount}次]${kb}kb ${logger.green(`${Date.now() - start}ms`)}`)
     await puppeteerManager.closePage(page)
   } catch (error) {
     await puppeteerManager.close()
