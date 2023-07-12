@@ -71,8 +71,10 @@ export class AvocadoPreview extends plugin {
       if (preUrl.includes(url) && leftTime > 0) {
         return false
       } else {
+        await e.reply('收到请求，准备处理url。。。', false, { recallMsg: 2 })
         // 相同的链接十分钟内只处理一次
         initTimer(timer.previewCtx, 60 * 10)
+        // 没分群组处理，懒..
         preUrl.push(url)
       }
       // }

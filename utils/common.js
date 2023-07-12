@@ -348,7 +348,7 @@ export async function avocadoRender (pendingText, opts = {}) {
       logger.info('avocadoPreviewUrl: ', url)
       url = url.trim().replace(/^#?/, '')
       url = url.startsWith('http') ? url : 'http://' + url
-      await page.goto(url, { timeout: 120000 })
+      await page.goto(url, { timeout: 1000 * 60 })
       await page.waitForTimeout(1000 * 5)
     }
 
@@ -376,6 +376,7 @@ export async function avocadoRender (pendingText, opts = {}) {
     buff = await body.screenshot(captureOpts)
     let kb = (buff.length / 1024).toFixed(2)
     if (kb > 4096) {
+      logger.mark('avocadoRender => 图片过大，准备二次处理')
       viewportOpts.deviceScaleFactor = 1
       captureOpts.quality = 100
       await page.setViewport(viewportOpts)
@@ -388,8 +389,9 @@ export async function avocadoRender (pendingText, opts = {}) {
     await puppeteerManager.close()
     let errorReply = ''
     if (error.message.includes('net::ERR_CONNECTION_CLOSED')) {
-      errorReply += '无法链接到目标服务器'
-      // 进行相应的处理逻辑
+      errorReply += '无法链接到目标服务器！'
+    } else if (error.message.includes('Navigation timeout')) {
+      errorReply += '网络超时！'
     } else {
       errorReply += error.message
     }
@@ -476,7 +478,7 @@ export function refreshTimer (t) {
   const milliseconds = diffInSeconds * 1000 + diffInNanoSeconds / 1000000
   const seconds = milliseconds / 1000
 
-  t.leftTime = Math.ceil(t.leftTime - seconds) || 0
+  t.leftTime = Math.max(Math.ceil(t.leftTime - seconds), 0)
   return t
 }
 

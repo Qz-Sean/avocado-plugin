@@ -141,8 +141,10 @@ export class AvocadoMusic extends plugin {
 
           notAudible = !next.isAudible
           if (notAudible && playlist) {
-            playlist.splice([currentIndex - 1], 1)
+            playlist.splice([currentIndex - 1], 1) // 移除没有版权的曲目
             logger.mark(removeItem(`[avocado-plugin] remove ${next.name} from playlist: ${listName}`))
+          } else {
+            playlist[currentIndex - 1] = next // 用获取到的完整信息替换
           }
           currentIndex--
         }
@@ -200,6 +202,8 @@ export class AvocadoMusic extends plugin {
         if (notAudible && list) {
           list.splice([currentIndex - 1], 1)
           logger.mark(removeItem(`[avocado-plugin] remove ${picked.name} from playlist: ${listName}`))
+        } else {
+          playlist[currentIndex - 1] = picked // 用获取到的完整信息替换
         }
         currentIndex--
       }
@@ -687,59 +691,63 @@ export class AvocadoMusic extends plugin {
    * @returns {Promise<boolean>}
    */
   async randomMusic (e) {
-    if (/(下一首|切歌|听歌|换歌|下一曲)/.test(e.msg)) {
-      const lastOrder = await redis.get(`AVOCADO:MUSIC_${e.sender.user_id}_PICKEDSINGER`)
-      // 优先级最高，若想播放其他歌单需要先停止自动歌单
-      if (apCtxObj !== null && e.sender.user_id === apCtxObj.sender.user_id) {
-        const listName = apCtxObj.listName
-        if (timer.playlistItem.timeoutId) clearTimeout(timer.playlistItem.timeoutId)
-        const playlist = await redis.get(`AVOCADO:MUSIC_${e.sender.user_id}_${listName}_PLAYLIST`)
-        const list = JSON.parse(playlist)
-        let picked
-        let notAudible = true
-        let currentIndex = list.length
-        // 遍历找到可播放的歌曲
-        while (notAudible && currentIndex > 0) {
-          const randomIndex = Math.floor(Math.random() * currentIndex);
+    try {
+      if (/(下一首|切歌|听歌|换歌|下一曲)/.test(e.msg)) {
+        const lastOrder = await redis.get(`AVOCADO:MUSIC_${e.sender.user_id}_PICKEDSINGER`)
+        // 优先级最高，若想播放其他歌单需要先停止自动歌单
+        if (apCtxObj !== null && e.sender.user_id === apCtxObj.sender.user_id) {
+          const listName = apCtxObj.listName
+          if (timer.playlistItem.timeoutId) clearTimeout(timer.playlistItem.timeoutId)
+          const playlist = JSON.parse(await redis.get(`AVOCADO:MUSIC_${e.sender.user_id}_${listName}_PLAYLIST`))
+          let picked
+          let notAudible = true
+          let currentIndex = playlist.length
+          // 遍历找到可播放的歌曲
+          while (notAudible && currentIndex > 0) {
+            const randomIndex = Math.floor(Math.random() * currentIndex);
 
-          [list[currentIndex - 1], list[randomIndex]] = [list[randomIndex], list[currentIndex - 1]]
-          picked = await getMusicDetail(list[currentIndex - 1].id)
-          logger.warn(list[currentIndex - 1])
-          logger.warn(picked.name + picked.id + ': ' + picked.isAudible)
+            [playlist[currentIndex - 1], playlist[randomIndex]] = [playlist[randomIndex], playlist[currentIndex - 1]]
+            picked = await getMusicDetail(playlist[currentIndex - 1].id)
 
-          notAudible = !picked.isAudible
-          if (notAudible && list) {
-            list.splice([currentIndex - 1], 1)
-            logger.mark(removeItem(`[avocado-plugin] remove ${picked.name} from playlist: ${listName}`))
+            notAudible = !picked.isAudible
+            if (notAudible && playlist) {
+              playlist.splice([currentIndex - 1], 1)
+              logger.mark(removeItem(`[avocado-plugin] remove ${picked.name} from playlist: ${listName}`))
+            } else {
+              playlist[currentIndex - 1] = picked // 用获取到的完整信息替换
+            }
+            currentIndex--
           }
-          currentIndex--
+          await redis.set(`AVOCADO:MUSIC_${e.sender.user_id}_${listName}_PLAYLIST`, JSON.stringify(playlist))
+          const duration = picked.dt
+          const res = await avocadoShareMusic(picked, e.group_id)
+          if (!res) {
+            await e.reply('播放失败')
+            return false
+          }
+          initTimer(timer.playlistItem, duration)
+          await this.autoPlayNext()
+        } else if (lastOrder) {
+          e.msg = '听' + lastOrder
+          await this.pickMusic(e)
         }
-        await redis.set(`AVOCADO:MUSIC_${e.sender.user_id}_${listName}_PLAYLIST`, JSON.stringify(list))
-        const duration = picked.dt
-        const res = await avocadoShareMusic(picked, e.group_id)
-        if (!res) {
-          await e.reply('播放失败')
+      } else {
+        const userData = await redis.get(`AVOCADO:MUSIC_${e.sender.user_id}_FAVSONGLIST`)
+        const songList = JSON.parse(userData)
+        if (!songList) {
+          await this.reply('我还不知道你喜欢听谁的歌呢ο(=•ω＜=)ρ⌒☆\n通过 #设置歌手 告诉我吧~')
           return false
         }
-        initTimer(timer.playlistItem, duration)
-        await this.autoPlayNext()
-      } else if (lastOrder) {
-        e.msg = '听' + lastOrder
-        await this.pickMusic(e)
+        const selectedMusic = songList[Math.floor(songList.length * Math.random())]
+        const song = await getMusicDetail(selectedMusic.id)
+        if (song) {
+          await redis.set(`AVOCADO:MUSIC_${e.sender.user_id}_PICKED`, JSON.stringify(song), {EX: 60 * 3})
+          await avocadoShareMusic(song, e.group_id || e.sender.user_id)
+        }
       }
-    } else {
-      const userData = await redis.get(`AVOCADO:MUSIC_${e.sender.user_id}_FAVSONGLIST`)
-      const songList = JSON.parse(userData)
-      if (!songList) {
-        await this.reply('我还不知道你喜欢听谁的歌呢ο(=•ω＜=)ρ⌒☆\n通过 #设置歌手 告诉我吧~')
-        return false
-      }
-      const selectedMusic = songList[Math.floor(songList.length * Math.random())]
-      const song = await getMusicDetail(selectedMusic.id)
-      if (song) {
-        await redis.set(`AVOCADO:MUSIC_${e.sender.user_id}_PICKED`, JSON.stringify(song), { EX: 60 * 3 })
-        await avocadoShareMusic(song, e.group_id || e.sender.user_id)
-      }
+    } catch (err) {
+      logger.error(err)
+      return false
     }
     return true
   }
