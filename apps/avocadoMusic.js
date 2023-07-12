@@ -25,7 +25,12 @@ export class AvocadoMusic extends plugin {
       priority: 300,
       rule: [
         {
-          reg: `^#?(鳄梨酱?|${global.God})?(听|音乐|点歌|来首|来一首)(#|%)?(随机|热门)?(华语|欧美|韩国|日本)?(.*)`,
+          reg: `^#?(鳄梨酱?|${global.God})?(音乐|点歌|来首|来一首)(#|%)?(随机|热门)?(华语|欧美|韩国|日本)?(.*)`,
+          fnc: 'pickMusic'
+        },
+        {
+          // for fun
+          reg: '听(#|%)?(随机|热门)?(华语|欧美|韩国|日本)?(.*)',
           fnc: 'pickMusic'
         },
         {
@@ -258,7 +263,7 @@ export class AvocadoMusic extends plugin {
   async pickMusic (e) {
     // 绑定this.e, 供context()开启当前plugin上下文
     this.e = e
-    const regex = new RegExp(`^#?(鳄梨酱?|${global.God})?(听|音乐|点歌|来首|来一首)(#|%)?(随机|热门)?(华语|欧美|韩国|日本)?(.*)`)
+    const regex = new RegExp(`#?(鳄梨酱?|${global.God})?(听|音乐|点歌|来首|来一首)(#|%)?(随机|热门)?(华语|欧美|韩国|日本)?(.*)`)
     const match = this.e.msg.trim().match(regex)
     const isImageOrder = match[3] ? match[3] === '%' : false // 正常点歌将时使用图片点歌的形式
     const selectType = match[4] ? match[4] : ''
@@ -414,7 +419,7 @@ export class AvocadoMusic extends plugin {
         const song = await findSong(data)
         if (Array.isArray(song)) {
           const text = splitArray(song.map(obj => `${obj.index}: ${obj.name} by ${obj.artist}`), 2)
-          await this.e.reply('哎呀，找不到您想听的歌曲啦~(>_<)~不要难过，看看下面的列表吧！说不定您会在这里找到自己心仪的歌曲呢！(≧∇≦)ﾉ 发送对应序号即可选择歌曲哦~ 或者发送 0 取消点歌呦~(＾Ｕ＾)ノ~ＹＯ')
+          await this.e.reply('哎呀，找不到您想听的歌曲啦~(>_<)~不要难过，看看下面的列表吧！说不定您会在这里找到自己心仪的歌曲呢！(≧∇≦)ﾉ 发送对应序号即可选择歌曲哦~ 或者发送 0 取消点歌呦~(＾Ｕ＾)ノ~ＹＯ', false, { recallMsg: 5 })
           const img = await avocadoRender(text, {
             renderType: 2,
             from: 'searchMusic'
