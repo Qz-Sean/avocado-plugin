@@ -82,13 +82,12 @@ export class AvocadoPreview extends plugin {
     // 递归终止
     // if (Array.isArray(url)) return true
 
-    // 最多尝试两次
     let img = await avocadoRender('', { title: '网页预览', url })
-    if (typeof img !== 'object') {
-      await sleep(3000)
-      img = await avocadoRender('', { title: '网页预览', url })
-    }
-    await e.reply([url, '\n', img], false, { recallMsg: `${img.includes('avocadoRender图片生成失败') ? 8 : 0}` })
+    // if (typeof img !== 'object') {
+    //   await sleep(3000)
+    //   img = await avocadoRender('', { title: '网页预览', url })
+    // }
+    await e.reply([url, '\n', img], false, { recallMsg: `${typeof img !== 'object' && img.includes('avocadoRender图片生成失败') ? 8 : 0}` })
     return false
   }
 }
