@@ -1,6 +1,6 @@
 import plugin from '../../../lib/plugins/plugin.js'
 import { timer, urlRegex } from '../utils/const.js'
-import { avocadoRender, filterUrl, initTimer, refreshTimer, sleep } from '../utils/common.js'
+import { avocadoRender, filterUrl, initTimer, refreshTimer } from '../utils/common.js'
 
 export class AvocadoPreview extends plugin {
   constructor (e) {

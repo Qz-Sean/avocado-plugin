@@ -11,10 +11,6 @@ import { ChatGPTAPI } from 'chatgpt'
 import chalk from 'chalk'
 import dns from 'dns'
 
-// 在这里使用适合的压缩算法对buffer进行压缩
-// 这里只是一个示例，使用gzip进行压缩
-import zlib from 'zlib'
-
 export async function getSource (e) {
   if (!e.source) return false
   let sourceReply

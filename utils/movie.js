@@ -79,6 +79,7 @@ export async function getMovieDetail (movieId) {
       }
     })
     detail.comments = await getMovieComments(movieId)
+    logger.mark('√ Get ' + detail.nm)
     return detail
   } catch (error) {
     logger.error(error)
