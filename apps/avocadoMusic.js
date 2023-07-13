@@ -268,6 +268,7 @@ export class AvocadoMusic extends plugin {
     // 绑定this.e, 供context()开启当前plugin上下文
     this.e = e
     const regex = new RegExp(`#?(鳄梨酱?|${global.God})?(听|音乐|点歌|来首|来一首)(#|%)?(随机|热门)?(华语|欧美|韩国|日本)?(.*)`)
+    if (e.msg.split('听')[0].length > 8) return false
     const match = this.e.msg.trim().match(regex)
     const isImageOrder = match[3] ? match[3] === '%' : false // 正常点歌将时使用图片点歌的形式
     const selectType = match[4] ? match[4] : ''
@@ -741,7 +742,7 @@ export class AvocadoMusic extends plugin {
         const selectedMusic = songList[Math.floor(songList.length * Math.random())]
         const song = await getMusicDetail(selectedMusic.id)
         if (song) {
-          await redis.set(`AVOCADO:MUSIC_${e.sender.user_id}_PICKED`, JSON.stringify(song), {EX: 60 * 3})
+          await redis.set(`AVOCADO:MUSIC_${e.sender.user_id}_PICKED`, JSON.stringify(song), { EX: 60 * 3 })
           await avocadoShareMusic(song, e.group_id || e.sender.user_id)
         }
       }
