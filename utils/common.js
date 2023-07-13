@@ -390,8 +390,8 @@ export async function avocadoRender (pendingText, opts = {}) {
     let errorReply = ''
     if (error.message.includes('net::ERR_CONNECTION_CLOSED')) {
       errorReply += '无法链接到目标服务器！'
-    } else if (error.message.includes('Navigation timeout')) {
-      errorReply += '网络超时！'
+    } else if (error.message.includes('Navigation timeout') || error.message.includes('net::ERR_CONNECTION_TIMED_OUT')) {
+      errorReply += '连接超时！'
     } else {
       errorReply += error.message
     }

@@ -88,7 +88,7 @@ export class AvocadoPreview extends plugin {
       await sleep(3000)
       img = await avocadoRender('', { title: '网页预览', url })
     }
-    await e.reply([url, '\n', img])
+    await e.reply([url, '\n', img], false, { recallMsg: `${img.includes('avocadoRender图片生成失败') ? 8 : 0}` })
     return false
   }
 }
