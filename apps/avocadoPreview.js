@@ -20,7 +20,7 @@ export class AvocadoPreview extends plugin {
   }
 
   async avocadoPreview (e, param = '') {
-    if (e.isGroup && (e.msg.startsWith('#') || e.msg.startsWith('/？'))) return false
+    if (e.isGroup && (e.message[0].type === 'xml' || e.msg.startsWith('#') || e.msg.startsWith('/？'))) return false
     if (e.isPrivate && !e.msg.startsWith('#')) return false
     let url
     if (param.length) {
