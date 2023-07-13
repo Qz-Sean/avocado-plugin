@@ -66,7 +66,6 @@ export class AvocadoUpdate extends plugin {
    * @returns
    */
   async runUpdate (isForce) {
-    logger.warn(typeof this.e)
     let command = 'git -C ./plugins/avocado-plugin/ pull --no-rebase'
     if (isForce) {
       command = `git -C ./plugins/avocado-plugin/ checkout . && ${command}`
