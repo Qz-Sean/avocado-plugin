@@ -36,38 +36,14 @@ export class AvocadoManagement extends plugin {
           reg: '^#?(我要变身！|查看咒语)$',
           fnc: 'checkSpells',
           permission: 'master'
-        },
-        {
-          reg: '^#(刷新|重新获取)(电影|影片)信息$',
-          fnc: 'reloadMovieList',
-          permission: 'master'
         }
       ]
     })
   }
 
-  async reloadMovieList (e) {
-    await this.reply('更新数据中...此过程需要较长时间，请稍等...')
-    try {
-      const movieList = await getHotMovieList()
-      await redis.set('AVOCADO:MOVIE_DETAILS', JSON.stringify(movieList))
-      await redis.set('AVOCADO:MOVIE_EXPIRE', 1, { EX: 60 * 60 * 24 * 3 })
-      if (movieList.length) {
-        await this.reply('获取成功!本次共获取到' + movieList.length + '部影片信息!')
-        return true
-      } else {
-        await this.reply('获取失败!返回的数据为空!')
-        return false
-      }
-    } catch (error) {
-      this.reply(`啊哦!${error}`)
-      return false
-    }
-  }
-
   async checkSpells (e) {
-    await e.reply(inspiringWords[Math.floor(Math.random() * inspiringWords.length)] + '\n' + Object.keys(phantomTransformation).join('变身！'))
-    await e.reply('示例：黑夜之力，赐予我力量！变身！憨憨酱！\n-> 注意此处将不会匹配标点符号，所以全局关键词将被替换为"憨憨酱"')
+    await e.reply(inspiringWords[Math.floor(Math.random() * inspiringWords.length)] + '\n' + Object.keys(phantomTransformation).map(item => item + '变身！').join('\n'))
+    await e.reply('示例：' + Object.keys(phantomTransformation)[0] + '变身！憨憨酱！\n-> 注意此处将不会匹配标点符号，所以全局关键词将被替换为"憨憨酱"')
     return true
   }
 

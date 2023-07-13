@@ -21,13 +21,15 @@ export class AvocadoMovie extends plugin {
         },
         {
           reg: '^#(刷新|重新获取)(电影|影片)信息$',
-          fnc: 'reloadMovieInfo'
+          fnc: 'reloadMovieList',
+          permission: 'master'
         }
       ]
     })
   }
 
-  async reloadMovieInfo (e) {
+  async reloadMovieList (e) {
+    await e.reply('更新数据中...此过程需要较长时间，请稍等...')
     let movieList
     try {
       movieList = await getHotMovieList()
@@ -41,7 +43,7 @@ export class AvocadoMovie extends plugin {
       await e.reply('出错了！')
       return false
     }
-    await e.reply('成功了！')
+    await e.reply('获取成功!本次共获取到' + movieList.length + '部影片信息!')
     return true
   }
 
@@ -88,7 +90,6 @@ export class AvocadoMovie extends plugin {
         height: 1080,
         transformEntity: true
       })
-      this.e.from = 'search'
       await this.e.reply(img)
       this.setContext('pickMe')
     }
