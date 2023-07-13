@@ -322,6 +322,14 @@ export async function avocadoRender (pendingText, opts = {}) {
       const fullPath = path.join(pluginRoot, 'resources', 'html', 'render.html')
       await fs.writeFileSync(fullPath, htmlContent)
       await page.setContent(htmlContent)
+      if (from === 'psycho') {
+        await page.evaluate(() => {
+          let elements = document.getElementsByClassName('title')
+          while (elements.length > 0) {
+            elements[0].remove()
+          }
+        })
+      }
       if (from === 'searchMusic') { // 搜索歌曲
         await page.evaluate(() => {
           let elements = document.getElementsByClassName('title')
