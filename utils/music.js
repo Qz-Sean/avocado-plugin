@@ -364,6 +364,7 @@ export async function getPlayList (listId, listName, userId) {
       method: 'GET',
       headers
     }
+    // /playlist/track/all?id=24381616&limit=10&offset=1 获取歌单内所有歌曲（详细信息）
     const url = `http://110.41.21.181:3000/playlist/detail?id=${listId}`
     const response = await fetch(url, options)
     const result = await response.json()
@@ -592,7 +593,7 @@ export async function getFavList (userID, SingerID) {
 }
 
 export async function avocadoShareMusic (data, target, imgToShare, textMsg, platformCode) {
-  logger.mark(chalk.greenBright('avocadoShareMusic -> ' + data.name))
+  logger.mark(chalk.greenBright('avocadoShareMusic -> ' + data.name + ' to ' + target))
   try {
     const platform = platformCode || '163'
     // 单个目标
@@ -600,8 +601,7 @@ export async function avocadoShareMusic (data, target, imgToShare, textMsg, plat
       let t
       if (Bot.getFriendList().get(target)) {
         if (Config.wyy) {
-          data.userId = target
-          await sendMusic(data)
+          await sendMusic(data, { userId: target })
         } else {
           t = await Bot.pickFriend(target)
           await t.shareMusic(platform, data.id)
@@ -617,8 +617,7 @@ export async function avocadoShareMusic (data, target, imgToShare, textMsg, plat
         await Bot.send
       } else if (Bot.getGroupList().get(target)) {
         if (Config.wyy) {
-          data.groupId = target
-          await sendMusic(data)
+          await sendMusic(data, { groupId: target })
         } else {
           t = await Bot.pickGroup(target)
           await t.shareMusic(platform, data.id)
@@ -687,7 +686,14 @@ export async function getCommentsOrLyrics (musicObjectOrMusicId, type = 0) {
     }
   }
 }
-export async function sendMusic (data) {
+
+/**
+ *
+ * @param {Object} data - 音乐元素
+ * @param to
+ * @returns {Promise<boolean>}
+ */
+export async function sendMusic (data, to) {
   if (!Bot.sendOidb) return false
 
   let appid
@@ -751,31 +757,31 @@ export async function sendMusic (data) {
 
   prompt = prompt + title + '-' + artist
 
-  let recvUin
-  let sendType
+  let recvUin = to?.groupId ? to.groupId : to.userId
+  let sendType = to?.groupId ? 1 : 0
   let recvGuildId = 0
 
-  if (data?.groupId) {
-    recvUin = data.groupId
-    sendType = 1
-  } else {
-    recvUin = data?.userId
-    sendType = 0
-    // if (e.isGroup && toUin == null) { // 群聊
-    //   recvUin = e.group.gid
-    //   sendType = 1
-    // } else if (e.guild_id) { // 频道
-    //   recvUin = Number(e.channel_id)
-    //   recvGuildId = BigInt(e.guild_id)
-    //   sendType = 3
-    // } else if (toUin == null) { // 私聊
-    //   recvUin = e.friend.uid
-    //   sendType = 0
-    // } else { // 指定号码私聊
-    //   recvUin = toUin
-    //   sendType = 0
-    // }
-  }
+  // if (opts?.groupId) {
+  //   recvUin = opts.groupId
+  //   sendType = 1
+  // } else {
+  //   recvUin = opts?.userId
+  //   sendType = 0
+  // if (e.isGroup && toUin == null) { // 群聊
+  //   recvUin = e.group.gid
+  //   sendType = 1
+  // } else if (e.guild_id) { // 频道
+  //   recvUin = Number(e.channel_id)
+  //   recvGuildId = BigInt(e.guild_id)
+  //   sendType = 3
+  // } else if (toUin == null) { // 私聊
+  //   recvUin = e.friend.uid
+  //   sendType = 0
+  // } else { // 指定号码私聊
+  //   recvUin = toUin
+  //   sendType = 0
+  // }
+  // }
   let body = {
     1: appid,
     2: 1,
