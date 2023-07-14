@@ -377,15 +377,19 @@ export async function avocadoRender (pendingText, opts = {}) {
       quality: 85
     }
     if (url) captureOpts.fullpage = true
+    // 处理知乎的弹窗
+    const closeButton = await page.$('.Modal-closeButton')
+    if (closeButton) await closeButton.click()
+
     buff = await body.screenshot(captureOpts)
     let kb = (buff.length / 1024).toFixed(2)
     if (kb > 4096) {
-      logger.mark('avocadoRender => 图片过大，准备二次处理')
+      logger.mark(chalk.magentaBright('avocadoRender => 图片过大，准备二次处理'))
       viewportOpts.deviceScaleFactor = 1
       captureOpts.quality = 100
       await page.setViewport(viewportOpts)
       buff = await body.screenshot(captureOpts)
-      kb = '[new]' + (buff.length / 1024).toFixed(2)
+      kb = chalk.magentaBright('[new]') + (buff.length / 1024).toFixed(2)
     }
     logger.mark(`[图片生成][${title?.length > 20 ? '图片' : title}][${puppeteerManager.screenshotCount}次]${kb}kb ${logger.green(`${Date.now() - start}ms`)}`)
     await puppeteerManager.closePage(page)
@@ -495,7 +499,7 @@ export function initTimer (t, duration) {
 
 export async function filterUrl (input) {
   const regex = new RegExp(urlRegex.toString().slice(1, -2), 'ig')
-  const regex1 = /[\u4e00-\u9fa5\u3000-\u303f\uff01-\uff0f\uff1a-\uff20\uff3b-\uff40\uff5b-\uff65]/g
+  const regex1 = /[\u4e00-\u9fa5\u3000-\u303f\uff01-\uff0f\uff1a-\uff20\uff3b-\uff40\uff5b-\uff65\u0029\u007D\u003E]/g
   const cleanedInput = input.replace(regex1, ' ')
   const urls = cleanedInput.match(regex)
 

@@ -16,7 +16,7 @@ export const pluginVersion = Config.version
 export const removeItem = chalk.rgb(110, 155, 197)
 export const yunZaiVersion = `v${cfg.package.version}`
 export const urlBlacklist = [
-  /\.(pdf|doc|docx|ppt|pptx|xls|xlsx|js|error|log)$/i,
+  /\.(pdf|doc|docx|ppt|pptx|xls|xlsx|js|error|log|md)$/i,
   /porn/i
 ]
 export const blockedDomains = /(wolai|example|onetimesecret).com/i
