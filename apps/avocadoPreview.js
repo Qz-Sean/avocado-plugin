@@ -21,7 +21,7 @@ export class AvocadoPreview extends plugin {
 
   async avocadoPreview (e, param = '') {
     if (e.isGroup && (e.message[0].type === 'xml' || e.msg.startsWith('#') || e.msg.startsWith('/？'))) return false
-    if (e.isPrivate && !e.msg.startsWith('#')) return false
+    if (e.isPrivate && !e.msg.startsWith('#')) return false // 私聊需要带#避免抢指令
     let url
     if (param.length) {
       url = param
@@ -63,12 +63,13 @@ export class AvocadoPreview extends plugin {
       //   }
       // } else {
       // todo 多链接预览，不过好像意义不大
+      const enforceFlag = e.msg.startsWith('#') // 强制预览
       url = await filterUrl(e.msg.trim().replace(/^#?/, ''))
       url = url[0]
       const leftTime = refreshTimer(timer.previewCtx)?.leftTime
       if (!url?.length) return false
       if (!leftTime) preUrl = []
-      if (preUrl.includes(url) && leftTime > 0) {
+      if (preUrl.includes(url) && leftTime > 0 && !enforceFlag) {
         return false
       } else {
         await e.reply('收到请求，准备处理url。。。', false, { recallMsg: 2 })
