@@ -356,7 +356,7 @@ export async function avocadoRender (pendingText, opts = {}) {
       response = await page.goto(url, { timeout: 1000 * 60 })
       await page.waitForTimeout(1000 * 5)
     }
-    if (response.status() === 404) throw new Error('404')
+    if (url && response.status() === 404) throw new Error('404')
     const viewportOpts = {}
     if (width && height) {
       viewportOpts.width = width
