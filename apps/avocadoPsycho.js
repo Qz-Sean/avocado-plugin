@@ -131,7 +131,7 @@ export class AvocadoPsycho extends plugin {
             await Bot.sendGroupMsg(groupId, replyMsg)
           } else {
             replyMsg = replyMsg.split('\n').map(item => '# ' + item + '\n').join('')
-            const img = await avocadoRender(replyMsg, { title: null, caption: '', footer: '', renderType: 1 })
+            const img = await avocadoRender(replyMsg, { from: 'psycho' })
             if (img) {
               await Bot.sendGroupMsg(groupId, img)
             }
