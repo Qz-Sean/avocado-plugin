@@ -12,7 +12,7 @@ export class AvocadoPreview extends plugin {
       rule: [
         {
           // 私聊使用在指令开头添加#
-          reg: new RegExp(`#?${urlRegex.toString().slice(1, -2)}`, 'i'),
+          reg: new RegExp(`${'[！!]?#?' + urlRegex.toString().slice(1, -2)}`, 'i'),
           fnc: 'avocadoPreview'
         }
       ]
@@ -63,8 +63,8 @@ export class AvocadoPreview extends plugin {
       //   }
       // } else {
       // todo 多链接预览，不过好像意义不大
-      const enforceFlag = e.msg.startsWith('#') // 强制预览
-      url = await filterUrl(e.msg.trim().replace(/^#?/, ''))
+      const enforceFlag = e.msg.startsWith('！') || e.msg.startsWith('!') // 强制预览
+      url = await filterUrl(e.msg.trim().replace(/^[!！]?#?/, ''))
       url = url[0]
       const leftTime = refreshTimer(timer.previewCtx)?.leftTime
       if (!url?.length) return false
