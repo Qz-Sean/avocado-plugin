@@ -252,7 +252,7 @@ export function splitArray (arr, num) {
  * - renderType： 渲染类型 1. 普通文本渲染 2. 以表格样式渲染 3. 渲染电影详情信息 4. 渲染搜索电影结果详情
  */
 export async function avocadoRender (pendingText, opts = {}) {
-  let tplFile, data, buff
+  let tplFile, data, buff, response
   const renderType = opts.renderType || 1
   let title = opts.title || (Math.random() > 0.5 ? ' Here is Avocado! ' : ' Avocado’s here! ')
   let caption = opts.caption || ''
@@ -267,6 +267,7 @@ export async function avocadoRender (pendingText, opts = {}) {
     await puppeteerManager.init()
 
     const page = await puppeteerManager.newPage()
+    // 渲染本地图片
     if (!url) {
       try {
       // 解析md语法
@@ -352,10 +353,10 @@ export async function avocadoRender (pendingText, opts = {}) {
       logger.info('avocadoPreviewUrl: ', url)
       url = url.trim().replace(/^#?/, '')
       url = url.startsWith('http') ? url : 'http://' + url
-      await page.goto(url, { timeout: 1000 * 60 })
+      response = await page.goto(url, { timeout: 1000 * 60 })
       await page.waitForTimeout(1000 * 5)
     }
-
+    if (response.status() === 404) throw new Error('404')
     const viewportOpts = {}
     if (width && height) {
       viewportOpts.width = width
@@ -380,7 +381,6 @@ export async function avocadoRender (pendingText, opts = {}) {
     // 处理知乎的弹窗
     const closeButton = await page.$('.Modal-closeButton')
     if (closeButton) await closeButton.click()
-
     buff = await body.screenshot(captureOpts)
     let kb = (buff.length / 1024).toFixed(2)
     if (kb > 4096) {
@@ -400,6 +400,8 @@ export async function avocadoRender (pendingText, opts = {}) {
       errorReply += '无法链接到目标服务器！'
     } else if (error.message.includes('Navigation timeout') || error.message.includes('net::ERR_CONNECTION_TIMED_OUT')) {
       errorReply += '连接超时！'
+    } else if (error.message.includes('404')) {
+      errorReply += '404辣！！！！'
     } else {
       errorReply += error.message
     }
