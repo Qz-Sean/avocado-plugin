@@ -373,6 +373,7 @@ export async function avocadoRender (pendingText, opts = {}) {
     }
     await page.setViewport(viewportOpts)
     const body = await page.$('body')
+    const bodyHeight = await page.$eval('body', body => { return body.offsetHeight })
     const captureOpts = {
       type: 'jpeg',
       quality: 85
@@ -381,14 +382,14 @@ export async function avocadoRender (pendingText, opts = {}) {
     // 处理知乎的弹窗
     const closeButton = await page.$('.Modal-closeButton')
     if (closeButton) await closeButton.click()
-    buff = await body.screenshot(captureOpts)
+    buff = bodyHeight < 1080 ? await page.screenshot(captureOpts) : await body.screenshot(captureOpts)
     let kb = (buff.length / 1024).toFixed(2)
     if (kb > 4096) {
       logger.mark(chalk.magentaBright('avocadoRender => 图片过大，准备二次处理'))
       viewportOpts.deviceScaleFactor = 1
       captureOpts.quality = 100
       await page.setViewport(viewportOpts)
-      buff = await body.screenshot(captureOpts)
+      buff = bodyHeight < 1080 ? await page.screenshot(captureOpts) : await body.screenshot(captureOpts)
       kb = chalk.magentaBright('[new]') + (buff.length / 1024).toFixed(2)
     }
     logger.mark(`[图片生成][${title?.length > 20 ? '图片' : title}][${puppeteerManager.screenshotCount}次]${kb}kb ${logger.green(`${Date.now() - start}ms`)}`)

@@ -314,8 +314,7 @@ export async function findSong (data = { param: '', id: '', isRandom: false, fro
       // 随机但没有传入id ==> 即参数不是歌手
       song = result?.result?.songs?.[Math.floor(Math.random() * result?.result?.songs.length)]
       id = song?.id
-    } else
-    {
+    } else {
       logger.mark('avocadoMusic -> 正常点歌')
       if (data.param.includes(',')) { // 精确查找
         const [a, b] = data.param.split(',')
