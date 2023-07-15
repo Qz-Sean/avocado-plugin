@@ -357,11 +357,12 @@ export async function avocadoRender (pendingText, opts = {}) {
       await page.waitForTimeout(1000 * 5)
     }
     if (url && response.status() === 404) throw new Error('404')
-    const viewportOpts = {}
+    const viewportOpts = {
+      deviceScaleFactor: Number(Config.deviceScaleFactor) || 1
+    }
     if (width && height) {
       viewportOpts.width = width
       viewportOpts.height = height
-      viewportOpts.deviceScaleFactor = Number(Config.deviceScaleFactor) || 1
     } else {
       const { width, height } = await page.$eval('body', (element) => {
         const { width, height } = element.getBoundingClientRect()
@@ -369,27 +370,43 @@ export async function avocadoRender (pendingText, opts = {}) {
       })
       viewportOpts.width = Math.round((url ? width + 300 : width)) || 1920
       viewportOpts.height = Math.round(height) || 1080
-      viewportOpts.deviceScaleFactor = Number(Config.deviceScaleFactor) || 1
     }
-    await page.setViewport(viewportOpts)
-    const body = await page.$('body')
-    const bodyHeight = await page.$eval('body', body => { return body.offsetHeight })
     const captureOpts = {
       type: 'jpeg',
       quality: 85
     }
-    if (url) captureOpts.fullpage = true
+    // if (url) {
+    // captureOpts.fullPage = true
+    // } else {
+    await page.setViewport(viewportOpts)
+    // }
+
+    const body = await page.$('body')
     // 处理知乎的弹窗
     const closeButton = await page.$('.Modal-closeButton')
     if (closeButton) await closeButton.click()
-    buff = bodyHeight < 1080 ? await page.screenshot(captureOpts) : await body.screenshot(captureOpts)
+    const contentHeight = await page.evaluate(() => {
+      return Math.max(
+        document.body.scrollHeight,
+        document.documentElement.scrollHeight,
+        document.body.offsetHeight,
+        document.documentElement.offsetHeight,
+        document.body.clientHeight,
+        document.documentElement.clientHeight
+      )
+    })
+    if (url) viewportOpts.height = contentHeight
+    await page.setViewport(viewportOpts)
+    buff = url ? await page.screenshot(captureOpts) : await body.screenshot(captureOpts)
     let kb = (buff.length / 1024).toFixed(2)
-    if (kb > 4096) {
+    for (let i = 0, n = 100; i < 5; i++) {
+      if (kb <= 4096) break
+      n -= 5
       logger.mark(chalk.magentaBright('avocadoRender => 图片过大，准备二次处理'))
       viewportOpts.deviceScaleFactor = 1
-      captureOpts.quality = 100
+      captureOpts.quality = n
       await page.setViewport(viewportOpts)
-      buff = bodyHeight < 1080 ? await page.screenshot(captureOpts) : await body.screenshot(captureOpts)
+      buff = url ? await page.screenshot(captureOpts) : await body.screenshot(captureOpts)
       kb = chalk.magentaBright('[new]') + (buff.length / 1024).toFixed(2)
     }
     logger.mark(`[图片生成][${title?.length > 20 ? '图片' : title}][${puppeteerManager.screenshotCount}次]${kb}kb ${logger.green(`${Date.now() - start}ms`)}`)
