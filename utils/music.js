@@ -265,7 +265,7 @@ export async function getOrderSongList (userId, order, limit) {
  * @returns {Promise<{}|boolean>}
  */
 export async function findSong (data = { param: '', id: '', isRandom: false, from: '' }) {
-  const url = `http://110.41.21.181:3000/cloudsearch?keywords=${data.param}&limit=50`
+  const url = `http://110.41.21.181:3000/cloudsearch?keywords=${data.param}&limit=80`
   try {
     const headers = generateRandomHeader()
     const options = {
@@ -288,7 +288,7 @@ export async function findSong (data = { param: '', id: '', isRandom: false, fro
         logger.mark('avocadoMusic -> 随机点歌')
         // 处理搜id有概率搜不到的问题
         song = result?.result?.songs.find(song => song.id === data.id)
-        id = song?.id
+        id = song?.id || result?.result?.songs[Math.floor(Math.random() * result?.result?.songs.length)]
       }
       // wrongFind
       if (data.from === 'reChoose') {
@@ -314,7 +314,8 @@ export async function findSong (data = { param: '', id: '', isRandom: false, fro
       // 随机但没有传入id ==> 即参数不是歌手
       song = result?.result?.songs?.[Math.floor(Math.random() * result?.result?.songs.length)]
       id = song?.id
-    } else {
+    } else
+    {
       logger.mark('avocadoMusic -> 正常点歌')
       if (data.param.includes(',')) { // 精确查找
         const [a, b] = data.param.split(',')
