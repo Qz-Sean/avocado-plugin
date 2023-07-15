@@ -259,7 +259,7 @@ export async function getOrderSongList (userId, order, limit) {
  * 获取歌曲信息
  * @param {object} data
  * - param：必填，不支持id搜歌，可以是歌曲名或歌曲名+歌手的组合
- * - id：选填，使用该参数时需指定来源'from'
+ * - id：选填，使用该参数时需指定来源 'from'
  * - isRandom：选填，是否随机点歌
  * - from： 选填，如果需要使用id参数，则必须指定该参数，以便更好处理搜索结果。ps：现在来看，意义不大 emmm
  * @returns {Promise<{}|boolean>}
@@ -288,32 +288,32 @@ export async function findSong (data = { param: '', id: '', isRandom: false, fro
         logger.mark('avocadoMusic -> 随机点歌')
         // 处理搜id有概率搜不到的问题
         song = result?.result?.songs.find(song => song.id === data.id)
-        id = song.id
+        id = song?.id
       }
       // wrongFind
       if (data.from === 'reChoose') {
         logger.mark('avocadoMusic -> 第二次点歌')
         // 处理搜id有概率搜不到的问题
         song = result?.result?.songs.find(song => song.id === data.id)
-        id = song.id
+        id = song?.id
       }
       if (data.from === 'image') {
         logger.mark('avocadoMusic -> 图片点歌')
         // 处理搜id有概率搜不到的问题
         song = result?.result?.songs.find(song => song.id === data.id)
-        id = song.id
+        id = song?.id
       }
       if (data.from === 'goodnight' || data.from === 'goodAfternoon' || data.from === 'goodMorning') {
         logger.mark('avocadoMusic -> 问好点歌')
         // 处理搜id有概率搜不到的问题
         song = result?.result?.songs.find(song => song.id === data.id)
-        id = song.id
+        id = song?.id
       }
     } else if (!data.id && data.isRandom) {
       logger.mark('avocadoMusic -> 随机歌名点歌')
       // 随机但没有传入id ==> 即参数不是歌手
       song = result?.result?.songs?.[Math.floor(Math.random() * result?.result?.songs.length)]
-      id = song.id
+      id = song?.id
     } else {
       logger.mark('avocadoMusic -> 正常点歌')
       if (data.param.includes(',')) { // 精确查找
