@@ -385,19 +385,24 @@ export async function avocadoRender (pendingText, opts = {}) {
     // 处理知乎的弹窗
     const closeButton = await page.$('.Modal-closeButton')
     if (closeButton) await closeButton.click()
-    const contentHeight = await page.evaluate(() => {
-      return Math.max(
+    const [bodyHeight, wholeHeight] = await page.evaluate(() => {
+      return [Math.max(
         document.body.scrollHeight,
-        document.documentElement.scrollHeight,
         document.body.offsetHeight,
+        document.body.clientHeight
+      ), Math.max(
+        document.documentElement.scrollHeight,
         document.documentElement.offsetHeight,
-        document.body.clientHeight,
         document.documentElement.clientHeight
-      )
+      )]
     })
-    if (url) viewportOpts.height = contentHeight
+    if (url) {
+      viewportOpts.width = 1920
+      viewportOpts.height = bodyHeight < 1080 ? 1080 : wholeHeight
+    }
     await page.setViewport(viewportOpts)
     buff = url ? await page.screenshot(captureOpts) : await body.screenshot(captureOpts)
+    // buff = bodyHeight < 1080 ? await body.screenshot(captureOpts) : await page.screenshot(captureOpts)
     let kb = (buff.length / 1024).toFixed(2)
     for (let i = 0, n = 100; i < 5; i++) {
       if (kb <= 4096) break
@@ -409,7 +414,7 @@ export async function avocadoRender (pendingText, opts = {}) {
       buff = url ? await page.screenshot(captureOpts) : await body.screenshot(captureOpts)
       kb = chalk.magentaBright('[new]') + (buff.length / 1024).toFixed(2)
     }
-    logger.mark(`[图片生成][${title?.length > 20 ? '图片' : title}][${puppeteerManager.screenshotCount}次]${kb}kb ${logger.green(`${Date.now() - start}ms`)}`)
+    logger.mark(`[图片生成][${title?.length > 20 ? '图片' : title}][${puppeteerManager.screenshotCount}次]${chalk.blue(kb + 'kb')} ${chalk.cyan(viewportOpts.width + '×' + viewportOpts.height + 'px')} ${logger.green(`${Date.now() - start}ms`)}`)
     await puppeteerManager.closePage(page)
   } catch (error) {
     await puppeteerManager.close()

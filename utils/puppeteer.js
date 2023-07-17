@@ -78,7 +78,6 @@ class PuppeteerManager {
   }
 
   async newPage () {
-    if (!this.browser) await this.init()
     return await this.browser.newPage().catch((err) => logger.error(err))
   }
 
