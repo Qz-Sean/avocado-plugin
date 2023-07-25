@@ -19,7 +19,7 @@ export const urlBlacklist = [
   /\.(pdf|doc|docx|ppt|pptx|xls|xlsx|js|error|log|md)$/i,
   /porn/i
 ]
-export const blockedDomains = /(wolai|example|onetimesecret).com/i
+export const blockedDomains = /(wolai|example|onetimesecret|cdn\.waifu)\.(com|im)/i
 
 // 欢迎补充
 export const phantomTransformation = {
