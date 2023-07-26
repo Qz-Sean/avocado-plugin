@@ -105,6 +105,12 @@ const panel = {
           min: 1,
           max: 10
         }
+      },
+      {
+        field: 'greetSwitch',
+        label: '是否打开入群欢迎',
+        bottomHelpMessage: '对新人进行友好♂的问候。',
+        component: 'Switch'
       }
     ],
     // 获取配置数据方法（用于前端填充显示数据）

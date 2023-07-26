@@ -151,7 +151,7 @@ export class AvocadoPsycho extends plugin {
  * @param {string} dataSource - 数据源
  * @param {number} wordLimit - 字数限制
  */
-export async function getBonkersBabble (GodName = '', dataSource = '', wordLimit = 0) {
+export async function getBonkersBabble (GodName = '', dataSource = 'native', wordLimit = 0) {
   let replyMsg = ''
   const fullPath = path.join(pluginRoot, 'resources', 'json', 'psycho.json')
   syncPath(fullPath, '[]')

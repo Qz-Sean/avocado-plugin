@@ -24,5 +24,6 @@
   "psychoKey": "",
   "onsetGroups": [],
   "isAutoShareMusic": true,
-  "deviceScaleFactor": "1"
+  "deviceScaleFactor": "1",
+  "greetSwitch": true
 }
