@@ -52,6 +52,9 @@ class PuppeteerManager {
     try {
       this.browser = await puppeteer.connect({ browserURL })
     } catch (e) {
+      if (Config.proxy) {
+        this.config.args.push('--proxy-server=' + Config.proxy)
+      }
       /** 初始化puppeteer */
       this.browser = await puppeteer.launch(this.config).catch((err) => {
         logger.error(err.toString())

@@ -111,6 +111,12 @@ const panel = {
         label: '是否打开入群欢迎',
         bottomHelpMessage: '对新人进行友好♂的问候。',
         component: 'Switch'
+      },
+      {
+        field: 'proxy',
+        label: 'http代理',
+        bottomHelpMessage: '需要可填，预览网页时使用。',
+        component: 'Input'
       }
     ],
     // 获取配置数据方法（用于前端填充显示数据）

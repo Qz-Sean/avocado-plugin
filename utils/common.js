@@ -11,6 +11,8 @@ import { ChatGPTAPI } from 'chatgpt'
 import chalk from 'chalk'
 import dns from 'dns'
 
+// import sharp from 'sharp'
+
 export async function getSource (e) {
   if (!e.source) return false
   let sourceReply
@@ -262,6 +264,7 @@ export async function avocadoRender (pendingText, opts = {}) {
   let footer = opts.footer || ''
   let transformEntity = opts.transformEntity || false
   let url = opts.url || ''
+  // const cropsArr = []
   try {
     const start = Date.now()
     await puppeteerManager.init()
@@ -402,7 +405,25 @@ export async function avocadoRender (pendingText, opts = {}) {
     }
     await page.setViewport(viewportOpts)
     buff = url ? await page.screenshot(captureOpts) : await body.screenshot(captureOpts)
-    // buff = bodyHeight < 1080 ? await body.screenshot(captureOpts) : await page.screenshot(captureOpts)
+    // if (url && buff) {
+    // // 将Buffer转换为Sharp对象
+    //   const image = sharp(buff)
+    //
+    //   // 计算需要切割的次数
+    //   const numCrops = Math.ceil(viewportOpts.height / 3500)
+    //   // 切割图片并保存
+    //   logger.warn(cropsArr.length, numCrops)
+    //   for (let i = 0; i < numCrops; i++) {
+    //     const cropHeight = Math.min(3500, viewportOpts.height - i * 3500)
+    //     logger.warn(1, cropHeight)
+    //     const top = ((i + 1) * 3500)
+    //     logger.warn(top)
+    //     const cropBuffer = await image.extract({ left: 0, top: 3500, width: viewportOpts.width * viewportOpts.deviceScaleFactor, height: cropHeight * viewportOpts.deviceScaleFactor }).toBuffer()
+    //     const img = segment.image(cropBuffer)
+    //     cropsArr.push(img)
+    //   }
+    //   logger.warn(cropsArr.length, numCrops)
+    // }
     let kb = (buff.length / 1024).toFixed(2)
     for (let i = 0, n = 100; i < 5; i++) {
       if (kb <= 4096) break
@@ -431,6 +452,7 @@ export async function avocadoRender (pendingText, opts = {}) {
     return `avocadoRender图片生成失败: ${errorReply}`
   }
   return segment.image(buff)
+  // return cropsArr.length ? cropsArr : segment.image(buff)
 }
 
 export function generateArray (length) {
