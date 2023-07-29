@@ -30,7 +30,7 @@ export class AvocadoRuleALL extends plugin {
       name: '鳄梨酱！！！ => 日常',
       dsc: '鳄梨酱！！！',
       event: 'message',
-      priority: 200,
+      priority: 3,
       rule: [
         {
           reg: `^#?(${global.God}|鳄梨酱?)([!！]{3}|帮助)$`,

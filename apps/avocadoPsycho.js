@@ -12,6 +12,7 @@ export class AvocadoPsycho extends plugin {
       name: '鳄梨酱！！！ => 发癫',
       dsc: '鳄梨酱！！！',
       event: 'message',
+      // 全局监听，低优先级
       priority: 6000,
       rule: [
         {
