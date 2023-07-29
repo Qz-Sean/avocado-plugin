@@ -22,7 +22,7 @@ import {
 } from '../utils/const.js'
 import puppeteerManager from '../utils/puppeteer.js'
 import { AvocadoPsycho } from './avocadoPsycho.js'
-import {AvocadoPreview} from "./avocadoPreview.js";
+import { AvocadoPreview } from './avocadoPreview.js'
 
 export class AvocadoRuleALL extends plugin {
   constructor (e) {
@@ -49,7 +49,7 @@ export class AvocadoRuleALL extends plugin {
           fnc: 'avocadoWeather'
         },
         {
-          reg: `^#?((${global.God}|鳄梨酱?)?#发[癫|电|疯](.+))`,
+          reg: `^#?((${global.God}|鳄梨酱?)?#发[癫|电|疯](.*))`,
           fnc: 'avocadoPsycho'
         }
       ]
@@ -57,8 +57,14 @@ export class AvocadoRuleALL extends plugin {
   }
 
   async avocadoPsycho (e) {
-    const regex = new RegExp(`^#?((${global.God}|鳄梨酱?)?#发[癫电疯](.+))`)
-    e.msg = e.msg.match(regex)[3]
+    if (e.at) {
+      const at = e.group.pickMember(e.at)
+      at.poke()
+      e.msg = at.info?.card || at.info?.nickname
+    } else {
+      const regex = new RegExp(`^#?((${global.God}|鳄梨酱?)?#发[癫电疯](.+))`)
+      e.msg = e.msg.match(regex)[3]
+    }
     await new AvocadoPsycho().avocadoPsycho(e)
   }
 
