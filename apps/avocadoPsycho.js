@@ -165,7 +165,7 @@ export async function getBonkersBabble (GodName = '', dataSource = 'native', wor
   // 不存在则返回[], psychoData 存在 则 isExit === true
   if (dataSource === 'api' || dataSource === '') {
     // let url = `https://xiaobapi.top/api/xb/api/onset.php?name=${GOD}`
-    let url = `https://api.caonm.net/api/fab/f?msg=${GodName}&key=${Config.psychoKey}`
+    let url = `https://api.lolimi.cn/api/fab/f?msg=${GodName}&key=${Config.psychoKey}`
     try {
       const headers = generateRandomHeader()
       const options = {
