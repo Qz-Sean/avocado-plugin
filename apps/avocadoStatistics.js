@@ -27,7 +27,7 @@ export class AvocadoStatistics extends plugin {
           fnc: 'statisticEvent'
         },
         {
-          reg: `^#(?:${global.God}|鳄梨酱?)?(?:查看)?(.*)(接龙|投票)(数据|情况|进度)$`,
+          reg: `^#(?:${global.God}|鳄梨酱?)?(?:查看)?(接龙|投票)(.*)(数据|情况|进度)$`,
           fnc: 'analysis'
         },
         {
@@ -92,7 +92,8 @@ export class AvocadoStatistics extends plugin {
   // todo
   //  1. redis存储 => 过往数据查看 done
   //  2. 多群调用
-  //  2.1. 主人可任意查看并管理已存在的所有事件
+  //  2.1. 主人可在任意位置查看并管理所有事件
+  //  3. 接入chatgpt-plugin
   async statisticEvent (e) {
     const regex = new RegExp(`#(?:${global.God}|鳄梨酱?)?(发起|结束|取消)?(接龙|(匿名)?投票)(.*)`)
     const match = e.msg.match(regex)
@@ -297,6 +298,7 @@ export class AvocadoStatistics extends plugin {
     const summary = getSummary(statisticEvent)
     const regex = new RegExp(`#(?:${global.God}|鳄梨酱?)?(?:查看)?(接龙|投票)(${Object.keys(summary.numCount).join('|')})?(数据|情况|进度)$`)
     const match = e.msg.match(regex)
+    if (match === null) return false
     const statisticalType = match[1]
     const subtype = match[2] || false
     if (statisticalType !== statisticEvent.type) {
@@ -337,7 +339,6 @@ export class AvocadoStatistics extends plugin {
   //  1. 形式： 图片显示 done
   //  2. 内容： 序号：时间 -> 主题 ... 序号：时间 -> 主题 done
   //  3. 查看： 通过序号查看详情 done
-  //  4. 接入chatgpt-plugin
   async adminHistory (e) {
     if ((!e.isMaster && e.msg.include('所有')) || !e.isGroup) return false
     const regex = new RegExp(`#(?:${global.God}|鳄梨酱?)?(查看|删除)?(?:所有)?历史(接龙|投票)(-?\\d*)`)
@@ -410,6 +411,7 @@ export class AvocadoStatistics extends plugin {
       this.finish('getDetail')
       return true
     }
+    if (typeof this.e.msg !== 'string') return false
     logger.mark('getDetail: ', this.e.msg)
     const picked = e.msg
     const summary = getSummary(picked)
