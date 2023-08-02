@@ -39,16 +39,18 @@ export class AvocadoStatistics extends plugin {
     // 存在感up
     this.task = [
       {
-        cron: '*/45 * * * *',
+        cron: '*/39 * * * *',
         // cron: '*/1 * * * *',
         name: 'sendStatisticsProgress',
         fnc: this.sendStatisticsProgress
-      }]
+      }
+    ]
   }
 
   async sendStatisticsProgress () {
     if (statisticEvent.status) {
       const e = seCtx
+      await e.reply(`查询到未完成${statisticEvent.type}：${statisticEvent.topic}\n可通过 #${statisticEvent.type} xxx 参与${statisticEvent.type}`)
       e.msg = '#查看' + statisticEvent.type + '进度'
       const m = new AvocadoStatistics()
       await m.analysis(e)
@@ -94,6 +96,7 @@ export class AvocadoStatistics extends plugin {
   //  2. 多群调用
   //  2.1. 主人可在任意位置查看并管理所有事件
   //  3. 接入chatgpt-plugin
+  //  4. 设置截止时间
   async statisticEvent (e) {
     const regex = new RegExp(`#(?:${global.God}|鳄梨酱?)?(发起|结束|取消)?(接龙|(匿名)?投票)(.*)`)
     const match = e.msg.match(regex)
@@ -211,6 +214,7 @@ export class AvocadoStatistics extends plugin {
       const newData = {
         qq: e.sender.user_id,
         name: e.sender.card || e.sender.nickname,
+        time,
         description,
         // displayMsg: `${e.sender.card || e.sender.nickname} ${description} √${time}`
         displayMsg: `${e.sender.card || e.sender.nickname}&nbsp;&nbsp;&nbsp;&nbsp;🙋‍♂️${description}&nbsp;&nbsp;&nbsp;&nbsp;📆${time}`
@@ -340,7 +344,7 @@ export class AvocadoStatistics extends plugin {
   //  2. 内容： 序号：时间 -> 主题 ... 序号：时间 -> 主题 done
   //  3. 查看： 通过序号查看详情 done
   async adminHistory (e) {
-    if ((!e.isMaster && e.msg.include('所有')) || !e.isGroup) return false
+    if ((!e.isMaster && e.msg.includes('所有')) || !e.isGroup) return false
     const regex = new RegExp(`#(?:${global.God}|鳄梨酱?)?(查看|删除)?(?:所有)?历史(接龙|投票)(-?\\d*)`)
     const match = e.msg.match(regex)
     const [isDel, type, order] = [match[1] ? match[1] === '删除' : false, match[2], parseInt(match[3] || 9999)]
