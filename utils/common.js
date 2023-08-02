@@ -10,6 +10,7 @@ import fetch from 'node-fetch'
 import { ChatGPTAPI } from 'chatgpt'
 import chalk from 'chalk'
 import dns from 'dns'
+import _ from 'lodash'
 
 // import sharp from 'sharp'
 
@@ -516,7 +517,7 @@ export function syncPath (fullPath, data) {
   return true
 }
 
-export function sleep (ms = 1000) {
+export async function sleep (ms = 1000) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
@@ -582,5 +583,80 @@ async function getIPAddress (host) {
     })
   } catch (error) {
     return false
+  }
+}
+
+export function getCurrentTime () {
+  const now = new Date()
+  const month = now.getMonth() + 1
+  const day = now.getDate()
+  const hour = now.getHours()
+  const minute = now.getMinutes()
+
+  return `${month}月${day}日 ${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')} `
+}
+
+// ----------------------------------------------------公告---------------------------------------------
+// from Yenai-plugin: https://www.yenai.ren/
+/**
+ * @description: 获取群公告
+ * @return {Object}
+ * @param group_id
+ * @param s
+ * @param bot
+ */
+async function getAnnouncelist (group_id, s = 0, bot) {
+  let n = s ? 1 : 20
+  let url = `https://web.qun.qq.com/cgi-bin/announce/get_t_list?bkn=${bot.bkn}&qid=${group_id}&ft=23&s=${s - 1}&n=${n}`
+  let res = await fetch(url, { headers: { Cookie: bot.cookies['qun.qq.com'] } }).then(res => res.json()).catch(err => logger.error(err))
+  if (!res) return false
+  if (s) {
+    return {
+      text: res.feeds[0].msg.text,
+      fid: res.feeds[0].fid
+    }
+  } else {
+    return res.feeds.map((item, index) => `${index + 1}、${_.truncate(item.msg.text)}`).join('\n')
+  }
+}
+
+/**
+ * @description: 发送群公告
+ * @param {Number} group_id 发送群号
+ * @param {String} msg 发送内容
+ * @param bot
+ */
+export async function setAnnounce (group_id, msg, bot) {
+  let url = `https://web.qun.qq.com/cgi-bin/announce/add_qun_notice?bkn=${bot.bkn}`
+  return await fetch(url, {
+    method: 'POST',
+    body: `qid=${group_id}&bkn=${bot.bkn}&text=${msg}&pinned=0&type=1&settings={"is_show_edit_card":1,"tip_window_type":1,"confirm_required":1}`,
+    headers: {
+      Cookie: bot.cookies['qun.qq.com']
+    }
+  }).then(res => res.json()).catch(err => logger.error(err))
+}
+
+/**
+ * @description: 删群公告
+ * @param {Number} group_id 群号
+ * @param {Number} num 序号
+ * @param bot
+ */
+export async function delAnnounce (group_id, num, bot) {
+  let fid = await getAnnouncelist(group_id, num, bot)
+  if (!fid) return false
+
+  let url = `https://web.qun.qq.com/cgi-bin/announce/del_feed?bkn=${bot.bkn}`
+  let res = await fetch(url, {
+    method: 'POST',
+    body: `bkn=${bot.bkn}&fid=${fid.fid}&qid=${group_id}`,
+    headers: {
+      Cookie: bot.cookies['qun.qq.com']
+    }
+  }).then(res => res.json()).catch(err => logger.error(err))
+  return {
+    ...res,
+    text: _.truncate(fid.text)
   }
 }

@@ -199,6 +199,10 @@ export const timer = {
     leftTime: null,
     invokeTime: null
   },
+  statisticsCtx: {
+    leftTime: null,
+    invokeTime: null
+  },
   previewCtx: {
     leftTime: null,
     invokeTime: null
