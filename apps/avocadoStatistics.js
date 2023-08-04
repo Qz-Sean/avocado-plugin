@@ -23,12 +23,24 @@ export class AvocadoStatistics extends plugin {
           fnc: 'help'
         },
         {
-          reg: `^#(?:${global.God}|鳄梨酱?)?(发起|结束|取消)?(接龙|(匿名)?投票)(.*)`,
-          fnc: 'statisticEvent'
+          reg: `^#(?:${global.God}|鳄梨酱?)?发起?(全局)?(接龙|(匿名)?投票)(.*)`,
+          fnc: 'beginEvent'
         },
         {
-          reg: `^#(?:${global.God}|鳄梨酱?)?(?:查看)?(接龙|投票)(.*)(数据|情况|进度)$`,
-          fnc: 'analysis'
+          reg: `^#(?:${global.God}|鳄梨酱?)?(接龙|投票)(.*)`,
+          fnc: 'joinEvent'
+        },
+        {
+          reg: `^#(?:${global.God}|鳄梨酱?)?取消(接龙|投票)`,
+          fnc: 'cancelEvent'
+        },
+        {
+          reg: `^#(?:${global.God}|鳄梨酱?)?结束(接龙|投票)`,
+          fnc: 'endEvent'
+        },
+        {
+          reg: `^#(?:${global.God}|鳄梨酱?)?(?:查看)?(接龙|投票)(.*)[:：]?(数据|情况|进度)$`,
+          fnc: 'checkEvent'
         },
         {
           reg: `^#(?:${global.God}|鳄梨酱?)?(查看|删除)?(?:所有)?历史(接龙|投票)(-?\\d*)`,
@@ -48,12 +60,13 @@ export class AvocadoStatistics extends plugin {
   }
 
   async sendStatisticsProgress () {
-    if (statisticEvent.status) {
+    const hour = new Date().getHours()
+    if (statisticEvent.status && hour >= 7) {
       const e = seCtx
       await e.reply(`查询到未完成${statisticEvent.type}：${statisticEvent.topic}\n可通过 #${statisticEvent.type} xxx 参与${statisticEvent.type}`)
       e.msg = '#查看' + statisticEvent.type + '进度'
       const m = new AvocadoStatistics()
-      await m.analysis(e)
+      await m.checkEvent(e)
     }
   }
 
@@ -77,9 +90,9 @@ export class AvocadoStatistics extends plugin {
 
 #结束${type} → ${type}数据将会储存在数据库中
 
-发起投票可指定是否匿名 → #发起匿名投票 xxx
+#发起匿名投票 xxx → 发起投票可指定是否匿名
 
-#查看历史${type} → 查看过往数据
+#查看历史${type} → 查看本群过往数据
 `
     await e.reply(await avocadoRender(msg))
     // const b = [{ status: true, arr: [{ qq: 1519059137, name: '☐ way.out', description: '已打卡', displayMsg: '☐ way.out 已打卡 √8月2日 8:46' }], initiator: 1519059137, type: '接龙', isAnonymity: false, createData: '2023/8/2 08:46:13', createGroup: 336130030, options: [], topic: '打卡情况' }, { status: true, arr: [{ qq: 1519059137, name: '☐ way.out', description: '钢铁侠', displayMsg: '☐ way.out 钢铁侠 √8月2日 8:46' }, { qq: 2444059137, name: '1234', description: '蜘蛛侠', displayMsg: '1234 蜘蛛侠 √8月2日 8:46' }], initiator: 1519059137, type: '投票', isAnonymity: true, createData: '2023/8/2 08:46:13', createGroup: 336130030, options: ['钢铁侠', '蜘蛛侠'], topic: '最喜欢的漫威电影角色？' }, { status: true, arr: [{ qq: 1519059137, name: '☐ way.out', description: '超人', displayMsg: '☐ way.out 超人 √8月2日 8:46' }], initiator: 1519059137, type: '投票', isAnonymity: false, createData: '2023/8/2 08:46:13', createGroup: 336130030, options: [], topic: '最喜欢的DC电影角色？' }, { status: true, arr: [{ qq: 1519059137, name: '☐ way.out', description: '已打卡', displayMsg: '☐ way.out 已打卡 √8月2日 8:46' }], initiator: 1519059137, type: '打卡', isAnonymity: false, createData: '2023/8/2 08:46:13', createGroup: 336130030, options: [], topic: '今天的天气如何？' }, { status: true, arr: [{ qq: 1519059137, name: '☐ way.out', description: '美国队长', displayMsg: '☐ way.out 美国队长 √8月2日 8:46' }, { qq: 2444059137, name: '1234', description: '黑寡妇', displayMsg: '1234 黑寡妇 √8月2日 8:46' }, { qq: 3456059137, name: '5678', description: '雷神', displayMsg: '5678 雷神 √8月2日 8:46' }], initiator: 1519059137, type: '投票', isAnonymity: true, createData: '2023/8/2 08:46:13', createGroup: 336130030, options: ['美国队长', '黑寡妇', '雷神'], topic: '最喜欢的复仇者联盟成员？' }, { status: true, arr: [{ qq: 1519059137, name: '☐ way.out', description: '蝙蝠侠', displayMsg: '☐ way.out 蝙蝠侠 √8月2日 8:46' }, { qq: 2444059137, name: '1234', description: '神奇女侠', displayMsg: '1234 神奇女侠 √8月2日 8:46' }, { qq: 3456059137, name: '5678', description: '闪电侠', displayMsg: '5678 闪电侠 √8月2日 8:46' }], initiator: 1519059137, type: '投票', isAnonymity: false, createData: '2023/8/2 08:46:13', createGroup: 336130030, options: ['蝙蝠侠', '神奇女侠', '闪电侠'], topic: '最喜欢的正义联盟成员？' }, { status: true, arr: [{ qq: 1519059137, name: '☐ way.out', description: '已打卡', displayMsg: '☐ way.out 已打卡 √8月2日 8:46' }], initiator: 1519059137, type: '打卡', isAnonymity: false, createData: '2023/8/2 08:46:13', createGroup: 336130030, options: [], topic: '今天吃了什么？' }, { status: true, arr: [{ qq: 1519059137, name: '☐ way.out', description: '绿巨人', displayMsg: '☐ way.out 绿巨人 √8月2日 8:46' }, { qq: 2444059137, name: '1234', description: '黑豹', displayMsg: '1234 黑豹 √8月2日 8:46' }, { qq: 3456059137, name: '5678', description: '美国队长', displayMsg: '5678 美国队长 √8月2日 8:46' }, { qq: 4568059137, name: '9101', description: '钢铁侠', displayMsg: '9101 钢铁侠 √8月2日 8:46' }], initiator: 1519059137, type: '投票', isAnonymity: true, createData: '2023/8/2 08:46:13', createGroup: 336130030, options: ['绿巨人', '黑豹', '美国队长', '钢铁侠'], topic: '最喜欢的复仇者联盟成员？' }, { status: true, arr: [{ qq: 1519059137, name: '☐ way.out', description: '已打卡', displayMsg: '☐ way.out 已打卡 √8月2日 8:46' }], initiator: 1519059137, type: '打卡', isAnonymity: false, createData: '2023/8/2 08:46:13', createGroup: 336130030, options: [], topic: '今天心情如何？' }]
@@ -97,210 +110,268 @@ export class AvocadoStatistics extends plugin {
   //  2.1. 主人可在任意位置查看并管理所有事件
   //  3. 接入chatgpt-plugin
   //  4. 设置截止时间
-  async statisticEvent (e) {
-    const regex = new RegExp(`#(?:${global.God}|鳄梨酱?)?(发起|结束|取消)?(接龙|(匿名)?投票)(.*)`)
+  //  5. 全局事件 → 即在机器人所在所有群发起事件 half
+  //  6. 同时存在多个事件
+  async beginEvent (e) {
+    const regex = new RegExp(`#(?:${global.God}|鳄梨酱?)?发起(全局)?(接龙|(匿名)?投票)(.*)`)
     const match = e.msg.match(regex)
-    const adminAction = match[1]
-    const isStart = adminAction === '发起'
-    const isEnd = adminAction === '结束'
-    const isCancel = adminAction === '取消'
-    if ((isStart || isEnd || isCancel) && !e.isGroup) {
+    const isGlobalEvent = !!match[1] || false
+    const topic = match[4] ? !match[4].includes('#') ? match[4] : match[4].split('#')[0] : null
+    const options = match[4] ? match[4].split('#').slice(1) : null
+    const isAnonymity = !!match[3] || false
+    const statisticalType = match[2] === '接龙' ? '接龙' : '投票'
+    const initiator = Bot.pickMember(
+      statisticEvent?.createGroup || e.group_id,
+      statisticEvent?.initiator || e.sender.user_id)
+    const isInitiatorAdmin = initiator.is_admin // 只有管理员可发起
+    seCtx = e
+    if (isGlobalEvent && !e.isMaster) return false
+
+    if (!e.isGroup) {
       await e.reply('请在群聊中使用本指令！', false, { recallMsg: 10 })
       return false
     }
 
-    const statisticType = match[2].includes('匿名') ? '投票' : match[2]
-    const needFold = statisticEvent.arr.length > 20 && statisticEvent.type === '接龙'
-
     // 开始接龙/投票事件
-    if (isStart) {
-      if (!statisticEvent.status) {
+    if (!statisticEvent.status) {
       // 不满足发起事件的情况
-        if (!match[4] || match[4].trim() === '') {
-          await e.reply(`请给出${statisticType}主题！`)
-          return false
-        }
-        // 投票没有选项
-        if (statisticType === '投票' && match[4].split('#').length === 1) {
-          await e.reply('请给出投票选项！')
-          return false
-        }
+      if (!topic) {
+        await e.reply(`请给出${statisticalType}主题！`)
+        return false
+      }
+      // 投票没有选项
+      if (statisticalType === '投票' && !options) {
+        await e.reply('请给出投票选项！')
+        return false
+      }
 
-        // 只有管理员可发起
-        const bot = Bot.pickMember(statisticEvent?.createGroup || e.group_id, Bot.uin)
-        const initiator = Bot.pickMember(statisticEvent?.createGroup || e.group_id, statisticEvent?.initiator || e.sender.user_id)
-        const isBotAdmin = bot.is_admin
-        const isInitiatorAdmin = initiator.is_admin
+      const bot = Bot.pickMember(
+        statisticEvent?.createGroup || e.group_id,
+        Bot.uin)
+      const isBotAdmin = bot.is_admin
 
-        // 初始化
-        statisticEvent.type = statisticType
-        seCtx = e
-        statisticEvent.initiator = e.sender.user_id
-        statisticEvent.isAnonymity = !!match[3] || false
-        statisticEvent.createData = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })
-        statisticEvent.createGroup = e.group_id
-        statisticEvent.options = []
-        if (match[4].split('#').length !== 1) {
-          const options = match[4].split('#')
-          options.splice(0, 1)
-          statisticEvent.options = options.filter(item => item !== '')
+      // logger.warn(Bot.getGroupList())
+      //  Map(5) {
+      //   126132049 => {
+      //     group_id: 126132049,
+      //     group_name: '柴特寄踢批萌新交流吹水群',
+      //     member_count: 318,
+      //     max_member_count: 500,
+      //     owner_id: 3094274628,
+      //     last_join_time: 1689165088,
+      //     shutup_time_whole: 0,
+      //     shutup_time_me: 0,
+      //     admin_flag: false,
+      //     update_time: 0
+      //   },
+      //   336130030 => {
+      //     group_id: 336130030,
+      //     group_name: "Yae Miko's",
+      //     member_count: 10,
+      //     max_member_count: 200,
+      //     owner_id: 1519059137,
+      //     last_join_time: 1688733383,
+      //     shutup_time_whole: 0
+
+      statisticEvent.isGlobalEvent = isGlobalEvent
+      statisticEvent.type = statisticalType
+      statisticEvent.initiator = e.sender.user_id
+      statisticEvent.isAnonymity = isAnonymity
+      statisticEvent.createData = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })
+      statisticEvent.createGroup = e.group_id
+      statisticEvent.options = options
+      statisticEvent.topic = topic
+      if (isGlobalEvent) {
+        const groupIds = Array.from(Bot.getGroupList().keys(), obj => obj)
+        for (const groupId of groupIds) {
+          await Bot.sendGroupMsg(groupId, `发起了群${statisticalType}：${statisticEvent.topic}，可通过#${statisticEvent.type} xxx参与！`)
         }
-
-        // 获取接龙/投票主题
-        if (statisticEvent.options.length) {
-          statisticEvent.topic = match[4].split('#')[0]
-        } else {
-          statisticEvent.topic = match[4].trim()
-        }
-
-        // 修改事件标志位
+        statisticEvent.status = true
+        return true
+      } else {
+      // 修改事件标志位
         if (isInitiatorAdmin) {
           if (isBotAdmin) {
-            await setAnnounce(e.group_id, `管理员${e.sender.card || e.sender.nickname}已发起群${statisticType}：${statisticEvent.topic}${statisticEvent.options.length ? '\n限定选项：' + statisticEvent.options.join(' or ') : ''}`, e.bot ?? Bot)
+            await setAnnounce(
+              e.group_id,
+                `管理员${e.sender.card || e.sender.nickname}已发起群${statisticalType}：${statisticEvent.topic}${statisticEvent.options.length ? '\n限定选项：' + statisticEvent.options.join(' or ') : ''}`, e.bot ?? Bot)
           }
           statisticEvent.status = true
         } else {
-          await e.reply(`只有管理员能发起${statisticType}！`)
+          await e.reply(`只有管理员能发起${statisticalType}！`)
           statisticEvent.status = false
           return false
         }
-
         // 推送初始信息
-        await e.reply(`群${statisticType}：${statisticEvent.topic}${statisticEvent.options.length ? '\n限定选项：' + statisticEvent.options.join(' or ') : ''}\n1. `)
-        return true
-      } else {
-        e.reply(`已存在${statisticType}：${statisticEvent.topic} \n参与人数：${statisticEvent.arr.length}人\n可回复 #查看${statisticType}进度 查看详情`)
-        return false
-      }
-    }
-
-    // 进行接龙/投票
-    if (statisticEvent.status && !isStart && !isEnd && !adminAction) {
-      if (statisticType !== statisticEvent.type) {
-        await e.reply(`当前不存在${statisticType}！`)
-        return false
-      }
-      // 只有投票事件能开启匿名
-      if (statisticEvent.isAnonymity) {
-        if (e.isGroup) {
-          await e.reply('本次投票为匿名投票，请私聊发送投票结果！', false, { recallMsg: 10 })
-          return false
-        } else if (e.isPrivate) {
-          // 忽略非群成员投票
-          const isGroupMember = !!(Bot.pickMember(statisticEvent?.createGroup || e.group_id, e.sender.user_id))?.info
-          if (!isGroupMember) return false
-        }
-      }
-      // 非匿名投票 => 群内投票/接龙，只能在发起群进行，其他false
-      if (!statisticEvent.isAnonymity && (e.isPrivate || e.group_id !== statisticEvent.createGroup)) return false
-      const time = getCurrentTime()
-      const previousData = statisticEvent.arr.find(item => item?.qq === e.sender.user_id)
-      let description = ''
-      // 处理默认项
-      if (!match[4]) {
-        if (statisticEvent.options.length) {
-          description = statisticEvent.options[0]
-        } else {
-          description = '🙂'
-        }
-      } else {
-        if (statisticEvent.options.length && !statisticEvent.options.includes(match[4].trim())) {
-          await e.reply('请使用给定选项！' + statisticEvent.options.join(' or '), false, { recallMsg: 10 })
-          return false
-        } else {
-          description = match[4].trim()
-        }
-      }
-      const newData = {
-        qq: e.sender.user_id,
-        name: e.sender.card || e.sender.nickname,
-        time,
-        description,
-        // displayMsg: `${e.sender.card || e.sender.nickname} ${description} √${time}`
-        displayMsg: `${e.sender.card || e.sender.nickname}&nbsp;&nbsp;&nbsp;&nbsp;🙋‍♂️${description}&nbsp;&nbsp;&nbsp;&nbsp;📆${time}`
-      }
-      // 参与者可修改之前的备注信息,投票不可
-      if (previousData) {
-        if (statisticType === '投票') {
-          await e.reply('你已投票！', false, { recallMsg: 30 })
-          return false
-        }
-        const dataIndex = statisticEvent.arr.indexOf(previousData)
-        statisticEvent.arr[dataIndex] = newData
-      } else {
-        statisticEvent.arr.push(newData)
-      }
-      if (statisticType === '投票') {
-        await e.reply('投票成功！', false, { recallMsg: 30 })
-        return true
-      } else {
-        // const msg = '群' + statisticType + '：' +
-        //             statisticEvent.topic + '\n' +
-        //             (statisticEvent.options.length ? '限定选项' + statisticEvent.options.join(' or ') + '\n' : '') +
-        //             statisticEvent.arr.map((item, index) => { return `${index + 1}：${item.displayMsg}` }).join('\n')
-        // 接龙超过20人折叠消息
-        // if (needFold) {
-        //   await e.reply(await makeForwardMsg(e, [msg], statisticEvent.topic))
-        // } else {
-        //   await e.reply(msg)
-        // }
-        const initiator = Bot.pickMember(statisticEvent.createGroup, statisticEvent.initiator)
-        const msg = '### 群' + statisticType + '：' + statisticEvent.topic + '\n' +
-            '#### 🤚发起人：' + (
-          initiator.card
-            ? initiator.card + '(' + initiator.info.user_id + ')'
-            : statisticEvent.initiator
-        ) + '\n' +
-            (statisticEvent.options.length ? '#### 👁️‍🗨️限定选项' + statisticEvent.options.join(' or ') + '\n' : '') +
-            statisticEvent.arr.map((item, index) => { return `##### ${index + 1}：${item.displayMsg}` }).join('\n')
-        await e.reply(await avocadoRender(msg))
+        await e.reply(`群${statisticalType}：${statisticEvent.topic}${statisticEvent.options.length ? '\n限定选项：' + statisticEvent.options.join(' or ') : ''}\n1. `)
         return true
       }
-    }
-
-    // 取消接龙/投票
-    if (statisticEvent.status && isCancel && e.group_id === statisticEvent.createGroup) {
-      if (e.sender.user_id === statisticEvent.initiator) {
-        await e.reply('已取消' + statisticType + '！')
-        statisticEvent = { status: false, arr: [] }
-        return true
-      } else {
-        await e.reply('🚫')
-        return false
-      }
-    }
-
-    // 结束接龙/投票
-    // 只有发起者可结束
-    if (statisticEvent.status && isEnd && e.group_id === statisticEvent.createGroup) {
-      if (e.sender.user_id === statisticEvent.initiator) {
-        const bot = Bot.pickMember(statisticEvent?.createGroup || e.group_id, Bot.uin)
-        const initiator = Bot.pickMember(statisticEvent?.createGroup || e.group_id, statisticEvent?.initiator || e.sender.user_id)
-        const isBotAdmin = bot.is_admin
-        const isInitiatorAdmin = initiator.is_admin
-        await e.reply('正在统计' + statisticType + '信息...')
-        await sleep(1000)
-        // 只保存正常结束的投票
-        // logger.warn(statisticEvent)
-        await redis.rPush('AVOCADO:STATISTICS', JSON.stringify(statisticEvent))
-        statisticEvent = { status: false, arr: [] }
-        e.msg = '#查看历史' + statisticType + '-1'
-        await this.adminHistory(e)
-        if (isBotAdmin && isInitiatorAdmin) {
-          await delAnnounce(e.group_id, 1, e.bot ?? Bot)
-        }
-        return true
-      } else {
-        await e.reply('🚫')
-        return false
-      }
+    } else {
+      e.reply(`已存在${statisticalType}：${statisticEvent.topic} \n参与人数：${statisticEvent.arr.length}人\n可回复 #查看${statisticalType}进度 查看详情`)
+      return false
     }
   }
 
-  async analysis (e) {
+  async joinEvent (e) {
+    const regex = new RegExp(`#(?:${global.God}|鳄梨酱?)?(接龙|投票)(.*)`)
+    const match = e.msg.match(regex)
+    const statisticalType = match[1] === '接龙' ? '接龙' : '投票'
+    const userInput = match[2] || false
+    if (!e.isGroup && !!statisticEvent.isAnonymity) {
+      await e.reply('请在群聊中使用本指令！', false, { recallMsg: 10 })
+      return false
+    }
+    // 进行接龙/投票
+    if (statisticalType !== statisticEvent.type) {
+      await e.reply(`当前不存在${statisticalType}！`)
+      return false
+    }
+    // 只有投票事件能开启匿名
+    if (statisticEvent.isAnonymity) {
+      if (e.isGroup) {
+        await e.reply('本次投票为匿名投票，请私聊发送投票结果！', false, { recallMsg: 10 })
+        return false
+      } else if (e.isPrivate) {
+        // 忽略非群成员投票
+        const isGroupMember = !!(Bot.pickMember(
+          statisticEvent?.createGroup || e.group_id,
+          e.sender.user_id))?.info
+        if (!isGroupMember) return false
+      }
+    }
+    // 非匿名投票 => 群内投票/接龙，只能在发起群进行，其他false
+    if (!statisticEvent.isGlobalEvent && !statisticEvent.isAnonymity && (e.isPrivate || e.group_id !== statisticEvent.createGroup)) return false
+    const time = getCurrentTime()
+    const previousData = statisticEvent.arr.find(item => item?.qq === e.sender.user_id)
+    let description = ''
+    // 处理默认项
+    if (!userInput) {
+      if (statisticEvent.options.length) {
+        description = statisticEvent.options[0]
+      } else {
+        description = '🙂'
+      }
+    } else {
+      if (statisticEvent.options.length && !statisticEvent.options.includes(userInput.trim())) {
+        await e.reply('请使用给定选项！' + statisticEvent.options.join(' or '), false, { recallMsg: 10 })
+        return false
+      } else {
+        description = userInput.trim()
+      }
+    }
+    const newData = {
+      qq: e.sender.user_id,
+      name: e.sender.card || e.sender.nickname,
+      time,
+      description,
+      // displayMsg: `${e.sender.card || e.sender.nickname} ${description} √${time}`
+      displayMsg: `${e.sender.card || e.sender.nickname}&nbsp;&nbsp;&nbsp;&nbsp;🙋‍♂️${description}&nbsp;&nbsp;&nbsp;&nbsp;📆${time}`
+    }
+    // 参与者可修改之前的备注信息,投票不可
+    if (previousData) {
+      if (statisticalType === '投票') {
+        await e.reply('你已投票！', false, { recallMsg: 30 })
+        return false
+      }
+      const dataIndex = statisticEvent.arr.indexOf(previousData)
+      statisticEvent.arr[dataIndex] = newData
+    } else {
+      statisticEvent.arr.push(newData)
+    }
+    if (statisticalType === '投票') {
+      await e.reply('投票成功！', false, { recallMsg: 30 })
+      return true
+    } else {
+      const initiator = Bot.pickMember(statisticEvent.createGroup, statisticEvent.initiator)
+      const msg = '### 群' + statisticalType + '：' + statisticEvent.topic + '\n' +
+          '#### 🤚发起人：' + (
+        initiator.card
+          ? initiator.card + '(' + initiator.info.user_id + ')'
+          : statisticEvent.initiator
+      ) + '\n' +
+          (statisticEvent.options.length ? '#### 👁️‍🗨️限定选项' + statisticEvent.options.join(' or ') + '\n' : '') +
+          statisticEvent.arr.map((item, index) => { return `##### ${index + 1}：${item.displayMsg}` }).join('\n')
+      await e.reply(await avocadoRender(msg))
+      return true
+    }
+  }
+
+  async cancelEvent (e) {
+    const regex = new RegExp(`#(?:${global.God}|鳄梨酱?)?取消(接龙|投票)$`)
+    const match = e.msg.match(regex)
+    const statisticalType = match[1]
+    // 取消接龙/投票
+    if (statisticEvent.status) {
+      if (e.group_id === statisticEvent.createGroup) {
+        if (e.sender.user_id === statisticEvent.initiator || e.isMaster) {
+          const bot = Bot.pickMember(
+            statisticEvent?.createGroup || e.group_id,
+            Bot.uin)
+          const initiator = Bot.pickMember(
+            statisticEvent?.createGroup || e.group_id,
+            statisticEvent?.initiator || e.sender.user_id)
+          const isBotAdmin = bot.is_admin
+          const isInitiatorAdmin = initiator.is_admin
+          if (isBotAdmin && isInitiatorAdmin) {
+            await delAnnounce(e.group_id, 1, e.bot ?? Bot)
+          }
+          await e.reply('已取消' + statisticalType + '！')
+          statisticEvent = { status: false, arr: [] }
+          return true
+        } else {
+          await e.reply('🚫')
+          return false
+        }
+      }
+    } else {
+      await e.reply(`当前不存在${statisticalType}！`)
+    }
+  }
+
+  // 结束接龙/投票
+  // 只有发起者|master可结束
+  async endEvent (e) {
+    const regex = new RegExp(`#(?:${global.God}|鳄梨酱?)?结束(接龙|投票)$`)
+    const match = e.msg.match(regex)
+    const statisticalType = match[1]
+
+    if (statisticEvent.status) {
+      if (e.group_id === statisticEvent.createGroup) {
+        if (e.sender.user_id === statisticEvent.initiator || e.isMaster) {
+          const bot = Bot.pickMember(
+            statisticEvent?.createGroup || e.group_id,
+            Bot.uin)
+          const initiator = Bot.pickMember(
+            statisticEvent?.createGroup || e.group_id,
+            statisticEvent?.initiator || e.sender.user_id)
+          const isBotAdmin = bot.is_admin
+          const isInitiatorAdmin = initiator.is_admin
+          await e.reply('正在统计' + statisticalType + '信息...')
+          await sleep(1000)
+          // 只保存正常结束的投票
+          // logger.warn(statisticEvent)
+          await redis.rPush('AVOCADO:STATISTICS', JSON.stringify(statisticEvent))
+          statisticEvent = { status: false, arr: [] }
+          e.msg = '#查看历史' + statisticalType + '-1'
+          await this.adminHistory(e)
+          if (isBotAdmin && isInitiatorAdmin) {
+            await delAnnounce(e.group_id, 1, e.bot ?? Bot)
+          }
+          return true
+        } else {
+          await e.reply('🚫')
+          return false
+        }
+      }
+    } else {
+      await e.reply(`当前不存在${statisticalType}！`)
+    }
+  }
+
+  async checkEvent (e) {
     if (!statisticEvent.status) return false
     const summary = getSummary(statisticEvent)
-    const regex = new RegExp(`#(?:${global.God}|鳄梨酱?)?(?:查看)?(接龙|投票)(${Object.keys(summary.numCount).join('|')})?(数据|情况|进度)$`)
+    const regex = new RegExp(`#(?:${global.God}|鳄梨酱?)?(?:查看)?(接龙|投票)[:；]?(${Object.keys(summary.numCount).join('|')})?(数据|情况|进度)$`)
     const match = e.msg.match(regex)
     if (match === null) return false
     const statisticalType = match[1]
@@ -344,14 +415,14 @@ export class AvocadoStatistics extends plugin {
   //  2. 内容： 序号：时间 -> 主题 ... 序号：时间 -> 主题 done
   //  3. 查看： 通过序号查看详情 done
   async adminHistory (e) {
-    if ((!e.isMaster && e.msg.includes('所有')) || !e.isGroup) return false
+    const isAdminAllHistory = e.msg.includes('所有')
+    if ((!e.isMaster && isAdminAllHistory) || !e.isGroup) return false
     const regex = new RegExp(`#(?:${global.God}|鳄梨酱?)?(查看|删除)?(?:所有)?历史(接龙|投票)(-?\\d*)`)
     const match = e.msg.match(regex)
     const [isDel, type, order] = [match[1] ? match[1] === '删除' : false, match[2], parseInt(match[3] || 9999)]
     const statisticsArrStr = await redis.lRange('AVOCADO:STATISTICS', 0, -1)
     const statisticsArrJson = statisticsArrStr.map(jsonString => JSON.parse(jsonString))
-    const thisGroupData = e.msg.includes('所有') ? statisticsArrJson : statisticsArrJson.filter(item => item.createGroup === e.group_id)
-    const dataToProcess = thisGroupData.filter(item => item?.type === type)
+    const dataToProcess = isAdminAllHistory ? statisticsArrJson : statisticsArrJson.filter(item => item.createGroup === e.group_id)
     if (dataToProcess.length) {
       try {
         // 直接查看某项数据, -1则查看最新投票/接龙
@@ -512,7 +583,7 @@ function getSummary (statisticEvent) {
   for (const item of statisticEvent.arr) {
     if (summary.numCount[item.description]) {
       summary.numCount[item.description]++
-      summary.nameCount[item.description].push(item.name)
+      summary.nameCount[item.description].push(item.name + '(' + item.qq + ')')
     } else {
       summary.numCount[item.description] = 1
       summary.nameCount[item.description].push(item.name + '(' + item.qq + ')')
