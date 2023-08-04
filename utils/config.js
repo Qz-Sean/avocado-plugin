@@ -17,7 +17,6 @@ const defaultConfig = {
   greetSwitch: true,
   apiBaseUrl: '',
   proxy: '',
-  psychoKey: '',
   deviceScaleFactor: '1',
   version: 'v1.9.0'
 }

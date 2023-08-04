@@ -78,14 +78,20 @@ export class AvocadoPsycho extends plugin {
       }
     } else {
       const res = await getBonkersBabble(godName, 'api')
-      if (!res || res === 403) {
-        let errorMsg = '发电失败(ノへ￣、)'
-        if (!Config.psychoKey) {
-          errorMsg += '\n((*・∀・）ゞ→→没有填写发电Key哦!'
-        } else if (res === 403) {
-          errorMsg += '请检查发电key是否填写正确哦！'
-        } else {
-          logger.mark('API无法访问...建议去提issue: https://github.com/Qz-Sean/avocado-plugin/issues')
+      if (!res || res === 429 || res === 502) {
+        let errorMsg = 'API发电失败(ノへ￣、)'
+        switch (res) {
+          case 429:{
+            errorMsg += '超过访问频率限制！'
+            break
+          }
+          case 502:{
+            errorMsg += '大抵是服务器寄了...'
+            break
+          }
+          default:{
+            logger.error('API无法访问...建议去提issue: https://github.com/Qz-Sean/avocado-plugin/issues')
+          }
         }
         errorMsg += '将尝试本地发电¡¡¡( •̀ ᴗ •́ )و!!! '
         await e.reply(errorMsg)
@@ -164,8 +170,7 @@ export async function getBonkersBabble (GodName = '', dataSource = 'native', wor
   }
   // 不存在则返回[], psychoData 存在 则 isExit === true
   if (dataSource === 'api' || dataSource === '') {
-    // let url = `https://xiaobapi.top/api/xb/api/onset.php?name=${GOD}`
-    let url = `https://api.lolimi.cn/api/fab/f?msg=${GodName}&key=${Config.psychoKey}`
+    let url = `https://api.gakki.icu/fd?msg=${GodName}&type=json`
     try {
       const headers = generateRandomHeader()
       const options = {
@@ -175,14 +180,15 @@ export async function getBonkersBabble (GodName = '', dataSource = 'native', wor
       const response = await fetch(url, options)
       if (response.status === 200) {
         let json = await response.json()
-        if (json.code === 1 && json.data) {
-          let filteredData = json.data.replace(new RegExp(GodName, 'g'), 'avocado')
+        if (json.code === 200) {
+          const regex = new RegExp(`${GodName}`, 'g')
+          let dataToSave = json.data.replace(regex, 'avocado')
           // 判断是否存在重复元素
-          if (psychoData.length && psychoData.includes(filteredData)) {
+          if (psychoData.length && psychoData.includes(dataToSave)) {
             logger.mark('存在重复发癫数据，跳过。')
           } else {
             try {
-              psychoData.push(filteredData)
+              psychoData.push(dataToSave)
               fs.writeFileSync(fullPath, JSON.stringify(psychoData, null, 2), { flag: 'w' })
             } catch (err) {
               logger.error(err)
@@ -190,9 +196,11 @@ export async function getBonkersBabble (GodName = '', dataSource = 'native', wor
             logger.mark(`已存入发癫数据：${json.data}`)
           }
           replyMsg = json.data
-        } else if (json.code === 403) {
-          return 403
         }
+      } else if (response.status === 429) { // 达到速率限制，使用本地发电
+        return 429
+      } else if (response.status === 502) { // 大概率服务器寄了
+        return 502
       }
     } catch (err) {
       logger.error(err)

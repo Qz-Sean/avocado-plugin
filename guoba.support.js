@@ -56,12 +56,6 @@ const panel = {
         component: 'Input'
       },
       {
-        field: 'psychoKey',
-        label: '发电Key',
-        bottomHelpMessage: '前往 https://api.caonm.net 申请。',
-        component: 'Input'
-      },
-      {
         field: 'isAutoOnset',
         label: '主动发电',
         bottomHelpMessage: '开启后当QQ消息包含关键词时将开始主动发电。',
