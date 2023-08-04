@@ -150,29 +150,6 @@ export class AvocadoStatistics extends plugin {
         Bot.uin)
       const isBotAdmin = bot.is_admin
 
-      // logger.warn(Bot.getGroupList())
-      //  Map(5) {
-      //   126132049 => {
-      //     group_id: 126132049,
-      //     group_name: '柴特寄踢批萌新交流吹水群',
-      //     member_count: 318,
-      //     max_member_count: 500,
-      //     owner_id: 3094274628,
-      //     last_join_time: 1689165088,
-      //     shutup_time_whole: 0,
-      //     shutup_time_me: 0,
-      //     admin_flag: false,
-      //     update_time: 0
-      //   },
-      //   336130030 => {
-      //     group_id: 336130030,
-      //     group_name: "Yae Miko's",
-      //     member_count: 10,
-      //     max_member_count: 200,
-      //     owner_id: 1519059137,
-      //     last_join_time: 1688733383,
-      //     shutup_time_whole: 0
-
       statisticEvent.isGlobalEvent = isGlobalEvent
       statisticEvent.type = statisticalType
       statisticEvent.initiator = e.sender.user_id
