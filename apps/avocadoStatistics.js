@@ -64,23 +64,22 @@ export class AvocadoStatistics extends plugin {
   async sendStatisticsProgress () {
     const hour = new Date().getHours()
     const groupIds = Array.from(Bot.getGroupList().keys(), obj => obj)
-    const hasGlobal = await hasGlobalEvent()
-    if (hasGlobal) {
-      const historyData = await getHistoryStatisticalData('global')
-      const statisticEvent = historyData.find(item => item.status)
-      const replyMsg = `查询到未完成${statisticEvent.type}：${statisticEvent.topic}\n可通过 #${statisticEvent.type} xxx 参与${statisticEvent.type}`
-      for (const groupId of groupIds) {
-        await Bot.sendGroupMsg(groupId, replyMsg)
-      }
-    } else {
-      if (hour >= 7) {
-        for (const groupId of groupIds) {
-          const historyData = await getHistoryStatisticalData('group', groupId)
-          const statisticEvent = historyData.filter(item => item.status)
-          for (const statisticEventElement of statisticEvent) {
-            const replyMsg = `查询到未完成${statisticEventElement.type}：${statisticEventElement.topic}\n可通过 #${statisticEventElement.type} xxx 参与${statisticEventElement.type}`
+    const globalEvents = await getCurrentEvents(null, 'global')
+    if (hour >= 7) {
+      if (globalEvents.length) {
+        // 可能同时存在全局接龙与投票
+        for (const statisticEvent of globalEvents) {
+          const replyMsg = `查询到未完成${statisticEvent.type}：${statisticEvent.topic}\n可通过 #${statisticEvent.type} xxx 参与${statisticEvent.type}`
+          for (const groupId of groupIds) {
             await Bot.sendGroupMsg(groupId, replyMsg)
           }
+        }
+      }
+      for (const groupId of groupIds) {
+        const currentEvents = await getCurrentEvents(groupId, 'group')
+        for (const statisticEvent of currentEvents) {
+          const replyMsg = `查询到未完成${statisticEvent.type}：${statisticEvent.topic}\n可通过 #${statisticEvent.type} xxx 参与${statisticEvent.type}`
+          await Bot.sendGroupMsg(groupId, replyMsg)
         }
       }
     }
@@ -131,34 +130,33 @@ export class AvocadoStatistics extends plugin {
   async beginEvent (e) {
     const regex = new RegExp(`#(?:${global.God}|鳄梨酱?)?发起(全局)?(接龙|(匿名)?投票)(.*)`)
     const match = e.msg.match(regex)
-    const isGlobalEvent = !!match[1] || false
+    const isGlobalAction = !!match[1] || false
     const topic = match[4] ? !match[4].includes('#') ? match[4] : match[4].split('#')[0] : null
     const options = match[4] ? match[4].split('#').slice(1) : []
     const isAnonymity = !!match[3] || false
     const statisticalType = match[2] === '接龙' ? '接龙' : '投票'
-    logger.warn(statisticalType, match, options)
-    const historyData = await getHistoryStatisticalData(isGlobalEvent ? 'global' : 'group', e.group_id)
-    const hasExist = !!historyData.find(item => item?.type === statisticalType && item?.status)
-    let statisticEvent = historyData.find(item => item?.type === statisticalType && item?.status)
-    logger.warn(hasExist, statisticEvent)
-    if (hasExist) {
-      e.reply(`已存在${statisticalType}：${statisticEvent.topic} \n参与人数：${statisticEvent.arr.length}人\n可回复 #查看${statisticalType}进度 查看详情`)
-      return false
-    } else {
-      statisticEvent = {
-        status: false,
-        arr: []
-      }
-    }
-    const initiator = Bot.pickMember(e.group_id, e.sender.user_id)
-    const isInitiatorAdmin = initiator.is_admin // 只有管理员可发起
-    if (isGlobalEvent && !e.isMaster) return false
-
-    if (!e.isGroup) {
+    if (!e.isGroup && !isGlobalAction) {
       await e.reply('请在群聊中使用本指令！', false, { recallMsg: 10 })
       return false
     }
-    // 开始接龙/投票事件
+    if (isGlobalAction) {
+      if (e.isMaster) return false
+      const globalEvent = await getCurrentEvents(null, 'global', statisticalType)
+      if (globalEvent.length) {
+        e.reply(`已存在${statisticalType}：${globalEvent.topic} \n参与人数：${globalEvent.arr.length}人\n可回复 #查看${statisticalType}进度 查看详情`)
+        return false
+      }
+    }
+    const currentEvent = await getCurrentEvents(e.group_id, 'group', statisticalType)
+    if (currentEvent.length) {
+      e.reply(`已存在${statisticalType}：${currentEvent.topic} \n参与人数：${currentEvent.arr.length}人\n可回复 #查看${statisticalType}进度 查看详情`)
+      return false
+    }
+
+    const statisticEvent = { status: false, arr: [] }
+    const initiator = Bot.pickMember(e.group_id, e.sender.user_id)
+    const isInitiatorAdmin = initiator.is_admin // 只有管理员可发起
+
     // 不满足发起事件的情况
     if (!topic) {
       await e.reply(`请给出${statisticalType}主题！`)
@@ -176,7 +174,7 @@ export class AvocadoStatistics extends plugin {
     )
     const isBotAdmin = bot.is_admin
 
-    statisticEvent.isGlobalEvent = isGlobalEvent
+    statisticEvent.isGlobalEvent = isGlobalAction
     statisticEvent.type = statisticalType
     statisticEvent.initiator = e.sender.user_id
     statisticEvent.isAnonymity = isAnonymity
@@ -185,7 +183,7 @@ export class AvocadoStatistics extends plugin {
     statisticEvent.options = options
     statisticEvent.topic = topic
     statisticEvent.id = uuidV4()
-    if (isGlobalEvent) {
+    if (isGlobalAction) {
       const groupIds = Array.from(Bot.getGroupList().keys(), obj => obj)
       for (const groupId of groupIds) {
         await Bot.sendGroupMsg(groupId, `发起了群${statisticalType}：${statisticEvent.topic}，可通过#${statisticEvent.type} xxx参与！`)
@@ -216,50 +214,52 @@ export class AvocadoStatistics extends plugin {
   }
 
   async joinEvent (e) {
-    const regex = new RegExp(`#(?:${global.God}|鳄梨酱?)?(接龙|投票)(.*)`)
+    const regex = new RegExp(`#(?:${global.God}|鳄梨酱?)?(全局)?(接龙|投票)(.*)`)
     const match = e.msg.match(regex)
-    const statisticalType = match[1] === '接龙' ? '接龙' : '投票'
-    const userInput = match[2] || false
-    const hasGlobal = await hasGlobalEvent()
-    const historyData = await getHistoryStatisticalData(hasGlobal ? 'global' : 'group', e.group_id)
-    const statisticEvent = historyData.find(item => item?.type === statisticalType && item?.status)
-    logger.warn(hasGlobal, statisticEvent)
-    if (!statisticEvent) {
+    const statisticalType = match[2] === '接龙' ? '接龙' : '投票'
+    const isGlobalAction = !!match[1]
+    const userInput = match[3] || false
+    const currentEvent = isGlobalAction
+      ? await getCurrentEvents(null, 'global', statisticalType)
+      : await getCurrentEvents(e.group_id, 'group', statisticalType)
+    if (currentEvent) {
       await e.reply(`当前不存在${statisticalType}！`)
       return false
     }
-    if (!e.isGroup && !!statisticEvent.isAnonymity) {
+    if (!e.isGroup && !!currentEvent.isAnonymity) {
       await e.reply('请在群聊中使用本指令！', false, { recallMsg: 10 })
       return false
     }
     // 只有投票事件能开启匿名
-    if (statisticEvent.isAnonymity) {
+    if (currentEvent.isAnonymity) {
       if (e.isGroup) {
         await e.reply('本次投票为匿名投票，请私聊发送投票结果！', false, { recallMsg: 10 })
         return false
       } else if (e.isPrivate) {
-        // 忽略非群成员投票
-        const isGroupMember = !!(Bot.pickMember(
-          statisticEvent?.createGroup || e.group_id,
-          e.sender.user_id))?.info
-        if (!isGroupMember) return false
+        if (!isGlobalAction) {
+          // 忽略非群成员投票
+          const isGroupMember = !!(Bot.pickMember(
+            currentEvent?.createGroup || e.group_id,
+            e.sender.user_id))?.info
+          if (!isGroupMember) return false
+        }
       }
     }
     // 非匿名投票 => 群内投票/接龙，只能在发起群进行，其他false
-    if (!statisticEvent.isGlobalEvent && !statisticEvent.isAnonymity && (e.isPrivate || e.group_id !== statisticEvent.createGroup)) return false
+    if (!currentEvent.isGlobalEvent && !currentEvent.isAnonymity && (e.isPrivate || e.group_id !== currentEvent.createGroup)) return false
     const time = getCurrentTime()
-    const previousData = statisticEvent.arr.find(item => item?.qq === e.sender.user_id)
+    const previousData = currentEvent.arr.find(item => item?.qq === e.sender.user_id)
     let description = ''
     // 处理默认项
     if (!userInput) {
-      if (statisticEvent.options.length) {
-        description = statisticEvent.options[0]
+      if (currentEvent.options.length) {
+        description = currentEvent.options[0]
       } else {
         description = '🙂'
       }
     } else {
-      if (statisticEvent.options.length && !statisticEvent.options.includes(userInput.trim())) {
-        await e.reply('请使用给定选项！' + statisticEvent.options.join(' or '), false, { recallMsg: 10 })
+      if (currentEvent.options.length && !currentEvent.options.includes(userInput.trim())) {
+        await e.reply('请使用给定选项！' + currentEvent.options.join(' or '), false, { recallMsg: 10 })
         return false
       } else {
         description = userInput.trim()
@@ -279,66 +279,69 @@ export class AvocadoStatistics extends plugin {
         await e.reply('你已投票！', false, { recallMsg: 30 })
         return false
       }
-      const dataIndex = statisticEvent.arr.indexOf(previousData)
-      statisticEvent.arr[dataIndex] = newData
+      const dataIndex = currentEvent.arr.indexOf(previousData)
+      currentEvent.arr[dataIndex] = newData
     } else {
-      statisticEvent.arr.push(newData)
+      currentEvent.arr.push(newData)
     }
     if (statisticalType === '投票') {
       await e.reply('投票成功！', false, { recallMsg: 30 })
     } else {
-      const initiator = Bot.pickMember(statisticEvent.createGroup, statisticEvent.initiator)
-      const msg = '### 群' + statisticalType + '：' + statisticEvent.topic + '\n' +
+      const initiator = Bot.pickMember(currentEvent.createGroup, currentEvent.initiator)
+      const msg = '### 群' + statisticalType + '：' + currentEvent.topic + '\n' +
           '#### 🤚发起人：' + (
         initiator.card
           ? initiator.card + '(' + initiator.info.user_id + ')'
-          : statisticEvent.initiator
+          : currentEvent.initiator
       ) + '\n' +
-          (statisticEvent.options.length ? '#### 👁️‍🗨️限定选项' + statisticEvent.options.join(' or ') + '\n' : '') +
-          statisticEvent.arr.map((item, index) => { return `##### ${index + 1}：${item.displayMsg}` }).join('\n')
+          (currentEvent.options.length ? '#### 👁️‍🗨️限定选项' + currentEvent.options.join(' or ') + '\n' : '') +
+          currentEvent.arr.map((item, index) => { return `##### ${index + 1}：${item.displayMsg}` }).join('\n')
       await e.reply(await avocadoRender(msg))
     }
-    await saveStatisticalData(e.group_id, statisticEvent, hasGlobal)
+    await saveStatisticalData(e.group_id, currentEvent, isGlobalAction)
     return true
   }
 
   async cancelEvent (e) {
     if (!e.isGroup) return false
-    const regex = new RegExp(`#(?:${global.God}|鳄梨酱?)?取消(接龙|投票)$`)
+    const regex = new RegExp(`#(?:${global.God}|鳄梨酱?)?取消(全局)?(接龙|投票)$`)
     const match = e.msg.match(regex)
-    const statisticalType = match[1]
+    const isGlobalAction = !!match[1]
+    const statisticalType = match[2]
     const sender = Bot.pickMember(e.group_id, e.sender.user_id)
     const isSenderAdmin = sender.is_admin
-    const hasGlobal = await hasGlobalEvent()
-    const historyData = await getHistoryStatisticalData(hasGlobal ? 'global' : 'group', e.group_id)
-    const statisticEvent = historyData.find(item => item?.type === statisticalType && item?.status)
-    if (!statisticEvent) {
-      await e.reply(`当前不存在${statisticalType}！`)
+    if (!isSenderAdmin || !e.isMaster) return false
+    const currentEvent = isGlobalAction
+      ? await getCurrentEvents(null, 'global', statisticalType)
+      : await getCurrentEvents(e.group_id, 'group', statisticalType)
+    if (!currentEvent) {
+      await e.reply(`当前不存在${isGlobalAction ? '全局' : ''}${statisticalType}！`)
       return false
     }
-    // 取消接龙/投票
-    if ((e.group_id === statisticEvent.createGroup && isSenderAdmin) || e.isMaster) {
-      const bot = Bot.pickMember(
-        statisticEvent.createGroup || e.group_id,
-        Bot.uin)
-      const isBotAdmin = bot.is_admin
-      if (isBotAdmin) {
-        await delAnnounce(statisticEvent.createGroup, 1, e.bot ?? Bot)
+    // 取消接龙/投票 -> 管理原取消
+    let replyMsg = '已取消' + statisticalType + ':' + currentEvent.topic + '！'
+    if (isGlobalAction && e.isMaster) {
+      const groupIds = Array.from(Bot.getGroupList().keys(), obj => obj)
+      for (const groupId of groupIds) {
+        await Bot.sendGroupMsg(groupId, replyMsg)
       }
-      await delStatisticalData(e.group_id, statisticEvent.id, hasGlobal)
-      let replyMsg = '已取消' + statisticalType + '！'
-      if (hasGlobal) {
-        const groupIds = Array.from(Bot.getGroupList().keys(), obj => obj)
-        for (const groupId of groupIds) {
-          await Bot.sendGroupMsg(groupId, replyMsg)
-        }
-      } else {
-        await e.reply(replyMsg)
-      }
-      return true
+      await delStatisticalData(e.group_id, currentEvent.id, isGlobalAction)
     } else {
-      await e.reply('🚫')
-      return false
+      if (e.group_id === currentEvent.createGroup) {
+        const bot = Bot.pickMember(
+          currentEvent.createGroup || e.group_id,
+          Bot.uin)
+        const isBotAdmin = bot.is_admin
+        if (isBotAdmin) {
+          await delAnnounce(currentEvent.createGroup, 1, e.bot ?? Bot)
+        }
+        await delStatisticalData(e.group_id, currentEvent.id, isGlobalAction)
+        await e.reply(replyMsg)
+        return true
+      } else {
+        await e.reply('🚫')
+        return false
+      }
     }
   }
 
@@ -346,36 +349,43 @@ export class AvocadoStatistics extends plugin {
   // 结束接龙/投票
   // 只有发起者|master可结束
   async endEvent (e) {
-    const regex = new RegExp(`#(?:${global.God}|鳄梨酱?)?结束(接龙|投票)$`)
+    const regex = new RegExp(`#(?:${global.God}|鳄梨酱?)?结束(全局)?(接龙|投票)$`)
     const match = e.msg.match(regex)
-    const statisticalType = match[1]
-    const hasGlobal = await hasGlobalEvent()
-    const historyData = await getHistoryStatisticalData(hasGlobal ? 'global' : 'group', e.group_id)
-    const statisticEvent = historyData.find(item => item?.type === statisticalType && item?.status)
-    if (!statisticEvent) {
-      await e.reply(`当前不存在${statisticalType}！`)
+    const isGlobalAction = !!match[1]
+    const statisticalType = match[2]
+    const sender = Bot.pickMember(e.group_id, e.sender.user_id)
+    const isSenderAdmin = sender.is_admin
+    if (!isSenderAdmin || !e.isMaster) return false
+    const currentEvent = isGlobalAction
+      ? await getCurrentEvents(null, 'global', statisticalType)
+      : await getCurrentEvents(e.group_id, 'group', statisticalType)
+    if (!currentEvent) {
+      await e.reply(`当前不存在${isGlobalAction ? '全局' : ''}${statisticalType}！`)
       return false
     }
-    if (e.group_id === statisticEvent.createGroup) {
-      if (e.sender.user_id === statisticEvent.initiator || e.isMaster) {
+    let replyMsg = '已结束' + statisticalType + ':' + currentEvent.topic + '！'
+    if (isGlobalAction && e.isMaster) {
+      const groupIds = Array.from(Bot.getGroupList().keys(), obj => obj)
+      for (const groupId of groupIds) {
+        await Bot.sendGroupMsg(groupId, replyMsg)
+      }
+      await saveStatisticalData(e.group_id, currentEvent, isGlobalAction)
+      // todo 发送统计结果
+    } else {
+      if (e.group_id === currentEvent.createGroup) {
         const bot = Bot.pickMember(
-          statisticEvent?.createGroup || e.group_id,
+          currentEvent?.createGroup || e.group_id,
           Bot.uin)
-        const initiator = Bot.pickMember(
-          statisticEvent?.createGroup || e.group_id,
-          statisticEvent?.initiator || e.sender.user_id)
         const isBotAdmin = bot.is_admin
-        const isInitiatorAdmin = initiator.is_admin
         await e.reply('正在统计' + statisticalType + '信息...')
         await sleep(1000)
-        // 只保存正常结束的投票
-        // logger.warn(statisticEvent)
-        statisticEvent.status = false
-        await saveStatisticalData(e.group_id, statisticEvent, hasGlobal)
+        // 只保存正常结束的投票, 改变状态，记录为已结束事件
+        currentEvent.status = false
+        await saveStatisticalData(e.group_id, currentEvent, isGlobalAction)
         e.msg = '#查看历史' + statisticalType + '-1'
-        e.obj = statisticEvent
+        e.obj = currentEvent
         await this.adminHistory(e)
-        if (isBotAdmin && isInitiatorAdmin) {
+        if (isBotAdmin) {
           await delAnnounce(e.group_id, 1, e.bot ?? Bot)
         }
         return true
@@ -386,24 +396,29 @@ export class AvocadoStatistics extends plugin {
     }
   }
 
+  // todo 为统计列表添加序号，并可通过序号查看对应结果对应成员
   async checkEvent (e) {
-    const hasGlobal = await hasGlobalEvent()
-    const historyData = await getHistoryStatisticalData(hasGlobal ? 'global' : 'group', e.group_id)
-    const regex = new RegExp(`#(?:${global.God}|鳄梨酱?)?(?:查看)?(接龙|投票)[:；]?(.+)?(数据|情况|进度)$`)
+    const regex = new RegExp(`#(?:${global.God}|鳄梨酱?)?(?:查看)?(全局)?(接龙|投票)[:；]?(.+)?(数据|情况|进度)$`)
     const match = e.msg.match(regex)
     if (match === null) return false
-    const statisticalType = match[1]
-    const statisticEvent = historyData.find(item => item?.type === statisticalType && item?.status)
-    if (!statisticEvent) {
-      await e.reply(`当前不存在${statisticalType}！`)
+    const isGlobalAction = !match[1]
+    const statisticalType = match[2]
+    const sender = Bot.pickMember(e.group_id, e.sender.user_id)
+    const isSenderAdmin = sender.is_admin
+    if (!isSenderAdmin || !e.isMaster) return false
+    const currentEvent = isGlobalAction
+      ? await getCurrentEvents(null, 'global', statisticalType)
+      : await getCurrentEvents(e.group_id, 'group', statisticalType)
+    if (!currentEvent) {
+      await e.reply(`当前不存在${isGlobalAction ? '全局' : ''}${statisticalType}！`)
       return false
     }
-    const summary = getSummary(statisticEvent)
+    const summary = getSummary(currentEvent)
     const regex1 = new RegExp(`${Object.keys(summary.numCount).join('|')}`)
     let subtype = ''
-    if (match[2] && match[2].test(regex1)) subtype = match[2]
+    if (match[3] && match[3].test(regex1)) subtype = match[3]
     if (subtype) {
-      if (statisticalType === '投票' && statisticEvent.isAnonymity) {
+      if (statisticalType === '投票' && currentEvent.isAnonymity) {
         await e.reply('匿名投票不可查看！')
         return false
       }
@@ -412,16 +427,16 @@ export class AvocadoStatistics extends plugin {
       )
       return true
     }
-    const initiator = Bot.pickMember(statisticEvent.createGroup, statisticEvent.initiator)
-    let replyMsg = '### 群' + statisticalType + '：' + statisticEvent.topic
+    const initiator = Bot.pickMember(currentEvent.createGroup, currentEvent.initiator)
+    let replyMsg = '### 群' + statisticalType + '：' + currentEvent.topic
     replyMsg += '\n#### 🤚发起人：' + (
       initiator.card
         ? initiator.card + '(' + initiator.info.user_id + ')'
-        : statisticEvent.initiator
+        : currentEvent.initiator
     )
-    replyMsg += `${statisticEvent.type === '投票' ? ('\n#### 👁️‍🗨️是否为匿名投票：' + (statisticEvent.isAnonymity ? '是' : '否')) : ''}`
-    replyMsg += (statisticEvent.options.length ? '\n#### ⚠️限定选项：' + statisticEvent.options.join(' or ') : '')
-    replyMsg += '\n#### ✅参与人数：' + statisticEvent.arr.length + ' 人'
+    replyMsg += `${currentEvent.type === '投票' ? ('\n#### 👁️‍🗨️是否为匿名投票：' + (currentEvent.isAnonymity ? '是' : '否')) : ''}`
+    replyMsg += (currentEvent.options.length ? '\n#### ⚠️限定选项：' + currentEvent.options.join(' or ') : '')
+    replyMsg += '\n#### ✅参与人数：' + currentEvent.arr.length + ' 人'
     Object.entries(summary.numCount).forEach(([key, value]) => {
       replyMsg += `\n&nbsp;&nbsp;&nbsp;&nbsp;**🙋‍♂️${key}：${value} 人**`
     })
@@ -436,15 +451,19 @@ export class AvocadoStatistics extends plugin {
   //  1. 形式： 图片显示 done
   //  2. 内容： 序号：时间 -> 主题 ... 序号：时间 -> 主题 done
   //  3. 查看： 通过序号查看详情 done
+  //  4. regex =》 优化。支持分别查看管理 全局|所有群聊|当前群聊 事件，默认当前
+
+  // todo edited 23:31 8.5
   async adminHistory (e) {
-    let picked = ''; let isAdminAllHistory = ''; let statisticsArrJson = ''; let dataToProcess = ''
-    const regex = new RegExp(`#(?:${global.God}|鳄梨酱?)?(查看|删除)?(?:所有)?历史(接龙|投票)(-?\\d*)`)
+    let picked = ''; let isAdminAllHistory = false;let isAdminGlobalHistory = false; let statisticsArrJson = ''; let dataToProcess = ''
+    const regex = new RegExp(`#(?:${global.God}|鳄梨酱?)?(查看|删除)?(?:所有|全局)?历史(接龙|投票)(-?\\d*)`)
     const match = e.msg.match(regex)
     let [isDel, type, order] = [match[1] ? match[1] === '删除' : false, match[2], parseInt(match[3] || 9999)]
     if (e?.obj) {
       dataToProcess = [e.obj]
     } else {
       isAdminAllHistory = e.msg.includes('所有')
+      isAdminGlobalHistory = e.msg.includes('全局')
       if ((!e.isMaster && isAdminAllHistory) || !e.isGroup) return false
       statisticsArrJson = await getHistoryStatisticalData(isAdminAllHistory ? 'groups' : 'group', e.group_id)
       dataToProcess = isAdminAllHistory ? statisticsArrJson : statisticsArrJson.filter(item => item.createGroup === e.group_id)
@@ -640,6 +659,45 @@ async function getHistoryStatisticalData (dataField = 'group', groupId = null) {
 }
 
 /**
+ * 返回当前进行的事件
+ * @param groupId - 群号，field 为 group 时指定
+ * @param field - 需要获取的事件范围
+ * @param type - 在指定type时， field 为 groups 时返回数组，其余情况均返回事件对象
+ * @returns {Promise<*>}
+ */
+async function getCurrentEvents (groupId, field = 'all', type = '') {
+  let globalEvents = field === 'global' || field === 'all'
+    ? type
+      ? (await getHistoryStatisticalData('global')).find(item => item?.status && item?.type === type)
+      : (await getHistoryStatisticalData('global')).filter(item => item?.status)
+    : []
+  let singerGroupEvents = field === 'group'
+    ? type
+      ? (await getHistoryStatisticalData('group', groupId)).find(item => item?.status && item?.type === type)
+      : (await getHistoryStatisticalData('group', groupId)).filter(item => item?.status)
+    : []
+  // 指定type时的返回结果也为数组，因为可能在不同群同时存在未结束的同种类型的事件
+  let allNormalGroupEvents = field === 'all' || field === 'groups'
+    ? type
+      ? (await getHistoryStatisticalData('groups', null)).filter(item => item?.status && item?.type === type)
+      : (await getHistoryStatisticalData('groups', null)).filter(item => item?.status)
+    : []
+  switch (field) {
+    case 'all':{
+      return allNormalGroupEvents.concat(globalEvents)
+    }
+    case 'groups':{
+      return allNormalGroupEvents
+    }
+    case 'group':{
+      return singerGroupEvents
+    }
+    case 'global':{
+      return globalEvents
+    }
+  }
+}
+/**
  * @param groupId
  * @param statisticData
  * @param saveToGlobal
@@ -673,20 +731,14 @@ async function delStatisticalData (groupId, dataId, isGlobalData = false) {
       const processed = dataList.filter(item => item.id !== dataId)
       return await saveStatisticalData(groupId, processed, isGlobalData)
     } else {
-      return 0
+      return false
     }
   } catch (error) {
     logger.warn(error)
     return false
   }
 }
-async function hasGlobalEvent () {
-  const dataList = await getHistoryStatisticalData('global')
-  if (dataList.length) {
-    return !!dataList.find(item => item.status)
-  }
-  return false
-}
+
 function getSummary (statisticEvent) {
   const summary = { numCount: {}, nameCount: {} } // 包含各项统计总人数与人员名单
   // 初始化summary
