@@ -11,6 +11,7 @@ import { ChatGPTAPI } from 'chatgpt'
 import chalk from 'chalk'
 import dns from 'dns'
 import _ from 'lodash'
+import HttpsProxyAgent from 'https-proxy-agent'
 
 // import sharp from 'sharp'
 
@@ -137,7 +138,6 @@ export async function getMasterQQ () {
 export async function getGptResponse (question) {
   try {
     logger.mark(chalk.blue('[avocado-plugin] Waiting for ChatGPT response...'))
-    let proxy
     const completionParams = {}
     completionParams.model = 'gpt-3.5-turbo-0613'
     let api = new ChatGPTAPI({
@@ -148,7 +148,7 @@ export async function getGptResponse (question) {
       fetch: (url, options = {}) => {
         const defaultOptions = Config.proxy
           ? {
-              agent: proxy(Config.proxy)
+              agent: new HttpsProxyAgent(Config.proxy)
             }
           : {}
         const mergedOptions = {
@@ -435,6 +435,9 @@ export async function avocadoRender (pendingText, opts = {}) {
       await page.setViewport(viewportOpts)
       buff = url ? await page.screenshot(captureOpts) : await body.screenshot(captureOpts)
       kb = chalk.magentaBright('[new]') + (buff.length / 1024).toFixed(2)
+    }
+    if (buff.length === 0) {
+      logger.error('buff.length === 0')
     }
     logger.mark(`[图片生成][${title?.length > 20 ? '图片' : title}][${puppeteerManager.screenshotCount}次]${chalk.blue(kb + 'kb')} ${chalk.cyan(viewportOpts.width + '×' + viewportOpts.height + 'px')} ${logger.green(`${Date.now() - start}ms`)}`)
     await puppeteerManager.closePage(page)
