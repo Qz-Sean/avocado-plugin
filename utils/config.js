@@ -19,7 +19,7 @@ const defaultConfig = {
   proxy: '',
   deviceScaleFactor: '1',
   statisticsPush: false,
-  version: 'v1.9.0'
+  version: 'v2.0.0'
 }
 const _path = process.cwd()
 let config = {}
