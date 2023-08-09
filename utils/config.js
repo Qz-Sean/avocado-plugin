@@ -18,6 +18,7 @@ const defaultConfig = {
   apiBaseUrl: '',
   proxy: '',
   deviceScaleFactor: '1',
+  statisticsPush: false,
   version: 'v1.9.0'
 }
 const _path = process.cwd()

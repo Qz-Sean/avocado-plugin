@@ -107,6 +107,12 @@ const panel = {
         component: 'Switch'
       },
       {
+        field: 'statisticsPush',
+        label: '是否推送未完成统计',
+        bottomHelpMessage: '当存在未完成接龙/投票时，向事件发起群聊推送提醒。',
+        component: 'Switch'
+      },
+      {
         field: 'proxy',
         label: 'http代理',
         bottomHelpMessage: '需要可填，预览网页时使用。',
