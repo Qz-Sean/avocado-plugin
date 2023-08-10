@@ -20,7 +20,7 @@ export const urlBlacklist = [
   /porn/i
 ]
 export const blockedDomains = /(wolai|example|onetimesecret|cdn\.waifu)\.(com|im)/i
-
+export const wholeHeightDomains = /(gitee)\.com/i
 // 欢迎补充
 export const phantomTransformation = {
   '黑夜之力，赐予我力量！': '黑暗的力量已经注入你的身体，从此你将成为黑夜的主宰！\n黑夜啊，听从我的召唤，降临于这片大地吧！',
