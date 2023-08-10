@@ -416,7 +416,6 @@ export async function avocadoRender (pendingText, opts = {}) {
     }
     await page.setViewport(viewportOpts)
     buff = url ? await body.screenshot(captureOpts) : await body.screenshot(captureOpts)
-    logger.warn(viewportOpts, captureOpts)
     // if (url && buff) {
     // // 将Buffer转换为Sharp对象
     //   const image = sharp(buff)
@@ -447,7 +446,7 @@ export async function avocadoRender (pendingText, opts = {}) {
       buff = url ? await page.screenshot(captureOpts) : await body.screenshot(captureOpts)
       kb = chalk.magentaBright('[new]') + (buff.length / 1024).toFixed(2)
     }
-    logger.error('buff.length: ' + buff.length)
+    logger.mark('buff.length: ' + buff.length)
     logger.mark(`[图片生成][${title?.length > 20 ? '图片' : title}][${puppeteerManager.screenshotCount}次]${chalk.blue(kb + 'kb')} ${chalk.cyan(viewportOpts.width + '×' + viewportOpts.height + 'px')} ${logger.green(`${Date.now() - start}ms`)}`)
     await puppeteerManager.closePage(page)
   } catch (error) {

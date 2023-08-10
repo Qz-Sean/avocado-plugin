@@ -181,7 +181,7 @@ export class AvocadoStatistics extends plugin {
       }
     }
     const currentEvent = await getCurrentEvents('group', e.group_id, statisticalType)
-    logger.warn(currentEvent)
+    // logger.warn(currentEvent)
     if (currentEvent) {
       e.reply(`已存在${statisticalType}：${currentEvent.topic} \n参与人数：${currentEvent.arr.length}人\n可回复 #查看${statisticalType}进度 查看详情`)
       return false
@@ -214,7 +214,7 @@ export class AvocadoStatistics extends plugin {
         return acc
       }, {})
       : {}
-    logger.warn(options)
+    // logger.warn(options)
     statisticEvent.isGlobalEvent = isGlobalAction
     statisticEvent.type = statisticalType
     statisticEvent.initiator = e.sender.user_id
@@ -241,7 +241,7 @@ export class AvocadoStatistics extends plugin {
       // 推送初始信息
       await e.reply(`群${statisticalType}：${topic}${Object.keys(options).length ? '\n' + Object.keys(options).map(key => key + '：' + options[key]).join('\n') + '\n' : '\n1.'}`)
     }
-    logger.warn(statisticEvent)
+    // logger.warn(statisticEvent)
     statisticEvent.status = true
     await saveStatisticalData(e.group_id, statisticEvent, isGlobalAction)
   }
@@ -295,7 +295,6 @@ export class AvocadoStatistics extends plugin {
     } else {
       const inputKey = Object.keys(currentEvent.options).find(key => key === userInput.toUpperCase())
       const inputValue = Object.values(currentEvent.options).find(value => value === userInput)
-      logger.warn(inputKey, inputValue)
       if (currentEvent.options.length && (!inputKey || !inputValue)) {
         await e.reply('请使用给定选项！' + optionsArr.join('\n'), false, { recallMsg: 10 })
         return false
@@ -516,9 +515,9 @@ export class AvocadoStatistics extends plugin {
         const targetEntry = [...summary.nameCount].find((item, i) => (i + 1) + '' === inputIndex)
         subTypeName = targetEntry[0]
         nameList = targetEntry[1]
-        logger.warn(targetEntry, subTypeName, nameList)
+        // logger.warn(targetEntry, subTypeName, nameList)
       }
-      logger.warn(specificOption)
+      // logger.warn(specificOption)
       const replyMsg = nameList.length
         ? `##### 🙋‍♂️${inputSubType || subTypeName}：${nameList.join('、')}`
         : `### 没有人选择 ${inputSubType} 呢~\n${await getBonkersBabble(global.God, 'native', 80)}`
@@ -826,7 +825,7 @@ async function getHistoryStatisticalData (dataField = 'group', groupId = null, t
       return []
     }
   } catch (error) {
-    logger.warn(error)
+    logger.error(error)
     return []
   }
 }
@@ -849,7 +848,7 @@ async function getCurrentEvents (field = 'all', groupId = null, type = '') {
   let allNormalGroupEvents = field === 'all' || field === 'groups'
     ? (await getHistoryStatisticalData('groups', null, type)).filter(item => item?.status)
     : []
-  logger.warn(globalEvents, singleGroupEvents, allNormalGroupEvents)
+  // logger.warn(globalEvents, singleGroupEvents, allNormalGroupEvents)
   switch (field) {
     case 'all':{
       return type ? allNormalGroupEvents.concat(globalEvents)[0] : allNormalGroupEvents.concat(globalEvents)
@@ -891,7 +890,7 @@ async function saveStatisticalData (groupId, statisticData, saveToGlobal = false
     }
     return status === 'OK' || false
   } catch (error) {
-    logger.warn(error)
+    logger.error(error)
     return false
   }
 }
@@ -916,7 +915,7 @@ async function delStatisticalData (dataId, isGlobalData = false) {
       return false
     }
   } catch (error) {
-    logger.warn(error)
+    logger.error(error)
     return false
   }
 }
