@@ -449,7 +449,7 @@ export class AvocadoStatistics extends plugin {
       const groupIds = Array.from(Bot.getGroupList().keys(), obj => obj)
       const img = await avocadoRender(replyMsg)
       for (const groupId of groupIds) {
-        let text = '已结束' + statisticalType + ':' + currentEvent.topic + '！'
+        let text = '已结束' + (isGlobalAction ? '全局' : '') + statisticalType + '：' + currentEvent.topic
         await Bot.sendGroupMsg(groupId, [text, '\n', img])
       }
     } else {
