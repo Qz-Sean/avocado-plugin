@@ -24,5 +24,6 @@
   "onsetGroups": [],
   "isAutoShareMusic": true,
   "deviceScaleFactor": "1",
-  "greetSwitch": true
+  "greetSwitch": true,
+  "groupGod": []
 }

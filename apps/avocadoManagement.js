@@ -7,7 +7,6 @@ import {
   phantomTransformation,
   translateLangSupports
 } from '../utils/const.js'
-import { getHotMovieList } from '../utils/movie.js'
 
 export class AvocadoManagement extends plugin {
   constructor (e) {
@@ -18,7 +17,7 @@ export class AvocadoManagement extends plugin {
       priority: 200,
       rule: [
         {
-          reg: `^#(${Object.keys(phantomTransformation).join('|')})?(变身|切换)！?([\u4e00-\u9fa5]*)`,
+          reg: `^#(${Object.keys(phantomTransformation).join('|')})?(全局)?(变身|切换)！?([\u4e00-\u9fa5]*)`,
           fnc: 'setGod',
           permission: 'master'
         },
@@ -36,9 +35,31 @@ export class AvocadoManagement extends plugin {
           reg: '^#?(我要变身！|查看咒语)$',
           fnc: 'checkSpells',
           permission: 'master'
+        },
+        {
+          reg: '^#?查看(全局|所有)?触发词$',
+          fnc: 'checkGod',
+          permission: 'master'
         }
       ]
     })
+  }
+
+  async checkGod (e) {
+    if (!e.isGroup && !e.msg.includes('全局') && !e.msg.includes('所有')) return false
+    if (e.msg.includes('所有')) {
+      await e.reply('全局触发词：' + Config.OHMYGOD + '\n' + Config.groupGod.map(obj => Object.keys(obj).map(item => item + '：' + obj[item]).join('\n')).join('\n'))
+    } else if (e.msg.includes('全局')) {
+      await e.reply('全局触发词：' + Config.OHMYGOD)
+    } else {
+      const godName = Config.groupGod.find(obj => obj?.[e.group_id])?.[e.group_id]
+      if (godName) {
+        await e.reply('当前群聊触发词为：' + godName)
+      } else {
+        await e.reply('当前群聊未设置触发词！')
+      }
+    }
+    return true
   }
 
   async checkSpells (e) {
@@ -93,8 +114,10 @@ export class AvocadoManagement extends plugin {
 
   async setGod (e) {
     const abracadabra = Object.keys(phantomTransformation).join('|')
-    const match = this.e.msg.trim().match(new RegExp(`^#?(${abracadabra})?(变身|切换)！?([\u4e00-\u9fa5a-zA-Z0-9]+)`), '')
-    const GodName = match[3]
+    // 不匹配标点
+    const match = this.e.msg.trim().match(new RegExp(`^#?(${abracadabra})?(全局)?(变身|切换)！?([\u4e00-\u9fa5a-zA-Z0-9]+)`), '')
+    const GodName = match[4]
+    const isGodAction = match[2] ?? false
     if (!GodName) {
       await this.reply(confusedSpells[Math.floor(Math.random() * confusedSpells.length)], e.isGroup)
       this.setContext('setGod')
@@ -105,8 +128,20 @@ export class AvocadoManagement extends plugin {
     if (match[1]) {
       replySpell = phantomTransformation[match[1]] + '\n'
     }
-    Config.OHMYGOD = GodName
-    global.God = GodName
+    if (isGodAction) {
+      Config.OHMYGOD = GodName
+      global.God = GodName
+    } else {
+      if (!e.isGroup) {
+        await e.reply('请在群聊中使用该命令，全局设置触发词请在指令中添加 "全局"，例如#全局切换鳄梨酱')
+        return false
+      }
+      const arr = Config.groupGod.filter(item => !item?.[e.group_id])
+      arr.push({ [e.group_id]: GodName })
+      Config.groupGod = arr
+      global.groupGodNameList = arr.reduce((acc, obj) => acc.concat(Object.values(obj)), [])
+    }
+    logger.warn(Config.groupGod, Config.OHMYGOD)
     await this.reply(replySpell + incantationResult[Math.floor(Math.random() * incantationResult.length)])
     this.finish('setGod')
   }

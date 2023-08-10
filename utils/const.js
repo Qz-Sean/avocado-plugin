@@ -4,7 +4,10 @@ import cfg from '../../../lib/config/config.js'
 import chalk from 'chalk'
 
 global.hasSend = []
-global.God = Config.OHMYGOD === '' ? '鳄梨酱' : Config.OHMYGOD
+// todo 去掉这俩变量
+global.God = Config.OHMYGOD
+global.groupGodNameList = Config.groupGod.reduce((acc, obj) => acc.concat(Object.values(obj)), [])
+
 // from 3399280843@qq.com@SmallK111407
 export const _path = process.cwd().replace(/\\/g, '/')
 export const pluginName = path.basename(path.join(import.meta.url, '../../'))

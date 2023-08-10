@@ -16,7 +16,7 @@ export class AvocadoPsycho extends plugin {
       priority: 6000,
       rule: [
         {
-          reg: `${global.God}`,
+          reg: `(${global.God}${(global.groupGodNameList).length ? '|' : ''}${(global.groupGodNameList).join('|')})`,
           fnc: 'avocadoPsycho'
         },
         {
@@ -46,16 +46,25 @@ export class AvocadoPsycho extends plugin {
   }
 
   async avocadoPsycho (e) {
+    if (!e.isGroup && typeof e.msg !== 'string') return false
+    // 每次都触发太烦了
+    if (Math.ceil(Math.random() * 100) <= 50) return false
     // 判断群聊是否位配置群聊
     if (Config.onsetGroups.length !== 0 && !Config.onsetGroups.includes(e.group_id.toString())) return true
     // 不处理#起始指令与没开启主动发电的情况
     if (e.msg.startsWith('#') || !Config.isAutoOnset) return true
     let godName = ''
     // 内部调用
-    if (e.msg && !e.msg.includes(global.God)) {
+    if (e?.internalCall) {
       godName = e.msg
     } else {
-      godName = global.God
+      godName = Config.groupGod.find(obj => obj?.[e.group_id])?.[e.group_id]
+      if (godName) {
+        // 存在局部触发词则忽略全局触发词
+        if (e.msg.includes(global.God) && !e.msg.includes(godName)) return false
+      } else {
+        godName = global.God
+      }
     }
     const isApiErrorStr = await redis.get('AVOCADO_PSYCHO_ERROR')
     const apiErrorCode = isApiErrorStr ? parseInt(isApiErrorStr) : 0
@@ -107,7 +116,7 @@ export class AvocadoPsycho extends plugin {
         replyMsg = res
       }
     }
-    if (Math.random() < 0.8) {
+    if (Math.ceil(Math.random() * 100) <= 90) {
       await e.reply(replyMsg)
     } else {
       replyMsg = replyMsg.split('\n').map(item => '# ' + item + '\n').join('')
