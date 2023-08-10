@@ -22,7 +22,8 @@ export class AvocadoPreview extends plugin {
   async avocadoPreview (e, param = '') {
     if (e.isGroup && (e.message[0].type === 'xml' || e.msg.startsWith('#') || e.msg.startsWith('/？'))) return false
     if (e.isPrivate && !e.msg.startsWith('#')) return false // 私聊需要带#避免抢指令
-    let url
+    let url, originalUrl
+    originalUrl = e.msg.trim().replace(/^[!！]?#?/, '')
     if (param.length) {
       url = param
     } else {
@@ -64,7 +65,7 @@ export class AvocadoPreview extends plugin {
       // } else {
       // todo 多链接预览，不过好像意义不大
       const enforceFlag = e.msg.startsWith('！') || e.msg.startsWith('!') // 强制预览
-      url = await filterUrl(e.msg.trim().replace(/^[!！]?#?/, ''))
+      url = await filterUrl(originalUrl)
       url = url[0]
       const leftTime = refreshTimer(timer.previewCtx)?.leftTime
       if (!url?.length) return false
@@ -88,7 +89,9 @@ export class AvocadoPreview extends plugin {
     //   await sleep(3000)
     //   img = await avocadoRender('', { title: '网页预览', url })
     // }
-    await e.reply([url, '\n', img], false, { recallMsg: `${typeof img !== 'object' && img.includes('avocadoRender图片生成失败') ? 8 : 0}` })
+    // await e.reply(img)
+    // await e.reply([originalUrl, '\n', img], false, { recallMsg: `${typeof img === 'string' && img.includes('avocadoRender图片生成失败') ? 60 : 0}` })
+    await e.reply(img, false, { recallMsg: `${typeof img === 'string' && img.includes('avocadoRender图片生成失败') ? 60 : 0}` })
     return false
   }
 }
