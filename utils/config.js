@@ -20,7 +20,7 @@ const defaultConfig = {
   deviceScaleFactor: '1',
   statisticsPush: false,
   groupGod: [],
-  version: 'v2.0.1'
+  version: 'v2.1.0'
 }
 const _path = process.cwd()
 let config = {}
