@@ -136,6 +136,10 @@ const panel = {
         if (keyPath === 'deviceScaleFactor') {
           value = value >= 1 && value <= 10 ? value : 1
         }
+        if (keyPath === 'OHMYGOD') {
+          value = value.match(/[\u4e00-\u9fa5a-zA-Z0-9]+/g)?.join('')
+          if (!value) value = '鳄梨酱'
+        }
         if (Config[keyPath] !== value) {
           Config[keyPath] = value
         }
