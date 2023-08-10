@@ -184,21 +184,32 @@ export async function findMovie (keyword, userId, type) {
       const response = await fetch(url[i], options)
       if (!response.ok) {
         logger.error('Request failed with status code', response.status)
-        return false
+        if (i === 0) {
+          continue
+        } else {
+          return false
+        }
       }
       const resJson = await response.json()
-      if (resJson.total === 0) {
-        return 'no related movies'
+      if (resJson?.total && resJson.total === 0) {
+        if (i === 0) {
+          continue
+        } else {
+          return 'no related movies'
+        }
       }
       tempList = i === 0 ? resJson.movies.list.filter(item => item.nm === keyword) : resJson.movies
       // 接口1若能找到完全匹配的结果储存到reslist变量中
-      if (tempList.length && tempList.length === 1) {
-        resList = tempList
+      if (tempList.length) {
+        resList = i === 0 ? tempList : resList
         // 若type=1则直接跳出循环
-        if (type === 1) break
+        if (type === 1) {
+          resList = [tempList[0]]
+          break
+        }
       }
       // 拼接接口1的结果
-      resList = tempList.concat(resList)
+      resList = resList.concat(tempList)
       // 去重
       resList = Array.from(new Set(resList.map(item => JSON.stringify(item)))).map(item => JSON.parse(item))
     }
@@ -223,8 +234,8 @@ export async function findMovie (keyword, userId, type) {
     if (!roughList.length) {
       return 'no related movies'
     }
-    await redis.set(`AVOCADO:MOVIE_${userId}_SEARCH`, JSON.stringify(roughList), 'EX', 60 * 6)
-    await redis.set(`AVOCADO:MOVIE_${userId}_FROM`, 'search', 'EX', 60 * 6)
+    await redis.set(`AVOCADO:MOVIE_${userId}_SEARCH`, JSON.stringify(roughList), { EX: 60 * 6 })
+    await redis.set(`AVOCADO:MOVIE_${userId}_FROM`, 'search', { EX: 60 * 6 })
     return roughList
   } catch (error) {
     logger.error(error)
@@ -261,7 +272,7 @@ export function analyseMovieList (movieList) {
 }
 export function processMovieDetail (selectedMovie) {
   let processedMovieDetail = {}
-  let trailerAndStills  = []
+  let trailerAndStills = []
   for (const key in movieKeyMap) {
     if (key === 'index') continue // 跳过'index'键
     const value = selectedMovie[key]
