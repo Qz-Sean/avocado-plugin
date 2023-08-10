@@ -129,7 +129,8 @@ export class AvocadoMovie extends plugin {
   async pickMe (e) {
     if (typeof this.e.msg !== 'string') return
     let movieList
-    const from = e.from
+    const from = e?.from
+    // todo 抽象，有点忘了
     switch (from) {
       case 'search':{
         movieList = JSON.parse(await redis.get(`AVOCADO:MOVIE_${this.e.sender.user_id}_SEARCH`))
@@ -138,6 +139,9 @@ export class AvocadoMovie extends plugin {
       case 'hotMovies':{
         movieList = JSON.parse(await redis.get('AVOCADO:MOVIE_DETAILS'))
         break
+      }
+      default:{
+        movieList = JSON.parse(await redis.get(`AVOCADO:MOVIE_${this.e.sender.user_id}_SEARCH`))
       }
     }
     const reg = new RegExp(`^((0{1,3})|(${movieList.map(item => item.index).join('|')})|(${movieList.map(item => item.nm).join('|').replace(/\*/g, ' fuck ')}))$`)
@@ -176,6 +180,9 @@ export class AvocadoMovie extends plugin {
           // 热门电影已获取所有细节信息，不用再次获取
           selectedMovie = choose
           break
+        }
+        default:{
+          selectedMovie = await getMovieDetail(choose.id)
         }
       }
       const [processedMovieDetail, others, textToShow] = processMovieDetail(selectedMovie)

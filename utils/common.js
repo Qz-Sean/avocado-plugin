@@ -1,4 +1,12 @@
-import { blockedDomains, pluginRoot, pluginVersion, urlBlacklist, urlRegex, yunZaiVersion } from './const.js'
+import {
+  blockedDomains,
+  pluginRoot,
+  pluginVersion,
+  urlBlacklist,
+  urlRegex,
+  wholeHeightDomains,
+  yunZaiVersion
+} from './const.js'
 import path from 'path'
 import puppeteerManager from './puppeteer.js'
 import fs from 'fs'
@@ -385,10 +393,11 @@ export async function avocadoRender (pendingText, opts = {}) {
     await page.setViewport(viewportOpts)
     // }
 
-    const body = await page.$('body')
     // 处理知乎的弹窗
     const closeButton = await page.$('.Modal-closeButton')
     if (closeButton) await closeButton.click()
+
+    const body = await page.$('body')
     const [bodyHeight, wholeHeight] = await page.evaluate(() => {
       return [Math.max(
         document.body.scrollHeight,
@@ -400,12 +409,14 @@ export async function avocadoRender (pendingText, opts = {}) {
         document.documentElement.clientHeight
       )]
     })
-    if (url) {
+    if (url && wholeHeightDomains.test(url)) {
       viewportOpts.width = 1920
       viewportOpts.height = bodyHeight < 1080 ? 1080 : wholeHeight
+      // viewportOpts.height = bodyHeight
     }
     await page.setViewport(viewportOpts)
-    buff = url ? await page.screenshot(captureOpts) : await body.screenshot(captureOpts)
+    buff = url ? await body.screenshot(captureOpts) : await body.screenshot(captureOpts)
+    logger.warn(viewportOpts, captureOpts)
     // if (url && buff) {
     // // 将Buffer转换为Sharp对象
     //   const image = sharp(buff)
@@ -436,9 +447,7 @@ export async function avocadoRender (pendingText, opts = {}) {
       buff = url ? await page.screenshot(captureOpts) : await body.screenshot(captureOpts)
       kb = chalk.magentaBright('[new]') + (buff.length / 1024).toFixed(2)
     }
-    if (buff.length === 0) {
-      logger.error('buff.length === 0')
-    }
+    logger.error('buff.length: ' + buff.length)
     logger.mark(`[图片生成][${title?.length > 20 ? '图片' : title}][${puppeteerManager.screenshotCount}次]${chalk.blue(kb + 'kb')} ${chalk.cyan(viewportOpts.width + '×' + viewportOpts.height + 'px')} ${logger.green(`${Date.now() - start}ms`)}`)
     await puppeteerManager.closePage(page)
   } catch (error) {
