@@ -65,6 +65,7 @@ export class AvocadoRuleALL extends plugin {
       const regex = new RegExp(`^#?((${global.God}|鳄梨酱?)?#发[癫电疯](.+))`)
       e.msg = e.msg.match(regex)[3]
     }
+    e.internalCall = true
     await new AvocadoPsycho().avocadoPsycho(e)
   }
 
