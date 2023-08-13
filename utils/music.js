@@ -596,7 +596,7 @@ export async function getFavList (userID, SingerID) {
 }
 
 export async function avocadoShareMusic (data, target, imgToShare, textMsg, platformCode) {
-  logger.mark(chalk.greenBright('avocadoShareMusic -> ' + data.name + '-' + data.artist.join('/') + ' to ' + target))
+  logger.mark(chalk.greenBright('avocadoShareMusic -> ' + data.name + ' - ' + (data?.artist.join('/') || 'nobody') + ' to ' + target))
   try {
     const platform = platformCode || '163'
     // 单个目标
