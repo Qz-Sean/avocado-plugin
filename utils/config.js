@@ -20,6 +20,7 @@ const defaultConfig = {
   deviceScaleFactor: '1',
   statisticsPush: false,
   groupGod: [],
+  autoOnsetOdds: 50,
   version: 'v2.1.0'
 }
 const _path = process.cwd()

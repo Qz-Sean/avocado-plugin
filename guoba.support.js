@@ -62,6 +62,19 @@ const panel = {
         component: 'Switch'
       },
       {
+        field: 'autoOnsetOdds',
+        label: '主动发电概率',
+        bottomHelpMessage: '',
+        component: 'InputNumber',
+        required: true,
+        componentProps: {
+          min: 0,
+          max: 100
+        },
+        placeholder: '请输入数字',
+        addonAfter: '%'
+      },
+      {
         field: 'isPeriodicOnset',
         label: '周期发电',
         bottomHelpMessage: '',

@@ -40,15 +40,30 @@ export class AvocadoManagement extends plugin {
           reg: '^#?查看(全局|所有)?触发词$',
           fnc: 'checkGod',
           permission: 'master'
+        },
+        {
+          reg: '^#?删除(全局|所有)?触发词$',
+          fnc: 'delGod',
+          permission: 'master'
         }
       ]
     })
   }
 
   async checkGod (e) {
-    if (!e.isGroup && !e.msg.includes('全局') && !e.msg.includes('所有')) return false
+    if (!e.isGroup && (!e.msg.includes('全局') || !e.msg.includes('所有'))) return false
     if (e.msg.includes('所有')) {
-      await e.reply('全局触发词：' + Config.OHMYGOD + '\n' + Config.groupGod.map(obj => Object.keys(obj).map(item => item + '：' + obj[item]).join('\n')).join('\n'))
+      const replyMsg = '全局：' + Config.OHMYGOD + '\n' +
+          Config.groupGod.map(
+            obj => Object.keys(obj).map(
+              groupId => (
+                e.isGroup
+                  ? groupId?.replace(/(\d{3})\d+(\d{3})/, '$1****$2')
+                  : groupId
+              ) + '：' + obj[groupId]
+            ).join('\n')
+          ).join('\n')
+      await e.reply(replyMsg)
     } else if (e.msg.includes('全局')) {
       await e.reply('全局触发词：' + Config.OHMYGOD)
     } else {
@@ -59,6 +74,21 @@ export class AvocadoManagement extends plugin {
         await e.reply('当前群聊未设置触发词！')
       }
     }
+    return true
+  }
+
+  async delGod (e) {
+    // 私聊只能管理全局和所有触发词
+    if (!e.isGroup && (!e.msg.includes('全局') || !e.msg.includes('所有'))) return false
+    if (e.msg.includes('所有')) {
+      Config.groupGod = []
+      Config.OHMYGOD = '鳄梨酱'
+    } else if (e.msg.includes('全局')) {
+      Config.OHMYGOD = '鳄梨酱'
+    } else {
+      Config.groupGod = Config.groupGod.filter(obj => !obj?.[e.group_id])
+    }
+    await e.reply('ok')
     return true
   }
 
@@ -141,7 +171,6 @@ export class AvocadoManagement extends plugin {
       Config.groupGod = arr
       global.groupGodNameList = arr.reduce((acc, obj) => acc.concat(Object.values(obj)), [])
     }
-    logger.warn(Config.groupGod, Config.OHMYGOD)
     await this.reply(replySpell + incantationResult[Math.floor(Math.random() * incantationResult.length)])
     this.finish('setGod')
   }

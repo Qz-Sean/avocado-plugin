@@ -16,7 +16,7 @@ export class AvocadoPsycho extends plugin {
       priority: 6000,
       rule: [
         {
-          reg: `(${global.God}${(global.groupGodNameList).length ? '|' : ''}${(global.groupGodNameList).join('|')})`,
+          reg: `(${Config.OHMYGOD}${(global.groupGodNameList).length ? '|' : ''}${(global.groupGodNameList).join('|')})`,
           fnc: 'avocadoPsycho'
         },
         {
@@ -27,6 +27,7 @@ export class AvocadoPsycho extends plugin {
     })
     this.task = [
       {
+        // cron: '*/1 * * * *',
         cron: Math.ceil(5 + Math.random() * 15) + ' 7-23/' + Config.onsetLatentPeriod + ' * * *',
         name: '主动发电<(*￣▽￣*)/',
         fnc: this.sendBonkerBabble
@@ -46,19 +47,20 @@ export class AvocadoPsycho extends plugin {
   }
 
   async avocadoPsycho (e) {
-    if (!e.isGroup && typeof e.msg !== 'string') return false
-    // 每次都触发太烦了
-    if (Math.ceil(Math.random() * 100) <= 50) return false
-    // 判断群聊是否位配置群聊
-    if (Config.onsetGroups.length !== 0 && !Config.onsetGroups.includes(e.group_id.toString())) return true
+    if (!e.isGroup && typeof e.msg !== 'string') return true
     // 不处理#起始指令与没开启主动发电的情况
     if (e.msg.startsWith('#') || !Config.isAutoOnset) return true
+    // 每次都触发太烦了
+    if (Math.ceil(Math.random() * 100) <= Config.autoOnsetOdds) return true
+    // 判断群聊是否位配置群聊
+    if (Config.onsetGroups.length !== 0 && !Config.onsetGroups.includes(e.group_id.toString())) return true
+
     let godName = ''
     // 内部调用
     if (e?.internalCall) {
       godName = e.msg
     } else {
-      godName = Config.groupGod.find(obj => obj?.[e.group_id])?.[e.group_id]
+      godName = getGod(e.group_id)
       if (godName) {
         // 存在局部触发词则忽略全局触发词
         if (e.msg.includes(global.God) && !e.msg.includes(godName)) return false
@@ -139,11 +141,11 @@ export class AvocadoPsycho extends plugin {
       let groupId = parseInt(element)
       // 降低发癫频率...
       if (Bot.getGroupList().get(groupId)) {
-        if (prob < 0.5) {
-          logger.warn(groupId + '：时机未到！下次一定！')
-          continue
-        }
-        let replyMsg = await getBonkersBabble(global.God, 'native')
+        // if (prob < 0.5) {
+        //   logger.warn(groupId + '：时机未到！下次一定！')
+        //   continue
+        // }
+        let replyMsg = await getBonkersBabble(getGod(groupId) ?? Config.OHMYGOD, 'native')
         if (replyMsg) {
           if (Math.random() < 0.5) {
             await Bot.sendGroupMsg(groupId, replyMsg)
@@ -251,4 +253,14 @@ export async function getBonkersBabble (GodName = '', dataSource = 'native', wor
     }
   }
   return replyMsg
+}
+
+/**
+ *
+ * @param groupId
+ * @param isGlobal
+ * @returns {string|*|null}
+ */
+export function getGod (groupId, isGlobal = false) {
+  return isGlobal ? Config.OHMYGOD : Config.groupGod.find(obj => obj?.[groupId])?.[groupId] ?? null
 }
