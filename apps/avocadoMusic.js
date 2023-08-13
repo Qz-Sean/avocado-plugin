@@ -2,7 +2,7 @@ import plugin from '../../../lib/plugins/plugin.js'
 import { Config } from '../utils/config.js'
 import { avocadoRender, getGptResponse, initTimer, refreshTimer, sleep, splitArray } from '../utils/common.js'
 import { getBonkersBabble } from './avocadoPsycho.js'
-import { removeItem, singerMap, singerTypeMap, timer } from '../utils/const.js'
+import { playingListMap, singerMap, singerTypeMap, timer } from '../utils/const.js'
 import {
   avocadoShareMusic,
   findSong,
@@ -10,11 +10,11 @@ import {
   getGreetMsg,
   getMusicDetail,
   getOrderSongList,
-  getPlayList,
+  getNewPlayList,
   getSingerDetail,
   getSingerHotList,
   getSingerId,
-  getSingerRankingList
+  getSingerRankingList, updatePlaylist, delPlaylist, getPlayingList, getRandomOneFromPlaylist
 } from '../utils/music.js'
 export class AvocadoMusic extends plugin {
   constructor (e) {
@@ -64,9 +64,14 @@ export class AvocadoMusic extends plugin {
         },
         {
           // 暂时只提供单群开启与限制主人使用
+          // todo fix bug done
           reg: '^#播放(?:歌单)?(.*)',
           fnc: 'startPlaylist',
           permission: 'master'
+        },
+        {
+          reg: '^#查看播放(状态|歌单)',
+          fnc: 'checkPlayingList'
         },
         {
           reg: '^#?停止播放',
@@ -74,8 +79,9 @@ export class AvocadoMusic extends plugin {
           permission: 'master'
         },
         {
+          // todo 若正在播放当前用户的歌单则重置apctxmap done
           // 暂时只提供单群开启与主人权限限制
-          reg: '^#?(添加|删除)歌单(.+)',
+          reg: '^#?(添加|删除)歌单(.*)',
           fnc: 'adminPlayList',
           permission: 'master'
         }
@@ -114,110 +120,86 @@ export class AvocadoMusic extends plugin {
     // 咕咕咕
   }
 
-  // TODO 多群启用
+  // TODO 多群启用 done
   async autoPlayNext () {
-    if (apCtxObj === null) return false
-    const listName = apCtxObj?.listName
-    // 获取剩余时长
-    const leftTime = refreshTimer(timer.playlistItem).leftTime
-    logger.mark(`当前歌曲剩余时长: ${leftTime}秒`)
-    // 若在下一个等待周期内当前歌曲能播放完成则添加定时任务
-    if (leftTime < 180) {
-      if (timer.playlistItem.timeoutId) clearTimeout(timer.playlistItem.timeoutId)
-      const isEnoughTime = leftTime > 15
-      timer.playlistItem.timeoutId = setTimeout(async () => {
-        let list, next, playlist, favSongList
-        playlist = JSON.parse(await redis.get(`AVOCADO:MUSIC_${apCtxObj.sender.user_id}_${listName}_PLAYLIST`))
-        favSongList = JSON.parse(await redis.get(`AVOCADO:MUSIC_${apCtxObj.sender.user_id}_FAVSONGLIST`))
-        list = playlist || favSongList
-        let notAudible = true
-        let currentIndex = list.length
-
-        while (notAudible && currentIndex > 0) {
-          const randomIndex = Math.floor(Math.random() * currentIndex);
-
-          [list[currentIndex - 1], list[randomIndex]] = [list[randomIndex], list[currentIndex - 1]]
-          next = await getMusicDetail(list[currentIndex - 1].id)
-
-          notAudible = !next.isAudible
-          if (notAudible && playlist) {
-            playlist.splice([currentIndex - 1], 1) // 移除没有版权的曲目
-            logger.mark(removeItem(`[avocado-plugin] remove ${next.name} from playlist: ${listName}`))
-          } else {
-            playlist[currentIndex - 1] = next // 用获取到的完整信息替换
+    const groupIds = Array.from(playingListMap.keys())
+    timeToSleep = new Date().getHours() < 6
+    if (!groupIds.length || timeToSleep) return false
+    for (const groupId of groupIds) {
+      const playingList = getPlayingList(groupId)
+      const listName = playingList.listName
+      const timer = playingList.timer
+      const initiator = playingList.initiator
+      const listDetail = playingList.listDetail
+      const listType = playingList.listType
+      // 获取剩余时长
+      const leftTime = refreshTimer(timer).leftTime
+      logger.mark(`当前歌曲剩余时长: ${leftTime}秒`)
+      // 若在下一个等待周期内当前歌曲能播放完成则添加定时任务
+      if (leftTime < 180) {
+        if (timer.timeoutId) clearTimeout(timer.timeoutId)
+        const isEnoughTime = leftTime > 15
+        timer.timeoutId = setTimeout(async () => {
+          let [next, replacedList] = await getRandomOneFromPlaylist(listDetail, listName)
+          if (listType === 1) {
+            await updatePlaylist(initiator, { listName, listDetail: replacedList })
           }
-          currentIndex--
-        }
-        if (playlist) await redis.set(`AVOCADO:MUSIC_${apCtxObj.sender.user_id}_${listName}_PLAYLIST`, JSON.stringify(playlist))
-        if (Config.apiKey && Math.random() > 0.5) {
-          const question = '简单介绍一下' + next.artist.join('、') + '的' + next.name + '这首歌，不需要过多介绍歌手。'
-          const resText = await getGptResponse(question)
-          const img = resText ? await avocadoRender(resText, { title: `${next.name}-${next.artist.join('、')}`, width: 500, height: 500 }) : false
-          if (img) await apCtxObj.reply(img)
-        } else {
-          await apCtxObj.reply('即将播放' + next.artist.join('、') + '：' + next.name)
-        }
-        if (isEnoughTime) await sleep(1000 * 8)
-        await avocadoShareMusic(next, apCtxObj.group_id)
-        await redis.set(`AVOCADO:MUSIC_${apCtxObj.sender.user_id}_PICKED`, JSON.stringify(next), { EX: next.dt })
-        // 重置计时器
-        timer.playlistItem.invokeTime = null
-        const timeLeft = initTimer(timer.playlistItem, next.dt)
-        logger.mark(`${next.name}-${next.artist.join('、')} -> 总时长: ${timeLeft}秒`)
-        const m = new AvocadoMusic()
-        await m.autoPlayNext()
-      }, (isEnoughTime ? leftTime - 5 : leftTime || 1) * 1000)
+          if (Config.apiKey && Math.random() > 0.5) {
+            const question = '简单介绍一下' + next.artist.join('、') + '的' + next.name + '这首歌，不需要过多介绍歌手。'
+            const resText = await getGptResponse(question)
+            const img = resText ? await avocadoRender(resText, { title: `${next.name}-${next.artist.join('、')}`, width: 500, height: 500 }) : false
+            if (img) await Bot.sendGroupMsg(groupId, img)
+          } else {
+            await Bot.sendGroupMsg(groupId, '即将播放：' + next.name + '——' + next.artist.join('|'))
+          }
+          if (isEnoughTime) await sleep(1000 * 8)
+          await avocadoShareMusic(next, groupId)
+          // 重置计时器
+          timer.invokeTime = null
+          logger.mark(`${next.name}-${next.artist.join('、')} -> 总时长: ${initTimer(timer, next.dt)}秒`)
+          const m = new AvocadoMusic()
+          await m.autoPlayNext()
+        }, (isEnoughTime ? leftTime - 5 : (leftTime || 1)) * 1000)
+      }
     }
   }
 
   async startPlaylist (e) {
     const reg = /^#播放(?:歌单)?(.*)/
     const match = e.msg.match(reg)
+    // todo： 未匹配则播放用户歌手热门单曲 done
     const listName = match[1]
-    const gid = apCtxObj?.group_id || null
-    if (!e.isGroup || apCtxObj?.listName === listName) return false
-    if (gid && e.group_id !== gid) {
-      e.reply('已在其他群里开启本功能，目前支持单群启用！')
+    if (playingListMap.get(e.group_id)) {
+      await e.reply('有其他歌单正在播放')
       return false
     }
-    let res, list, picked, replyMsg
-    if (listName) {
-      const playlist = await redis.get(`AVOCADO:MUSIC_${e.sender.user_id}_${listName}_PLAYLIST`)
-      if (!playlist) {
+    let res, singleList, picked, replyMsg, listDetail
+    if (listName) { // 播放自定义歌单
+      const userPlayList = await redis.get(`AVOCADO:MUSIC_${e.sender.user_id}_PLAYLIST`)
+      if (!userPlayList) {
+        await e.reply('你还没有添加歌单呢')
+        return false
+      }
+      singleList = (JSON.parse(userPlayList)).find(item => item.name.toUpperCase() === listName.toUpperCase())
+      listDetail = singleList.listDetail
+      if (!singleList) {
         await e.reply('找不到名为' + listName + '的歌单！')
         return false
       }
-      list = JSON.parse(playlist)
-
-      let notAudible = true
-      let currentIndex = list.length
-
-      while (notAudible && currentIndex > 0) {
-        const randomIndex = Math.floor(Math.random() * currentIndex);
-
-        [list[currentIndex - 1], list[randomIndex]] = [list[randomIndex], list[currentIndex - 1]]
-        picked = await getMusicDetail(list[currentIndex - 1].id)
-
-        notAudible = !picked.isAudible
-        if (notAudible && list) {
-          list.splice([currentIndex - 1], 1)
-          logger.mark(removeItem(`[avocado-plugin] remove ${picked.name} from playlist: ${listName}`))
-        } else {
-          playlist[currentIndex - 1] = picked // 用获取到的完整信息替换
-        }
-        currentIndex--
-      }
-      await redis.set(`AVOCADO:MUSIC_${e.sender.user_id}_${listName}_PLAYLIST`, JSON.stringify(list))
-      replyMsg = `将在本群自动播放歌单'${listName}'中的歌曲。`
+      let replacedList
+      [picked, replacedList] = await getRandomOneFromPlaylist(listDetail, listName)
+      await updatePlaylist(e.sender.user_id, { listName, listDetail: replacedList })
+      replyMsg = `将在本群自动播放歌单 ${listName} 中的歌曲。`
     } else {
       const favSongList = await redis.get(`AVOCADO:MUSIC_${e.sender.user_id}_FAVSONGLIST`)
       if (!favSongList) {
         await e.reply('未设置歌手！示例：#设置歌手周杰伦')
         return false
       }
-      list = JSON.parse(favSongList)
-      picked = await getMusicDetail(list[Math.floor(Math.random() * list.length)].id)
-      replyMsg = 'ok'
+      const favSinger = JSON.parse(await redis.get(`AVOCADO:MUSIC_${e.sender.user_id}_FAVSINGER`)).singerName
+      listDetail = JSON.parse(favSongList)
+      picked = await getMusicDetail(listDetail[Math.floor(Math.random() * listDetail.length)].id)
+      replyMsg = '即将播放' + favSinger + '的热门单曲'
     }
     await e.reply(replyMsg, true, { recallMsg: 3 })
     const duration = picked.dt
@@ -234,17 +216,46 @@ export class AvocadoMusic extends plugin {
     }
     await redis.set(`AVOCADO:MUSIC_${e.sender.user_id}_PICKED`, JSON.stringify(picked), { EX: picked.dt })
     // 初始化计时器
-    res = initTimer(timer.playlistItem, duration)
-    logger.mark(`${picked.name}-${picked.artist.join('、')} -> 总时长: ${res}秒`)
-    e.listName = listName
-    apCtxObj = e
+    const timer = {
+      leftTime: null,
+      invokeTime: null,
+      timeoutId: null
+    }
+    const songDuration = initTimer(timer, duration)
+    logger.mark(`${picked.name}-${picked.artist.join('、')} -> 总时长: ${songDuration}秒`)
+    playingListMap.set(e.group_id, {
+      initiator: e.sender.user_id,
+      listType: listName ? 1 : 2, // 1: customizedList  2: favSongList
+      listName: listName || e.sender.user_id + '的歌手热门',
+      timer,
+      listDetail
+    })
     await this.autoPlayNext()
     return true
   }
 
   async stopPlaylist (e) {
-    apCtxObj = null
-    await e.reply('ok', true, { recallMsg: 3 })
+    const playingList = getPlayingList(e.group_id)
+    if (playingList) {
+      playingListMap.delete(e.group_id)
+      await e.reply('ok', true, { recallMsg: 3 })
+    } else {
+      await e.reply('没有正在播放的歌单', true, { recallMsg: 3 })
+    }
+  }
+
+  async checkPlayingList (e) {
+    const playingList = getPlayingList(e.group_id)
+    if (playingList) {
+      const listName = playingList.listName
+      const initiator = await Bot.pickMember(e.group_id, playingList.initiator)
+      const nickname = initiator.info?.card || initiator.info?.nickname
+      await e.reply(`${nickname}：${listName}`)
+      return true
+    } else {
+      await e.reply('nothing')
+      return false
+    }
   }
 
   async adminPlayList (e) {
@@ -252,13 +263,20 @@ export class AvocadoMusic extends plugin {
     const match = e.msg.match(regex)
     const [isAdd, [listName, listId]] = [match[1] === '添加', match[2].split(/[,，\s]/)]
     let replyMsg = ''
+    const playingList = await getPlayingList(e.group_id)
+    // 停止播放
+    if (playingList && playingList.initiator === e.sender.user_id) {
+      playingListMap.delete(e.group_id)
+    }
     if (isAdd) {
       if (!listId) await e.reply('示例：#添加歌单我喜欢，123456\n数字为你要添加的歌单id，自行获取。')
-      const res = await getPlayList(listId, listName, e.sender.user_id)
-      replyMsg = res || res.length ? `添加歌单${listName}成功！共${res.length}首歌。` : '添加失败！'
+      const listObj = await getNewPlayList(listId, listName, e.sender.user_id)
+      replyMsg = listObj ? `添加歌单${listName}成功！共${listObj.listDetail.length}首歌。` : '添加失败！'
+      await updatePlaylist(e.sender.user_id, listObj)
     } else {
-      await redis.del(`AVOCADO:MUSIC_${e.sender.user_id}_${listName}_PLAYLIST`)
-      replyMsg = `删除歌单${listName}成功！`
+      const status = await delPlaylist(e.sender.user_id, listName)
+      logger.warn(status)
+      replyMsg = `删除歌单${listName}${status ? '成功' : '失败'}！`
     }
     await e.reply(replyMsg)
     return true
@@ -695,38 +713,22 @@ export class AvocadoMusic extends plugin {
     try {
       if (/(下一首|切歌|听歌|换歌|下一曲)/.test(e.msg)) {
         const lastOrder = await redis.get(`AVOCADO:MUSIC_${e.sender.user_id}_PICKEDSINGER`)
+        const playingList = getPlayingList(e.group_id)
         // 优先级最高，若想播放其他歌单需要先停止自动歌单
-        if (apCtxObj !== null && e.sender.user_id === apCtxObj.sender.user_id) {
-          const listName = apCtxObj.listName
-          if (timer.playlistItem.timeoutId) clearTimeout(timer.playlistItem.timeoutId)
-          const playlist = JSON.parse(await redis.get(`AVOCADO:MUSIC_${e.sender.user_id}_${listName}_PLAYLIST`))
-          let picked
-          let notAudible = true
-          let currentIndex = playlist.length
-          // 遍历找到可播放的歌曲
-          while (notAudible && currentIndex > 0) {
-            const randomIndex = Math.floor(Math.random() * currentIndex);
-
-            [playlist[currentIndex - 1], playlist[randomIndex]] = [playlist[randomIndex], playlist[currentIndex - 1]]
-            picked = await getMusicDetail(playlist[currentIndex - 1].id)
-
-            notAudible = !picked.isAudible
-            if (notAudible && playlist) {
-              playlist.splice([currentIndex - 1], 1)
-              logger.mark(removeItem(`[avocado-plugin] remove ${picked.name} from playlist: ${listName}`))
-            } else {
-              playlist[currentIndex - 1] = picked // 用获取到的完整信息替换
-            }
-            currentIndex--
-          }
-          await redis.set(`AVOCADO:MUSIC_${e.sender.user_id}_${listName}_PLAYLIST`, JSON.stringify(playlist))
+        if (playingList && e.sender.user_id === playingList.initiator) {
+          const listName = playingList.listName
+          const listDetail = playingList.listDetail
+          const timer = playingList.timer
+          if (timer.timeoutId) clearTimeout(timer.timeoutId)
+          let [picked, replacedList] = await getRandomOneFromPlaylist(listDetail, listName)
+          await updatePlaylist(playingList.initiator, { listName, listDetail: replacedList })
           const duration = picked.dt
           const res = await avocadoShareMusic(picked, e.group_id)
           if (!res) {
             await e.reply('播放失败')
             return false
           }
-          initTimer(timer.playlistItem, duration)
+          initTimer(timer, duration)
           await this.autoPlayNext()
         } else if (lastOrder) {
           e.msg = '听' + lastOrder
@@ -984,6 +986,7 @@ export class AvocadoMusic extends plugin {
     // 每次调用刷新剩余时间
     const ctxDuration = time
     logger.mark('start ' + type + ' context')
+    // 云崽的上下文是全局的，群组不做单独处理
     initTimer(timer.musicCtx, ctxDuration)
     let key = this.conKey(isGroup)
     if (!stateArr[key]) stateArr[key] = {}
@@ -1027,4 +1030,4 @@ export class AvocadoMusic extends plugin {
   }
 }
 let stateArr = {}
-let apCtxObj = null
+let timeToSleep = false

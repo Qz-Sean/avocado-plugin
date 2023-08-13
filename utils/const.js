@@ -8,6 +8,8 @@ global.hasSend = []
 global.God = Config.OHMYGOD
 global.groupGodNameList = Config.groupGod.reduce((acc, obj) => acc.concat(Object.values(obj)), [])
 
+export const playingListMap = new Map()
+
 // from 3399280843@qq.com@SmallK111407
 export const _path = process.cwd().replace(/\\/g, '/')
 export const pluginName = path.basename(path.join(import.meta.url, '../../'))
@@ -192,11 +194,6 @@ export const timer = {
   musicCtx: {
     leftTime: null,
     invokeTime: null
-  },
-  playlistItem: {
-    leftTime: null,
-    invokeTime: null,
-    timeoutId: null
   },
   movieCtx: {
     leftTime: null,

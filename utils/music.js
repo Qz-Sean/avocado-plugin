@@ -2,6 +2,7 @@ import { generateRandomHeader, getGptResponse, sendPrivateMsg, sleep } from './c
 import fetch from 'node-fetch'
 import { Config } from './config.js'
 import chalk from 'chalk'
+import { playingListMap, removeItem } from './const.js'
 
 async function getRankingLists () {
   let list = await redis.get('AVOCADO_MUSICRANKINGLIST')
@@ -351,13 +352,13 @@ export async function findSong (data = { param: '', id: '', isRandom: false, fro
 }
 
 /**
- *
+ * 获取新歌单
  * @param listId
  * @param listName
  * @param userId
  * @returns {Promise<*|boolean>}
  */
-export async function getPlayList (listId, listName, userId) {
+export async function getNewPlayList (listId, listName, userId) {
   try {
     const headers = generateRandomHeader()
     const options = {
@@ -371,14 +372,16 @@ export async function getPlayList (listId, listName, userId) {
     if (result.code !== 200) return false
     const rawList = result.playlist.trackIds
     if (!rawList.length) return false
-    const list = rawList.map(item => ({ id: item.id }))
-    await redis.set(`AVOCADO:MUSIC_${userId}_${listName}_PLAYLIST`, JSON.stringify(list))
-    return list
+    const playlist = { listName, listDetail: [] }
+    playlist.listDetail = rawList.map(item => ({ id: item.id }))
+    // await redis.set(`AVOCADO:MUSIC_${userId}_PLAYLIST`, JSON.stringify(playlist))
+    return playlist
   } catch (err) {
     logger.error(err)
     return false
   }
 }
+
 /**
  * 获取单曲所有信息
  * @returns {Promise<{}>}
@@ -593,7 +596,7 @@ export async function getFavList (userID, SingerID) {
 }
 
 export async function avocadoShareMusic (data, target, imgToShare, textMsg, platformCode) {
-  logger.mark(chalk.greenBright('avocadoShareMusic -> ' + data.name + ' to ' + target))
+  logger.mark(chalk.greenBright('avocadoShareMusic -> ' + data.name + '-' + data.artist.join('/') + ' to ' + target))
   try {
     const platform = platformCode || '163'
     // 单个目标
@@ -686,6 +689,72 @@ export async function getCommentsOrLyrics (musicObjectOrMusicId, type = 0) {
     }
   }
 }
+export async function updatePlaylist (userId, listToAdd) {
+  try {
+    let newList
+    const oldList = JSON.parse(await redis.get(`AVOCADO:MUSIC_${userId}_PLAYLIST`))
+    if (oldList) {
+      newList = oldList.filter(item => item.listName !== listToAdd.listName)
+      newList.push(listToAdd)
+    } else {
+      newList = [listToAdd]
+    }
+    return await redis.set(`AVOCADO:MUSIC_${userId}_PLAYLIST`, JSON.stringify(newList))
+  } catch (error) {
+    logger.error(error)
+    return false
+  }
+}
+export async function delPlaylist (userId, listName) {
+  try {
+    const oldList = JSON.parse(await redis.get(`AVOCADO:MUSIC_${userId}_PLAYLIST`))
+    if (!oldList) return false
+    const newList = oldList.filter(item => item.listName !== listName)
+    return await redis.set(`AVOCADO:MUSIC_${userId}_PLAYLIST`, JSON.stringify(newList))
+  } catch (error) {
+    logger.error(error)
+    return false
+  }
+}
+
+/**
+ *
+ * @param groupId
+ * @returns {any}
+ */
+export function getPlayingList (groupId) {
+  return playingListMap.get(groupId)
+}
+
+/**
+ *
+ * @param playlist
+ * @param listName
+ * @returns {Promise<{}>}
+ */
+export async function getRandomOneFromPlaylist (playlist, listName) {
+  let picked
+  let list = playlist
+  let notAudible = true
+  let currentIndex = list.length
+
+  while (notAudible && currentIndex > 0) {
+    const randomIndex = Math.floor(Math.random() * currentIndex);
+
+    [list[currentIndex - 1], list[randomIndex]] = [list[randomIndex], list[currentIndex - 1]]
+    picked = await getMusicDetail(list[currentIndex - 1].id)
+
+    notAudible = !picked.isAudible
+    if (notAudible) {
+      list.splice(currentIndex - 1, 1)
+      logger.mark(removeItem(`[avocado-plugin] remove ${picked.name} from playlist: ${listName}`))
+    } else {
+      list[currentIndex - 1] = picked // 用获取到的完整信息替换
+    }
+    currentIndex--
+  }
+  return [picked, list]
+}
 
 /**
  *
@@ -705,7 +774,7 @@ export async function sendMusic (data, to) {
   appsign = 'da6b069da1e2982db3e386233f68d76d'
 
   let title = data.name
-  let artist = data.artist
+  let artist = data.artist.join('/')
   let prompt = '[分享]'
   let jumpUrl
   let preview
