@@ -66,13 +66,13 @@ const panel = {
         label: '主动发电概率',
         bottomHelpMessage: '',
         component: 'InputNumber',
-        required: true,
+        // required: true,
         componentProps: {
           min: 0,
-          max: 100
+          max: 100,
+          addonAfter: '%'
         },
-        placeholder: '请输入数字',
-        addonAfter: '%'
+        placeholder: '请输入数字'
       },
       {
         field: 'isPeriodicOnset',
