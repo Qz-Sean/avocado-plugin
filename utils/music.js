@@ -774,7 +774,7 @@ export async function sendMusic (data, to) {
   appsign = 'da6b069da1e2982db3e386233f68d76d'
 
   let title = data.name
-  let artist = data.artist.join('/')
+  let artist = data?.artist.join('/') || 'nobody'
   let prompt = '[分享]'
   let jumpUrl
   let preview
