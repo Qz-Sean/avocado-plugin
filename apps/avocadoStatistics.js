@@ -561,7 +561,7 @@ export class AvocadoStatistics extends plugin {
   //  1. 形式： 图片显示 done
   //  2. 内容： 序号：时间 -> 主题 ... 序号：时间 -> 主题 done
   //  3. 查看： 通过序号查看详情 done
-  //  4. regex =》 优化。支持分别查看管理 全局|所有群聊|当前群聊 事件，默认当前 done
+  //  4. regex =》 优化。支持分类查看管理 全局|所有群聊|当前群聊 事件，默认当前 done
 
   async adminHistory (e) {
     let picked = ''
@@ -816,8 +816,9 @@ async function getHistoryStatisticalData (dataField = 'group', groupId = null, t
       logger.warn('getHistoryStatisticalData => ', arr)
       return arr || []
     } else {
+      // todo 优化，增加判断变量，不需要每次都都数据库
       const res = JSON.parse(await redis.get(`AVOCADO:STATISTICS_${groupId}`))
-      logger.error(res, 1111)
+      // logger.error(res, 1111)
       if (res) {
         if (type) return res.filter(item => item.type === type)
         return res
