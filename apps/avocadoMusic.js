@@ -201,7 +201,7 @@ export class AvocadoMusic extends plugin {
       picked = await getMusicDetail(listDetail[Math.floor(Math.random() * listDetail.length)].id)
       replyMsg = '即将播放' + favSinger + '的热门单曲'
     }
-    await e.reply(replyMsg, true, { recallMsg: 3 })
+    await e.reply(replyMsg, true, { recallMsg: 10 })
     const duration = picked.dt
     res = await avocadoShareMusic(picked, e.group_id)
     if (!res) {
