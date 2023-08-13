@@ -51,7 +51,7 @@ export class AvocadoPsycho extends plugin {
     // 不处理#起始指令与没开启主动发电的情况
     if (e.msg.startsWith('#') || !Config.isAutoOnset) return true
     // 每次都触发太烦了
-    if (Math.ceil(Math.random() * 100) <= Config.autoOnsetOdds) return true
+    if (Math.ceil(Math.random() * 100) >= Config.autoOnsetOdds) return true
     // 判断群聊是否位配置群聊
     if (Config.onsetGroups.length !== 0 && !Config.onsetGroups.includes(e.group_id.toString())) return true
 
