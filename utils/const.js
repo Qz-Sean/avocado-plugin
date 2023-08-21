@@ -18,6 +18,9 @@ export const urlRegex = /(?:(?:https?|ftp):\/\/)?(?:\S+(?::\S*)?@)?(?:((?:(?:[a-
 // /(https?:\/\/)?([\w-]+\.)+[\w-]+(\/[\w-./?%&=]*)?(#.*)?/i
 // /(?:(?:https?|ftp):\/\/)?(?:\S+(?::\S*)?@)?(?:((?:(?:[a-z0-9\u00a1-\u4dff\u9fd0-\uffff][a-z0-9\u00a1-\u4dff\u9fd0-\uffff_-]{0,62})?[a-z0-9\u00a1-\u4dff\u9fd0-\uffff]\.)+(?:[a-z\u00a1-\u4dff\u9fd0-\uffff]{2,}\.?))(?::\d{2,5})?)(?:\/[\w\u00a1-\u4dff\u9fd0-\uffff$-_.+!*'(),%]+)*(?:\?(?:[\w\u00a1-\u4dff\u9fd0-\uffff$-_.+!*(),%:@&=]|(?:[\[\]])|(?:[\u00a1-\u4dff\u9fd0-\uffff]))*)?(?:#(?:[\w\u00a1-\u4dff\u9fd0-\uffff$-_.+!*'(),;:@&=]|(?:[\[\]]))*)?\/?/i
 export const pluginVersion = Config.version
+
+// 公告服务可能访问较慢，可前往 https://neteasecloudmusicapi.vercel.app/#/?id=vercel-%e9%83%a8%e7%bd%b2 自行搭建
+export const musicBaseUrl = 'https://music.gakki.icu'
 export const removeItem = chalk.rgb(110, 155, 197)
 export const yunZaiVersion = `v${cfg.package.version}`
 export const urlBlacklist = [

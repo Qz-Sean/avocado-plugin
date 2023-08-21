@@ -2,7 +2,7 @@ import { generateRandomHeader, getGptResponse, sendPrivateMsg, sleep } from './c
 import fetch from 'node-fetch'
 import { Config } from './config.js'
 import chalk from 'chalk'
-import { playingListMap, removeItem } from './const.js'
+import {musicBaseUrl, playingListMap, removeItem} from './const.js'
 
 async function getRankingLists () {
   let list = await redis.get('AVOCADO_MUSICRANKINGLIST')
@@ -10,7 +10,7 @@ async function getRankingLists () {
     list = JSON.parse(list)
     return list
   } else {
-    const url = 'http://110.41.21.181:3000/toplist/detail'
+    const url = `${musicBaseUrl}/toplist/detail`
     // logger.warn(url)
     const headers = generateRandomHeader()
     const options = {
@@ -42,7 +42,7 @@ async function getRankingLists () {
 }
 
 async function getPlaylistById (listId, listType = 'normal') {
-  const url = 'http://110.41.21.181:3000/playlist/detail?id=' + listId
+  const url = `${musicBaseUrl}/playlist/detail?id=${listId}`
   // logger.warn(url)
   const headers = generateRandomHeader()
   const options = {
@@ -76,7 +76,7 @@ async function getPlaylistById (listId, listType = 'normal') {
  * @param albumId
  */
 async function getAlbumDetail (albumId) {
-  const url = 'http://110.41.21.181:3000/album?id=' + albumId
+  const url = `${musicBaseUrl}/album?id=${albumId}`
   const headers = generateRandomHeader()
   const options = {
     method: 'GET',
@@ -143,7 +143,7 @@ export async function getSingerDetail (nameOrId) {
   if (!singerId) return false
   // 模糊查找的结果,不保真
   if (Array.isArray(r)) singerId = r[0]
-  let url = `http://110.41.21.181:3000/artist/detail?id=${singerId}`
+  let url = `${musicBaseUrl}/artist/detail?id=${singerId}`
   const headers = generateRandomHeader()
   const options = {
     method: 'GET',
@@ -209,7 +209,7 @@ async function getMusicUrl (id) {
  * @returns {Promise<boolean>}
  */
 export async function getOrderSongList (userId, order, limit) {
-  const url = `http://110.41.21.181:3000/cloudsearch?keywords=${order}&limit=${limit}`
+  const url = `${musicBaseUrl}/cloudsearch?keywords=${order}&limit=${limit}`
   try {
     const headers = generateRandomHeader()
     const options = {
@@ -266,7 +266,7 @@ export async function getOrderSongList (userId, order, limit) {
  * @returns {Promise<{}|boolean>}
  */
 export async function findSong (data = { param: '', id: '', isRandom: false, from: '' }) {
-  const url = `http://110.41.21.181:3000/cloudsearch?keywords=${data.param}&limit=80`
+  const url = `${musicBaseUrl}/cloudsearch?keywords=${data.param}&limit=80`
   try {
     const headers = generateRandomHeader()
     const options = {
@@ -366,7 +366,7 @@ export async function getNewPlayList (listId, listName, userId) {
       headers
     }
     // /playlist/track/all?id=24381616&limit=10&offset=1 获取歌单内所有歌曲（详细信息）
-    const url = `http://110.41.21.181:3000/playlist/detail?id=${listId}`
+    const url = `${musicBaseUrl}/playlist/detail?id=${listId}`
     const response = await fetch(url, options)
     const result = await response.json()
     if (result.code !== 200) return false
@@ -391,7 +391,7 @@ export async function getMusicDetail (id) {
   let response, resJson, song
   const songInfo = {}
   try {
-    response = await fetch(`http://110.41.21.181:3000/song/detail?ids=${id}`)
+    response = await fetch(`${musicBaseUrl}/song/detail?ids=${id}`)
     resJson = await response.json()
     song = resJson.songs[0]
     songInfo.id = song.id
@@ -429,7 +429,7 @@ export async function getSingerHotList (userId, artist) {
   } else {
     singerId = r[0]
   }
-  const url = `http://110.41.21.181:3000/artist/top/song?id=${singerId}`
+  const url = `${musicBaseUrl}/artist/top/song?id=${singerId}`
   const headers = generateRandomHeader()
   const options = {
     method: 'GET',
@@ -452,7 +452,7 @@ export async function getSingerHotList (userId, artist) {
 }
 
 export async function getSingerId (artist) {
-  let url = `http://110.41.21.181:3000/cloudsearch?keywords=${encodeURI(artist)}&limit=1`
+  let url = `${musicBaseUrl}/cloudsearch?keywords=${encodeURI(artist)}&limit=1`
   let singerId
   const headers = generateRandomHeader()
   const options = {
@@ -502,7 +502,7 @@ export async function getSingerId (artist) {
  * @returns {Promise<*|boolean>}
  */
 export async function getSingerRankingList (userId = '', singerType) {
-  let url = `http://110.41.21.181:3000/toplist/artist?type=${singerType}`
+  let url = `${musicBaseUrl}/toplist/artist?type=${singerType}`
   try {
     const headers = generateRandomHeader()
     const options = {
@@ -537,7 +537,7 @@ export async function getSingerRankingList (userId = '', singerType) {
  * @returns {Promise<*|boolean>}
  */
 export async function getHotSingers () {
-  let url = 'http://110.41.21.181:3000/top/artists?offset=0&limit=50'
+  let url = `${musicBaseUrl}/top/artists?offset=0&limit=50`
   try {
     const headers = generateRandomHeader()
     const options = {
@@ -560,7 +560,7 @@ export async function getHotSingers () {
 }
 
 export async function getFavList (userID, SingerID) {
-  let url = `http://110.41.21.181:3000/artist/songs?id=${SingerID}&limit=200`
+  let url = `${musicBaseUrl}/artist/songs?id=${SingerID}&limit=200`
   try {
     const headers = generateRandomHeader()
     const options = {
@@ -660,11 +660,11 @@ export async function getCommentsOrLyrics (musicObjectOrMusicId, type = 0) {
   let comments, lyrics
   if (typeof musicObjectOrMusicId !== 'object') {
     const id = parseInt(musicObjectOrMusicId)
-    let response = await fetch(`http://110.41.21.181:3000/lyric?id=${id}`)
+    let response = await fetch(`${musicBaseUrl}/lyric?id=${id}`)
     let resJson = await response.json()
     lyrics = [resJson.lrc?.lyric]
     if (type === 1 || type === 0) {
-      response = await fetch(`http://110.41.21.181:3000/comment/hot?id=${id}&type=0`)
+      response = await fetch(`${musicBaseUrl}/comment/hot?id=${id}&type=0`)
       resJson = await response.json()
       comments = resJson.hotComments.slice(0, 15).map(item => {
         return [item.likedCount, item.content]
