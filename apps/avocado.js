@@ -1,5 +1,4 @@
 import plugin from '../../../lib/plugins/plugin.js'
-import { segment } from 'icqq'
 import path from 'path'
 import { Config } from '../utils/config.js'
 import { translate } from '../utils/translate.js'
