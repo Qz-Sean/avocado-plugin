@@ -1,6 +1,5 @@
 import { generateRandomHeader, sleep } from './common.js'
 import { movieKeyMap } from './const.js'
-import { segment } from 'icqq'
 
 /**
  * 获取单部影片的详细信息
